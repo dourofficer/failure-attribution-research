@@ -1,0 +1,119 @@
+% Conformal prediction in failure attribution: case studies -- two-page reading report, high-level version
+% (formulations and guarantees only; the algorithms are described elsewhere).
+% Build: ./build.sh case_studies_v2  (pdflatex + bibtex, output case_studies_v2.pdf)
+\documentclass[12pt,a4paper]{article}
+\usepackage[margin=2cm,top=1.8cm,bottom=1.9cm,footskip=0.9cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb}
+\usepackage{times}  % Times text; mathptmx needs the rsfs font, which this TeX install lacks
+\usepackage{enumitem}
+\usepackage{booktabs,tabularx,array}
+\usepackage[font=small,labelfont=bf,skip=4pt]{caption}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[hidelinks]{hyperref}
+
+\setlist{nosep,leftmargin=1.3em}
+\setlength{\parskip}{4pt}
+\setlength{\parindent}{0pt}
+\setlength{\textfloatsep}{7pt plus 2pt}
+\setlength{\intextsep}{10pt plus 2pt}
+\setlength{\abovedisplayskip}{7pt plus 2pt}
+\setlength{\belowdisplayskip}{7pt plus 2pt}
+\setlength{\abovedisplayshortskip}{2pt}
+\setlength{\belowdisplayshortskip}{3pt}
+\setlength{\emergencystretch}{2em}
+\pagestyle{plain}
+\makeatletter
+\renewcommand\section{\@startsection{section}{1}{\z@}{11pt plus 2pt minus 1pt}{3pt}{\normalsize\bfseries}}
+\let\oldbib\thebibliography
+\renewcommand\thebibliography[1]{\oldbib{#1}\setlength{\itemsep}{1pt}\setlength{\parskip}{0pt}\footnotesize}
+\makeatother
+
+% ---------- notation ----------
+\newcommand{\C}{\mathcal{C}}
+\newcommand{\qhat}{\hat q}
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\ystar}{y^{*}}
+\newcommand{\jstar}{j^{*}}
+
+\newcommand{\Dcal}{D_{\mathrm{cal}}}
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+
+\begin{document}
+
+\begin{center}
+{\large\bfseries Conformal Prediction in Failure Attribution: Case Studies}\\[2pt]
+{\small Reading report \textperiodcentered\ November 2026}
+\end{center}
+\vspace{2pt}
+
+\textbf{Abstract.} Failure attribution methods for LLM multi-agent systems output one step, although the responsible step is often ambiguous and point predictions are usually wrong. Conformal prediction (CP) can instead return a set of steps with a statistical guarantee. We restate failure attribution as a set-prediction problem in CP notation, and then read the two works that apply CP to it, OAT and Conformal Agent Error Attribution.
+
+% =====================================================================
+\section{Introduction}
+
+\emph{Failure attribution} asks which step of a failed agent trajectory caused the failure \cite{zhang2025who}, and existing methods answer with a single step. Recent work questions this on two grounds. First, the label may not be a single step: MP-Bench \cite{mpbench2026} shows that analysts looking at the same failure can reasonably blame different steps. Second, a single step carries no measure of how far it can be trusted \cite{feng2026conformal}, and it is usually wrong (the best step accuracy reported in Who\&When is about 25\% \cite{zhang2025who}).
+
+Conformal prediction (CP) is a natural answer to both concerns. It turns any step scorer into prediction sets that satisfy a guarantee at a level chosen by the user, in finite samples and without assumptions on the data distribution \cite{angelopoulos2021gentle}. This report reads the two works that apply CP to attribution \cite{yeh2026oat,feng2026conformal} with two questions in mind.
+
+\textbf{Q1 (guarantee).} Does the method return a region of the trace that contains the decisive error with a user-specified probability?
+\textbf{Q2 (usefulness).} How small is that region?
+
+% =====================================================================
+\section{Problem Setup}
+
+We follow the sequential formulation of \cite{feng2026conformal}. A failed trajectory is a sequence of steps $x=(c_1,\dots,c_\ell)$ of variable length $\ell$. Its ground truth is a subset of steps $\ystar\subseteq x$: one decisive error in most datasets, several plausible steps in the view of \cite{mpbench2026}. A \emph{step scorer} assigns each step a number that says how suspicious it is. Given a calibration set $\Dcal$, held out from the scorer's training, and a miscoverage level $\alpha\in(0,1)$, CP calibrates a threshold $\qhat$ on $\Dcal$ and returns a set $\C(x;\qhat)\subseteq x$. The target is that, for a new failed trajectory,
+\begin{equation}
+\Prob\big[\,\ystar_{n+1}\subseteq\C(x_{n+1};\qhat)\,\big]\;\ge\;1-\alpha, \label{eq:cov}
+\end{equation}
+with the set as small as possible, provided calibration and test data are exchangeable. The two case studies differ in what $\Dcal$ contains, and so in which event they can control.
+
+% =====================================================================
+\section{Case Study 1: OAT \cite{yeh2026oat}}
+
+\textbf{Setting.} OAT has successful trajectories only, with no labelled failures. Its scorer, trained on them, gives each step an anomaly score $e_t\ge0$ that is large when the step departs from how successful runs evolve.
+
+\textbf{Formulation.} Without labels $\ystar_i$, the event in \eqref{eq:cov} cannot be calibrated. OAT calibrates on what it has: $\Dcal$ is the pool of steps from held-out successful runs, and the threshold $\delta$ is the $(1-\alpha)$ quantile of their anomaly scores. A failed trajectory returns the steps that score above it, and the guarantee concerns its \emph{normal} steps, those outside $\ystar$:
+\begin{equation}
+\Prob\big[\,c_t\in\C(x;\delta)\;\big|\;c_t\notin\ystar\,\big]\;\le\;\alpha,\qquad \C(x;\delta)=\{c_t\in x: e_t>\delta\}. \label{eq:oat}
+\end{equation}
+The calibration unit is a single step. This is the outlier-detection variant of CP \cite{angelopoulos2021gentle}.
+
+\textbf{Guarantee.} \eqref{eq:oat} holds when the normal steps of a failed run are exchangeable with the steps in $\Dcal$. It limits how often a normal step is wrongly flagged as an error, not how often a true error step is left out of the set, so it speaks to Q2 and leaves Q1 to experiment: at $\alpha=0.2$ the set contains an annotated error in 57\% of MCP-Atlas runs and 33\% of Who\&When runs.
+
+% =====================================================================
+\section{Case Study 2: Conformal Agent Error Attribution \cite{feng2026conformal}}
+
+\textbf{Setting.} Feng et al.\ have failed trajectories with the decisive error labelled, $\Dcal=\{(x_i,\ystar_i)\}_{i=1}^{n}$, where $\ystar_i=c_{\jstar}$ is the earliest error the system cannot recover from. Their scorer is an LLM judge that gives each step $c_i$ a probability $p_i\in[0,1]$ of being that error.
+
+\textbf{Formulation.} This is \eqref{eq:cov} and one added constraint: the set must be a block of consecutive steps, which \cite{feng2026conformal} argue is easier to debug and to roll back to.
+\begin{equation}
+1-\alpha\;\le\;\Prob\big[\,\ystar_{n+1}\in\C(x_{n+1};\qhat)\,\big]\;<\;1-\alpha+\tfrac{1}{n+1},\qquad \C(x_{n+1};\qhat)=(c_j,\dots,c_k). \label{eq:contig}
+\end{equation}
+The calibration unit is a whole trajectory: each $(x_i,\ystar_i)$ contributes one conformal score, the smallest threshold at which its error stays in the set, and $\qhat$ is the $\lceil(n+1)(1-\alpha)\rceil$-th smallest of these $n$ scores. The paper's algorithms (left, right and two-way \emph{filtration}) differ only in which blocks they search.
+
+\textbf{Guarantee.} \eqref{eq:contig} holds for any judge when calibration and test failures are exchangeable. It limits how often the decisive error is left out of the set, so Q1 is answered positively. Q2 is left to experiment: at $1-\alpha=0.8$ the best variant on Who\&When removes 31\% of the steps, so the set still holds 69\% of the trajectory.
+
+\begin{table}[h]
+\centering\small
+\begin{tabularx}{\linewidth}{@{}l L L@{}}\toprule
+ & OAT \cite{yeh2026oat} & Feng et al.\ \cite{feng2026conformal}\\\midrule
+Calibration data & steps of successful runs, no labels & failed runs with $\ystar$ labelled\\
+Calibration unit & one step & one trajectory\\
+% Controlled event & a normal step enters the set ($\le\alpha$) & the error is left out of the set ($\le\alpha$)\\ [removed]
+Set returned & any subset of steps, possibly empty & one block of consecutive steps\\\bottomrule
+\end{tabularx}
+\caption{The two formulations side by side.}\label{tab:compare}
+\end{table}
+
+% =====================================================================
+\section{Discussion}
+
+\textbf{The usefulness of conformal prediction.} Both guarantees hold for any scorer, even a random one. How small the set is depends on the scorer and on how the sets are built \cite{angelopoulos2021gentle}: in \cite{feng2026conformal} the filtration sets change little with the judge and mostly with how well the algorithm matches where errors sit. Step scoring itself is still weak. In \cite{feng2026conformal} the two prompted judges reach an AUROC of 0.52 and 0.55 (chance: 0.50) and a top-1 accuracy of 0.11 and 0.16 (random: 0.12); only the judge fine-tuned on injected errors does well (0.76 and 0.73), and it cannot be trained for Who\&When. OAT's set recovers 48\% of the annotated error steps on MCP-Atlas and 33\% on Who\&When.
+
+\textbf{What the sets add on real failures is not yet shown.} On Who\&When, their only dataset of natural failures, \cite{feng2026conformal} report removal rate only: empirical coverage and scorer accuracy are given on injected errors alone, and there is no comparison with point-prediction baselines. How much the method helps in practice remains open.
+
+\bibliographystyle{unsrtnat}
+\bibliography{refs}
+\end{document}

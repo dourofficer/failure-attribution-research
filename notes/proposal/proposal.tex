@@ -1,0 +1,201 @@
+% Conformal failure attribution -- three-page research proposal.
+% Build: ./build.sh  (pdflatex + bibtex, output proposal.pdf)
+\documentclass[10pt,a4paper]{article}
+\usepackage[margin=1.6cm,top=1.3cm,bottom=1.4cm,footskip=0.7cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb}
+\usepackage{times}  % Times text; mathptmx needs the rsfs font, which this TeX install lacks
+\usepackage{enumitem}
+\usepackage{booktabs,tabularx,array}
+\usepackage{xcolor}
+\usepackage[font=small,labelfont=bf,skip=3pt]{caption}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[hidelinks]{hyperref}
+
+\setlist{nosep,leftmargin=1.3em}
+\setlength{\parskip}{2pt}
+\setlength{\parindent}{0pt}
+\setlength{\textfloatsep}{6pt plus 2pt}
+\setlength{\floatsep}{5pt plus 2pt}
+\setlength{\abovedisplayskip}{3pt plus 1pt}
+\setlength{\belowdisplayskip}{3pt plus 1pt}
+\setlength{\abovedisplayshortskip}{2pt}
+\setlength{\belowdisplayshortskip}{2pt}
+\setlength{\emergencystretch}{2em}
+\pagestyle{plain}
+\makeatletter
+\renewcommand\section{\@startsection{section}{1}{\z@}{6pt plus 2pt minus 1pt}{2pt}{\normalsize\bfseries}}
+\renewcommand\paragraph{\@startsection{paragraph}{4}{\z@}{3pt plus 1pt}{-0.5em}{\normalsize\bfseries}}
+\let\oldbib\thebibliography
+\renewcommand\thebibliography[1]{\oldbib{#1}\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}\footnotesize}
+\renewcommand\refname{References}
+\makeatother
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+
+% ---------- notation ----------
+\newcommand{\traj}{\tau}
+\newcommand{\tstar}{t^{*}}
+\newcommand{\qhat}{\hat q}
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Dtrain}{D_{\mathrm{train}}}
+\newcommand{\Dcal}{D_{\mathrm{cal}}}
+\newcommand{\C}{C}
+
+\begin{document}
+
+\begin{center}
+{\large\bfseries Conformal Failure Attribution: Predicting Step Sets with Coverage Guarantees}\\[1pt]
+{\small Research proposal \textperiodcentered\ draft, November 2026}
+\end{center}
+\vspace{-4pt}
+
+% =====================================================================
+\section{Introduction}
+
+LLM agents and multi-agent systems fail often, and a failed run leaves a long trajectory of messages and tool calls. \emph{Failure attribution} asks which step of that trajectory caused the failure \cite{zhang2025who}. The answer tells a developer where to look and a recovery mechanism where to roll back.
+
+Most methods and benchmarks treat attribution as point prediction: the method outputs one step and is scored by exact match. Two facts speak against this.
+\begin{itemize}
+\item \textbf{Point predictions are usually wrong.} The best reported step accuracy is 5--25\% on Who\&When \cite{zhang2025who} and 24\% on LongRCA \cite{longrca2026}. A single step comes with no statement of how reliable it is.
+\item \textbf{The label is not a point.} MP-Bench \cite{mpbench2026} argues that failure attribution is \emph{non-deterministic}: several valid explanations of one failure coexist, different experts blame different steps, and attribution should be modelled as a set of plausible explanations, not a single label. Its three annotators flag 5 steps per log on average, and only 16.2\% of the flagged steps are flagged by all three. Other benchmarks agree: two annotators pick the same step in 40.3\% of LongRCA cases, and SearchAuditBench \cite{searchauditor2026} attaches a tolerance span to every label.
+\end{itemize}
+
+These facts move the task from predicting one step to predicting a \emph{set} of steps. A set needs a rule for its size: a fixed top-$k$ ignores how hard a trajectory is and says nothing about reliability. Conformal prediction (CP) \cite{angelopoulos2021gentle} is a natural fit for the new setup: it turns any step scorer into sets that contain the true step with a user-chosen probability $1-\alpha$, in finite samples and without distributional assumptions.
+
+Two recent works apply CP to attribution \cite{yeh2026oat,feng2026conformal}. This proposal describes both in one notation, states what each guarantees, and proposes a two-stage framework: (1) train a step scorer on failed trajectories, (2) calibrate it on held-out failed trajectories. The evaluation covers eight natural-failure datasets.
+
+% =====================================================================
+\section{Problem Setup}
+
+\textbf{Trajectory.} A trajectory is a sequence of steps $\traj=(s_1,\dots,s_T)$, where $T=T_\traj$ varies between trajectories and $[T]=\{1,\dots,T\}$. A step is the unit that the dataset annotates (a message, an agent turn or an LLM call). An outcome function $Z(\traj)\in\{0,1\}$ marks success ($1$) or failure ($0$). We only attribute failed trajectories.
+
+\textbf{Labels.} Each failed trajectory has an \emph{error set} $Y(\traj)\subseteq[T]$, $Y(\traj)\neq\emptyset$: the steps annotated as causing the failure. The \emph{decisive step} is its earliest element, $\tstar(\traj)=\min Y(\traj)$. Most datasets give only the decisive step, so $Y(\traj)=\{\tstar\}$.
+
+\textbf{Scorer and prediction set.} A scorer $f$ maps a trajectory to one suspicion value per step, $f(\traj)=(f_1,\dots,f_T)\in\mathbb{R}^T$; larger means more likely an error. A set predictor outputs $\C(\traj)\subseteq[T]$.
+
+\textbf{Target.} Given a miscoverage level $\alpha\in(0,1)$, we want one of two guarantees over a new failed trajectory:
+\begin{align}
+\text{(G1) decisive-step coverage:}\quad & \Prob\big(\tstar(\traj)\in\C(\traj)\big)\;\ge\;1-\alpha, \label{eq:g1}\\
+\text{(G2) error-set recall:}\quad & \E\big[\,|\C(\traj)\cap Y(\traj)|\,/\,|Y(\traj)|\,\big]\;\ge\;1-\alpha. \label{eq:g2}
+\end{align}
+(G2) reduces to (G1) when $|Y|=1$. Among predictors that satisfy the guarantee, we prefer small sets, measured by the relative size $|\C(\traj)|/T$.
+
+% =====================================================================
+\section{Preliminaries: Conformal Prediction}
+
+We follow the general recipe of split conformal prediction \cite{angelopoulos2021gentle}, written for our setting: the input is a failed trajectory $\traj$ and the output is a step $t\in[T]$. Let $\Dcal=\{(\traj_i,\tstar_i)\}_{i=1}^{n}$ be calibration data that the scorer was not trained on.
+\begin{enumerate}
+\item Take a heuristic notion of uncertainty from a trained model; here, the scorer $f$.
+\item Define a \emph{conformal score} $S(\traj,t)\in\mathbb{R}$. A larger score means worse agreement between $\traj$ and ``step $t$ is the error''.
+\item Compute $\qhat$ as the $\lceil(n+1)(1-\alpha)\rceil/n$ empirical quantile of the calibration scores $S_i=S(\traj_i,\tstar_i)$, $i=1,\dots,n$.
+\item For a new trajectory, output $\C(\traj)=\{t\in[T]: S(\traj,t)\le\qhat\}$.
+\end{enumerate}
+If the calibration and test pairs are exchangeable (for example i.i.d.), then $1-\alpha\le\Prob(\tstar\in\C(\traj))\le1-\alpha+\tfrac{1}{n+1}$, where the upper bound needs scores without ties. The guarantee is \emph{marginal}: it holds on average over trajectories, not for each one. Each calibration trajectory contributes \emph{one} score, that of its true step, so the exchangeable unit is the trajectory and $n$ counts trajectories, not steps.
+
+\textbf{Outlier-detection variant.} Here there are no labels. We have clean points $x_1,\dots,x_n$ and an outlier score $a(x)$. With $\qhat$ the same quantile of $a(x_1),\dots,a(x_n)$, a new point is flagged when $a(x)>\qhat$. The guarantee is on false alarms only: $\Prob(\text{flag}\mid x \text{ clean})\le\alpha$. Nothing ensures that true outliers are flagged.
+
+\textbf{Risk-control variant.} For set-valued labels, conformal risk control \cite{angelopoulos2024crc} replaces miscoverage by a bounded loss that shrinks as the set grows. With $\C_\lambda(\traj)=\{t:S(\traj,t)\le\lambda\}$ and the missed fraction $\ell_i(\lambda)=1-|\C_\lambda(\traj_i)\cap Y_i|/|Y_i|$, choosing $\hat\lambda=\inf\{\lambda:\tfrac{1}{n}\sum_i\ell_i(\lambda)\le\alpha-\tfrac{1-\alpha}{n}\}$ gives (G2).
+
+\textbf{Remark (the score decides usefulness).} The guarantee holds for any score, even random noise; the sets then become large enough to cover by chance. As \cite{angelopoulos2021gentle} put it, ``the usefulness of the prediction sets is primarily determined by the score function.'' In attribution, a weak scorer gives sets that span most of the trajectory. A high-quality scorer is thus as important as the calibration step, and is where we expect most of the gain.
+
+% =====================================================================
+\section{Existing Approaches}
+
+\textbf{OAT \cite{yeh2026oat}.} \emph{Scoring.} OAT trains only on successful trajectories. A Neural CDE learns how step representations evolve in successful runs, and the suspicion value of a step is its reconstruction error, $f_t=e_t(\traj)$. \emph{CP.} OAT uses the outlier-detection variant with the \emph{step} as the unit. The clean points are all steps of held-out successful trajectories $D^{\mathrm{succ}}_{\mathrm{cal}}$, pooled:
+\[
+\delta=\text{$(1-\alpha)$-quantile of }\{e_t(\traj):\traj\in D^{\mathrm{succ}}_{\mathrm{cal}},\,t\in[T_\traj]\},\qquad \C_{\mathrm{OAT}}(\traj)=\{t: e_t(\traj)>\delta\}.
+\]
+\emph{Claim.} The false-positive rate on in-distribution (clean) steps is at most $\alpha$. \emph{Reading.} This is not (G1) or (G2): nothing bounds how often an error step is missed (recall 0.48, hit rate 0.57 on MCP-Atlas at $\alpha=0.2$). Steps of one trajectory are not exchangeable, the pool comes from about 20 trajectories, and the same held-out set is used for early stopping. OAT's strength is that it needs no failure labels.
+
+\textbf{Conformal Agent Error Attribution \cite{feng2026conformal}.} \emph{Scoring.} An LLM gives each step an error likelihood $f_t\in[0,1]$ (a prompted judge, or a small model fine-tuned on injected errors). \emph{CP.} The recipe of Section~3 with $\Dcal$ made of labelled failed trajectories. The variants differ in the conformal score. Write $G(a{:}b)=\tfrac{1}{T}\sum_{t=a}^{b}f_t$ for the suspicion mass of an interval.
+\begin{itemize}
+\item \emph{Vanilla:} $S(\traj,t)=1-f_t$. The set $\{t:1-f_t\le\qhat\}$ can be scattered.
+\item \emph{Left filtration:} $S(\traj,\tstar)=G(\tstar{:}T)$. The set is the longest suffix $j{:}T$ with $G(j{:}T)\le\qhat$.
+\item \emph{Right filtration:} $S(\traj,\tstar)=G(1{:}\tstar)$. The set is the longest prefix with mass at most $\qhat$.
+\item \emph{Two-way:} the maximum of the two scores; the set is the intersection of that suffix and that prefix.
+\end{itemize}
+\emph{Claim.} (G1) holds with the upper bound $1-\alpha+\tfrac{1}{n+1}$, and the filtration sets are contiguous. \emph{Reading.} The guarantee is the one we want; the open points are empirical. The only natural-failure data is Who\&When (about 92 calibration trajectories), too small to train a scorer on. There, at $1-\alpha=0.8$, the best variant removes 31\% of the steps, so the set still holds 69\% of the trajectory. The filtration sets are anchored at the ends of the trajectory; the paper finds them insensitive to the scorer and dependent on where errors sit in the dataset. No conditional coverage is reported, and a single decisive error is assumed.
+
+\begin{table}[h]
+\centering\small
+\begin{tabularx}{\linewidth}{@{}l L L L@{}}\toprule
+ & OAT \cite{yeh2026oat} & Feng et al.\ \cite{feng2026conformal} & This proposal\\\midrule
+Scorer trained on & successful runs, no labels & injected errors, or prompted & natural failed runs with step labels\\
+Calibration data & steps of successful runs & labelled failed runs & labelled failed runs\\
+Calibration unit & step (pooled) & trajectory & trajectory\\
+Guarantee & false alarms on clean steps $\le\alpha$ & (G1) & (G1), per group; (G2) for set labels\\
+Set shape & scattered & scattered, or anchored at an end & scattered, or interval around the top step\\\bottomrule
+\end{tabularx}
+\caption{Existing uses of CP in failure attribution and the proposed one.}\label{tab:compare}
+\end{table}
+
+% =====================================================================
+\section{Proposed Approach}
+
+We keep the calibration design of \cite{feng2026conformal} (labelled failed trajectories, one score each) and change what goes into it. Failed trajectories serve twice, in disjoint splits: to train the scorer and to calibrate it.
+
+\textbf{Stage 1: a step scorer trained on natural failures.} Pooling six datasets gives about 3{,}700 labelled natural failures (Table~\ref{tab:data}), enough to train a small model, which neither prior work does.
+\begin{itemize}
+\item \emph{Model.} A frozen open-weight LLM encodes each step into a vector (mean-pooled hidden state, as in OAT). A small Transformer reads the sequence of step vectors together with the relative position $t/T$ and outputs one logit per step.
+\item \emph{Listwise output.} A softmax over the steps of one trajectory gives a distribution $\pi(\traj)=(\pi_1,\dots,\pi_T)$. Steps compete with each other, the output handles any $T$, and it is the probability vector that adaptive conformal scores need. The scorer of \cite{feng2026conformal} rates steps one by one.
+\item \emph{Loss.} $-\log\sum_{t\in Y(\traj)}\pi_t$ on $\Dtrain$, which is the cross-entropy on $\tstar$ when $|Y|=1$ and accepts span labels.
+\item \emph{Reference scorers.} (i) A position-only prior fitted on $\Dtrain$, which uses no trajectory content; (ii) a prompted LLM judge; (iii) the pointwise fine-tuned scorer of \cite{feng2026conformal}. Scorer (i) is the control that shows whether content adds anything beyond position.
+\end{itemize}
+
+\textbf{Stage 2: conformal calibration.} On $\Dcal$ we compare conformal scores built from $\pi$. Let $o_t$ be the rank of step $t$ under $\pi$ ($1$ = most suspicious).
+\begin{itemize}
+\item \emph{Threshold:} $S(\traj,t)=1-\pi_t$. This is the vanilla score of \cite{feng2026conformal} on normalised values.
+\item \emph{Adaptive, length-aware:} $S(\traj,t)=\sum_{t':\,o_{t'}\le o_t}\pi_{t'}+\lambda\,(o_t/T-\kappa)^{+}$. The first term is the APS score \cite{romano2020aps}; the penalty follows RAPS \cite{angelopoulos2021raps} but acts on the \emph{relative} rank, because $T$ ranges from 5 to 728. Rank-based scores \cite{huang2024saps} also suit judges that output only a ranked list.
+\item \emph{Interval around the top step:} start from $\hat t=\arg\max_t\pi_t$ and repeatedly add the neighbouring step with the larger $\pi$. This gives nested intervals $I_1\subset\dots\subset I_T=[T]$. Set $S(\traj,t)$ to the $\pi$-mass of the first interval that contains $t$. The set $\{t:S(\traj,t)\le\qhat\}$ is then one interval. This adapts ordinal APS \cite{lu2022ordinal}. Unlike filtration, the interval is not tied to an end of the trajectory.
+\item \emph{Per-group thresholds:} one $\qhat_g$ per dataset or length bin, which gives (G1) inside each group.
+\item \emph{Set-valued labels:} risk control (Section~3) for (G2), where labels are spans or annotator sets.
+\end{itemize}
+
+\textbf{Hypotheses.} \textbf{H1}: at equal coverage, the trained listwise scorer gives smaller sets than the position prior and the LLM judges. \textbf{H2}: the adaptive and interval scores give smaller sets than the threshold and filtration scores, with coverage that varies less across trajectory lengths. \textbf{H3}: with per-group thresholds, coverage holds on every pooled dataset; it drops on unseen datasets.
+
+% =====================================================================
+\section{Evaluation Plan}
+
+\textbf{Datasets.} All eight hold natural failures with human step labels (Table~\ref{tab:data}). Six are pooled and split; MP-Bench and TraceElephant are kept whole as out-of-distribution (OOD) tests.
+
+\begin{table}[h]
+\centering\footnotesize\setlength{\tabcolsep}{3.5pt}
+\begin{tabularx}{\linewidth}{@{}l r l r r >{\hsize=.86\hsize}L >{\hsize=1.14\hsize}L@{}}\toprule
+Dataset & Failed & Step unit & Med.\ $T$ & Rel.\ pos. & Label and its reliability & Strata (group key)\\\midrule
+Who\&When \cite{zhang2025who} & 184 & message & 10 & 0.46 & one step; agreement not reported & Hand-Crafted 58, Alg.-Generated 126 (139 tasks)\\
+LongRCA \cite{longrca2026} & 1{,}140 & message & 145 & 0.53 & one step; agreement 40.3\% & 5 source benchmarks\\
+TrajErrBench \cite{trajdebug2026} & 486 & message & 29 & 0.63 & one step; $\kappa$ 0.91 / 0.67 & $\tau^2$-Bench 400, SWE-Bench Pro 86 (57 tasks)\\
+AgentErrorBench \cite{agentdebug2026} & 200 & agent turn & 30 & 0.38 & one step; $\kappa$ 0.55 (module) & ALFWorld 100, GAIA 50, WebShop 50\\
+AgentHallu \cite{agenthallu2026} & 443 & step & 6 & 0.53 & one step; agreement 77.9\% & 7 frameworks\\
+SearchAuditBench \cite{searchauditor2026} & 1{,}243 & message & 43 & 0.58 & one step + span; one annotator & 5 benchmarks, 8 models (961 queries)\\\midrule
+\emph{OOD:} TraceElephant \cite{traceelephant2026} & 220 & LLM call & 21 & 0.47 & one step; $\alpha_{\mathrm{K}}$ 0.64 & 3 systems\\
+\emph{OOD:} MP-Bench \cite{mpbench2026} & 289 & message & 10 & 0.40 & 3 annotator sets; 16.2\% unanimous & manual 169, automatic 120\\\bottomrule
+\end{tabularx}
+\caption{Datasets. ``Rel.\ pos.''\ is the mean relative position of the labelled step; $\alpha_{\mathrm{K}}$ is Krippendorff's alpha. The six pooled datasets hold 3{,}696 failed trajectories. Counts and positions are computed from the data; agreement figures are from the papers.}\label{tab:data}
+\end{table}
+
+\textbf{Splits.} The pool is split 60\,/\,20\,/\,20 into train, validation/calibration and test, stratified by dataset and stratum.
+\begin{itemize}
+\item \emph{Group by task.} Runs of the same task stay in one split. This matters for Who\&When (45 tasks occur in both subsets), SearchAuditBench (1{,}243 runs on 961 queries) and SWE-Bench Pro (86 runs on 57 tasks).
+\item \emph{Validation and calibration are separate halves.} One half selects the model and hyperparameters; the other only computes $\qhat$, since sharing them would break exchangeability. This gives about 2{,}200 / 370 / 370 / 740 trajectories.
+\item \emph{Repeated splits.} With the scorer fixed, calibration and test are re-drawn 100 times; we report mean and standard deviation. At $n\approx370$ and $\alpha=0.2$, realised coverage varies by about 2 points (one standard deviation).
+\item \emph{Harmonisation.} Step indices become 1-based over each dataset's native steps (most are stored 0-based; AgentErrorBench counts agent turns). Three records with an invalid label are dropped (one each in AgentErrorBench, TrajErrBench, TraceElephant). Of AgentHallu, only the 443 hallucinated runs are used.
+\end{itemize}
+
+\textbf{OOD protocol.} MP-Bench and TraceElephant are never used for training, selection or calibration; thresholds come from the pooled calibration set. Both overlap with Who\&When: 177 of the 289 MP-Bench logs are Who\&When trajectories, 70 of its other 112 logs run on Who\&When tasks, and so do 135 of the 220 TraceElephant traces. We therefore report each OOD set twice: in full, and on the subset whose trajectories and tasks are absent from train, validation and calibration. On MP-Bench, $Y$ is the set of steps flagged by at least two annotators.
+
+\textbf{Metrics.} Following \cite{yeh2026oat}, we report two families.
+\begin{itemize}
+\item \emph{Conformal sets (size not fixed).} Empirical coverage of $\tstar$ against the target $1-\alpha\in\{0.7,0.8,0.9\}$; relative set size $|\C|/T$; precision, recall and F1 against $Y$; hit rate ($\C\cap Y\neq\emptyset$). Conditional behaviour: coverage per dataset, length tercile and set-size bin, and the worst of these. Shape: the number of contiguous segments.
+\item \emph{Top-$k$ sets (reference).} Hit@$k$ for $k\in\{1,3,5\}$ (Hit@1 is the usual step accuracy), with precision, recall and F1. Top-$k$ has a fixed size and no guarantee. To test whether CP is needed, each conformal set is compared with a top-$k$ set of the same average size.
+\item \emph{Scorer only.} AUROC and AUPRC of the step scores, independent of how sets are formed.
+\item \emph{Baselines.} The five algorithms of \cite{feng2026conformal}, and OAT's detector where successful runs exist, on the same splits.
+\end{itemize}
+
+\textbf{Limits.} Every guarantee refers to the annotated label, whose reliability varies (Table~\ref{tab:data}), and holds only for trajectories exchangeable with the calibration pool. The OOD tests measure what is lost outside it.
+
+\bibliographystyle{unsrtnat}
+\bibliography{refs}
+\end{document}

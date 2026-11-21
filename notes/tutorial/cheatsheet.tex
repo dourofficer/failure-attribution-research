@@ -1,0 +1,278 @@
+\documentclass[10pt,landscape,a4paper]{article}
+\usepackage[landscape,margin=0.75cm,top=0.7cm,bottom=0.7cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb}
+\usepackage{enumitem}
+\usepackage{booktabs,array}
+\usepackage{xcolor}
+\usepackage{fancyvrb}
+\usepackage{framed}
+\usepackage{multicol}
+\usepackage[hidelinks]{hyperref}
+\input{cpstyle}
+
+% ---------- notation (same as tutorial.tex) ----------
+\newcommand{\C}{\mathcal{C}}
+\newcommand{\F}{\mathcal{F}}
+\newcommand{\fhat}{\hat{f}}
+\newcommand{\qhat}{\hat{q}}
+\newcommand{\lhat}{\hat{\lambda}}
+\newcommand{\Xtest}{X_{\rm test}}
+\newcommand{\Ytest}{Y_{\rm test}}
+\newcommand{\PP}{\mathbb{P}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\kreg}{k_{\rm reg}}
+\newcommand{\ystar}{y^*}
+\newcommand{\jstar}{j^*}
+\newcommand{\qlevel}{\tfrac{\lceil(n+1)(1-\alpha)\rceil}{n}}
+
+% ---------- cards: unbreakable colour boxes that fit one column ----------
+\newsavebox{\cardsave}
+\newlength{\cardwidth}
+\newcommand{\cardbg}{recbg}\newcommand{\cardfr}{recfr}
+\newenvironment{card}[3]{% {title}{background}{frame}
+  \renewcommand{\cardbg}{#2}\renewcommand{\cardfr}{#3}%
+  \setlength{\fboxsep}{4pt}\setlength{\fboxrule}{0.8pt}%
+  \setlength{\cardwidth}{\linewidth}\addtolength{\cardwidth}{-2\fboxsep}\addtolength{\cardwidth}{-2\fboxrule}%
+  \begin{lrbox}{\cardsave}\begin{minipage}{\cardwidth}\footnotesize\raggedright
+  \setlength{\parskip}{2pt}\setlength{\abovedisplayskip}{3pt}\setlength{\belowdisplayskip}{3pt}%
+  \setlength{\abovedisplayshortskip}{2pt}\setlength{\belowdisplayshortskip}{2pt}%
+  {\sffamily\bfseries\small\textcolor{#3}{#1}}\par\vspace{1pt}{\color{#3}\hrule height 0.6pt}\vspace{3pt}}
+ {\end{minipage}\end{lrbox}\noindent\fcolorbox{\cardfr}{\cardbg}{\usebox{\cardsave}}\par\vspace{5pt}}
+
+\newcommand{\row}[1]{\textcolor{secblue}{\textbf{#1}}\ }
+\setlist[itemize]{leftmargin=1.1em,itemsep=0pt,topsep=1pt,parsep=0pt}
+\setlist[enumerate]{leftmargin=1.3em,itemsep=0pt,topsep=1pt,parsep=0pt}
+\fvset{fontsize=\scriptsize}
+\pagestyle{empty}
+\setlength{\parindent}{0pt}
+\setlength{\columnsep}{0.45cm}
+
+\begin{document}
+\begin{center}
+{\Large\bfseries\color{secblue} Conformal Prediction Cheat Sheet}\quad
+{\small algorithms of \texttt{tutorial.pdf} for quick reference --- section numbers (\S) refer to it}\\[2pt]
+{\footnotesize \textcolor{recfr}{\textbf{slate}}: core procedure\quad \textcolor{thmfr}{\textbf{blue}}: scores for classification\quad \textcolor{keyfr}{\textbf{yellow}}: other guarantees\quad \textcolor{clmfr}{\textbf{purple}}: failure attribution\quad \textcolor{nofr}{\textbf{red}}: pitfalls}
+\end{center}
+\vspace{-6pt}
+\begin{multicols}{3}
+\raggedcolumns
+
+% =================== CORE ===================
+\begin{card}{1\quad The recipe (split conformal prediction, \S1)}{recbg}{recfr}
+\row{Input} fitted model $\fhat$; calibration pairs $(X_i,Y_i)_{i=1}^n$ unseen in training; error rate $\alpha$.
+\begin{enumerate}
+\item Pick a heuristic notion of uncertainty from $\fhat$.
+\item Define a \emph{score} $s(x,y)\in\mathbb{R}$; larger $=$ worse agreement of $x$ and $y$.
+\item $\qhat=\mathrm{Quantile}\big(s_1,\dots,s_n;\ \qlevel\big)$, with $s_i=s(X_i,Y_i)$.
+\item $\C(\Xtest)=\{y:\ s(\Xtest,y)\le\qhat\}$.
+\end{enumerate}
+\begin{Verbatim}
+q_level = np.ceil((n+1)*(1-alpha))/n
+qhat = np.quantile(cal_scores, q_level, method='higher')
+prediction_set = [y for y in labels if score(x, y) <= qhat]
+\end{Verbatim}
+\end{card}
+
+\begin{card}{2\quad The guarantee and what it needs}{recbg}{recfr}
+\[1-\alpha\ \le\ \PP\big(\Ytest\in\C(\Xtest)\big)\ \le\ 1-\alpha+\tfrac{1}{n+1}\]
+\begin{itemize}
+\item \yes{Holds for any model, any score, any distribution.}
+\item Needs: calibration and test points \textbf{exchangeable}; the score function \textbf{fixed before} seeing calibration data. (Upper bound: no ties.)
+\item \no{Marginal}: an average over calibration sets and test points, not a statement for each $x$.
+\item For one calibration set, coverage $\sim\mathrm{Beta}(n{+}1{-}l,\,l)$, $l=\lfloor(n+1)\alpha\rfloor$.
+\end{itemize}
+\centering
+\begin{tabular}{@{}lcccc@{}}\toprule
+$n$ (at $\alpha=0.1$) & 50 & 100 & 500 & 1000\\\midrule
+std.\ of coverage & 0.041 & 0.030 & 0.013 & 0.009\\\bottomrule
+\end{tabular}
+\end{card}
+
+\begin{card}{3\quad Nested sets $=$ scores (\S3)}{recbg}{recfr}
+Any family with $\C(x,\tau_1)\subseteq\C(x,\tau_2)$ for $\tau_1\le\tau_2$ gives a conformal method:
+\[s(x,y)=\inf\{\tau:\ y\in\C(x,\tau)\},\qquad \C(x)=\C(x,\qhat).\]
+\textbf{Design the nested sets; the score and guarantee follow.} RAPS and the filtration algorithms are built this way.
+\end{card}
+
+% =================== SCORES ===================
+\begin{card}{4\quad Classification score: softmax threshold (\S1)}{thmbg}{thmfr}
+\row{Score} $s(x,y)=1-\fhat(x)_y$\\
+\row{Set} $\{y:\ \fhat(x)_y\ge1-\qhat\}$\\
+\row{$+$} smallest average set size.\quad \row{$-$} under-covers hard inputs, over-covers easy ones; can return the empty set.
+\end{card}
+
+\begin{card}{5\quad APS: adaptive prediction sets (\S2)}{thmbg}{thmfr}
+$\pi(x)$ sorts classes by $\fhat(x)$, most likely first; $o_x(y)$ is the rank of $y$.\\
+\row{Score} $s(x,y)=\sum_{j=1}^{o_x(y)}\fhat(x)_{\pi_j(x)}$\quad (cumulative mass down to $y$)\\
+\row{Set} top classes until cumulative mass passes $\qhat$\\
+\row{$+$} adaptive: near-conditional coverage if $\fhat$ is good.\quad \row{$-$} huge sets on large label spaces (noisy tail probabilities).
+\end{card}
+
+\begin{card}{6\quad RAPS: regularized APS (\S3)}{thmbg}{thmfr}
+\row{Score} $s(x,y)=\sum_{j=1}^{o_x(y)}\fhat(x)_{\pi_j(x)}+\lambda\,(o_x(y)-\kreg)^+$\\
+\row{Set} top classes until mass $+$ penalty passes $\qhat$\\
+\row{Randomized} replace the last term of the sum by $u\cdot\fhat(x)_y$, $u\sim U[0,1]$ $\Rightarrow$ exact coverage.\\
+\row{Tuning} (extra split, $m\approx1000$) $\kreg=$ conformal quantile of true-label ranks; $\lambda\in\{0.001,0.01,0.1,0.2,0.5\}$ for size or SSCV.\\
+\row{$+$} small, stable, adaptive; $\lambda{=}1$, $\kreg\le k^*$ never larger than best top-$k$.\\
+\row{Special cases} $\lambda=0$: APS.
+\end{card}
+
+\begin{card}{7\quad SAPS: rank-based score (not in tutorial)}{thmbg}{thmfr}
+Keeps only the top probability $\fhat_{\max}(x)$ and the rank:
+\[s(x,y,u)=\begin{cases}u\,\fhat_{\max}(x)&o_x(y)=1\\ \fhat_{\max}(x)+(o_x(y)-2+u)\,\lambda&\text{otherwise}\end{cases}\]
+\row{Use} when probability values are unreliable but the ranking is good (Huang et al., 2024).
+\end{card}
+
+% =================== OTHER GUARANTEES ===================
+\begin{card}{8\quad Group-balanced coverage (\S4.1)}{keybg}{keyfr}
+\row{Goal} $\PP(\Ytest\in\C(\Xtest)\mid\text{group }g)\ge1-\alpha$ for every \emph{observed} group $g$.\\
+\row{How} one quantile $\qhat^{(g)}$ per group; $\C(x)=\{y:s(x,y)\le\qhat^{(g(x))}\}$.\\
+\row{Cost} each group needs its own calibration data.
+\end{card}
+
+\begin{card}{9\quad Class-conditional coverage (\S4.2)}{keybg}{keyfr}
+\row{Goal} $\PP(\Ytest\in\C(\Xtest)\mid\Ytest=y)\ge1-\alpha$ for every class $y$.\\
+\row{How} one quantile $\qhat^{(y)}$ per true class; $\C(x)=\{y:s(x,y)\le\qhat^{(y)}\}$ (each candidate label uses its own threshold).
+\end{card}
+
+\begin{card}{10\quad Conformal risk control (\S4.3)}{keybg}{keyfr}
+\row{Goal} $\E[\ell(\C_{\lhat}(\Xtest),\Ytest)]\le\alpha$ for a loss $\ell\le B$ that is non-increasing in $\lambda$ (sets $\C_\lambda$ grow with $\lambda$).
+\[\lhat=\inf\Big\{\lambda:\ \tfrac1n\textstyle\sum_i\ell(\C_\lambda(X_i),Y_i)\le\alpha-\tfrac{B-\alpha}{n}\Big\}\]
+\row{Example} set-valued labels, $\C_\lambda(x)=\{k:f(x)_k\ge1-\lambda\}$, $\ell=1-\frac{|Y\cap\C_\lambda|}{|Y|}$ (fraction of missed labels).\\
+\row{Special case} $\ell=\mathbf{1}\{Y\notin\C\}$: ordinary coverage.
+\end{card}
+
+\begin{card}{11\quad Outlier detection (\S4.4)}{keybg}{keyfr}
+\row{Calibration} clean, \emph{unlabelled} points $X_1,\dots,X_n$; score $s(x)$, larger $=$ more anomalous.\\
+\row{Rule} $\qhat$ as in card 1; flag $x$ if $s(x)>\qhat$.\\
+\row{Guarantee} $\PP(\text{flag}\mid\text{clean point})\le\alpha$.\\
+\no{Controls false alarms only; says nothing about how many true outliers are caught.}
+\end{card}
+
+% =================== FAILURE ATTRIBUTION ===================
+\begin{card}{12\quad Failure attribution: notation (\S5)}{clmbg}{clmfr}
+Failed trajectory $x=(c_1,\dots,c_\ell)$, $\ell$ varies; decisive error $\ystar=c_{\jstar}$; block $c_{j:k}=(c_j,\dots,c_k)$; per-step suspicion $p_i=\mathrm{LLM}(c_i)\in[0,1]$.\\
+\row{Coverage of the error needs} step-labelled \emph{failed} trajectories exchangeable with the test ones; the data point is the trajectory.
+\end{card}
+
+\begin{card}{13\quad Vanilla CP on steps (\S7; Feng et al.)}{clmbg}{clmfr}
+\row{Score} $S(x,c_i)=1-p_i$\quad (card 4 with steps as classes)\\
+\row{Set} $\{c_i:\ 1-p_i\le\qhat\}$ --- not contiguous; $\ell$ scorer calls.\\
+\row{Guarantee} $\PP(\ystar\in\C(x))\ge1-\alpha$; variable $\ell$ is harmless.
+\end{card}
+
+\begin{card}{14\quad Left / right filtration (\S7)}{clmbg}{clmfr}
+Block score $g$, monotone under inclusion, e.g.\ $g(c_{j:k})=\frac1\ell\sum_{i=j}^kp_i$.\\
+\row{LF set} longest \emph{suffix} with $g(c_{j:\ell})\le\qhat$.\quad \row{LF score} $S_{\rm LF}=g(c_{\jstar:\ell})$.\\
+\row{RF set} longest \emph{prefix} with $g(c_{1:k})\le\qhat$.\quad \row{RF score} $S_{\rm RF}=g(c_{1:\jstar})$.\\
+\row{Guarantee} $1-\alpha\le\PP(\ystar\in\C(x))<1-\alpha+\frac1{n+1}$, any $g$.\\
+\row{Use} LF when errors are late, RF when early; $\approx\frac12(\ell+1)$ scorer calls.
+\begin{Verbatim}
+sfx = np.cumsum(p[::-1])[::-1] / len(p)  # g of each suffix
+S_LF = sfx[jstar]                        # calibration score
+keep = np.where(sfx <= qhat)[0]          # set = keep[0]..end
+\end{Verbatim}
+\end{card}
+
+\begin{card}{15\quad Two-way filtration (\S7)}{clmbg}{clmfr}
+\row{Set} $\F_{\rm LF}(x;\qhat)\cap\F_{\rm RF}(x;\qhat)$ --- contiguous, may be empty (fall back to the top step).\\
+\row{Score} $S_{\rm TWF}=\max\{g(c_{\jstar:\ell}),\,g(c_{1:\jstar})\}$\\
+\row{Guarantee} as card 14.\quad \row{Use} errors in the middle; $\ell$ scorer calls.\\
+\row{Tree traversal (baseline)} steps at the leaves of a binary tree, climb from the best leaf until the threshold; contiguous, no upper bound, sets fixed by the tree.
+\end{card}
+
+\begin{card}{16\quad OAT conformal detection (\S6; Yeh et al.)}{clmbg}{clmfr}
+\row{Score} $e_t=\|h_t-\hat h_t\|_2^2$, reconstruction error of a neural CDE trained on \emph{successful} runs.\\
+\row{Threshold} $\delta=(1-\alpha)$-quantile of $e_t$ over all steps of held-out successful runs; flag $\{t:e_t>\delta\}$.\\
+\row{Same as card 11} with data point $=$ step.\quad \row{Guarantee} $\PP(\text{normal step flagged})\le\alpha$.\\
+\no{No guarantee that the error step is flagged} (recall 0.48 in-domain at $\alpha=0.2$).
+\end{card}
+
+% =================== CHOOSING / METRICS / PITFALLS ===================
+\begin{card}{17\quad Which guarantee do I need?}{recbg}{recfr}
+\begin{tabular}{@{}p{0.47\linewidth}p{0.47\linewidth}@{}}\toprule
+I want\dots & Use (card) --- calibrate on\\\midrule
+the set to contain the decisive step & 13--15 --- labelled failures\\
+the same within each system / length bin & 8 on top of 13--15 --- labelled failures per group\\
+the same for each error position & 9 --- labelled failures per position bin\\
+to catch $\ge1-\alpha$ of \emph{several} error steps & 10 with missed-fraction loss --- failures with label sets\\
+few false alarms on normal steps & 11 / 16 --- successful runs, no labels\\\bottomrule
+\end{tabular}
+\end{card}
+
+\begin{card}{18\quad Evaluation metrics}{recbg}{recfr}
+\row{Empirical coverage} $\frac1m\sum_i\mathbf{1}\{Y_i\in\C(X_i)\}$; average over many random calibration/test splits.\\
+\row{Set size} $\frac1m\sum_i|\C(X_i)|$;\ \ for trajectories \row{removal rate} $\frac1m\sum_i\big(1-\frac{|\C(x_i)|}{\ell_i}\big)$.\\
+\row{SSCV} $\sup_j\big|\mathrm{cov}(\{i:|\C(X_i)|\in S_j\})-(1-\alpha)\big|$: coverage stratified by set size; probes adaptiveness.\\
+\row{Detection} false positive rate on clean points; precision / recall of flagged steps.
+\end{card}
+
+\begin{card}{19\quad Pitfalls}{nobg}{nofr}
+\begin{itemize}
+\item Calling a false-alarm bound (11, 16) ``coverage''.
+\item Calibrating on data that is not exchangeable with the test data: another system, injected vs.\ natural errors, pooled dependent steps.
+\item Tuning the score or model on the calibration set.
+\item Reading marginal coverage as per-input coverage.
+\item Reporting one split with small $n$ (see table in card 2).
+\item Valid but useless sets: coverage holds even for a random score --- always report size next to coverage.
+\item Using the plain $1-\alpha$ quantile instead of $\qlevel$.
+\end{itemize}
+\end{card}
+
+\begin{card}{20\quad Worked examples}{recbg}{recfr}
+\row{APS vs.\ RAPS.} Sorted probabilities $(0.5,\,0.2,\,0.1,\,0.08,\,0.07,\,0.05)$, true label ranked 4th.\\
+APS score $=0.5+0.2+0.1+0.08=0.88$.\quad RAPS with $\kreg=2$, $\lambda=0.1$: $0.88+0.1\cdot(4-2)=1.08$.\\
+If $\qhat=0.85$: APS set $=$ top 3 (mass $0.80\le0.85$); RAPS set $=$ top 2 (rank 3 scores $0.80+0.1=0.90>0.85$).
+
+\smallskip\row{Filtration.} $\ell=5$, $p=(0.1,0.6,0.1,0.1,0.1)$, error at $\jstar=2$, $g=$ normalized sum.\\
+$S_{\rm LF}=g(c_{2:5})=0.9/5=0.18$;\quad $S_{\rm RF}=g(c_{1:2})=0.7/5=0.14$;\quad $S_{\rm TWF}=0.18$.\\
+With $\qhat=0.18$ on the same trajectory: LF $\to c_{2:5}$, RF $\to c_{1:4}$, TWF $\to c_{2:4}$.
+
+\smallskip\row{Quantile level.} $n=92$, $\alpha=0.2$: $\lceil93\cdot0.8\rceil/92=75/92$, i.e.\ $\qhat$ is the 75th smallest score.
+\end{card}
+
+\begin{card}{21\quad The two failure-attribution works side by side (\S8)}{clmbg}{clmfr}
+\begin{tabular}{@{}p{0.17\linewidth}p{0.35\linewidth}p{0.36\linewidth}@{}}\toprule
+ & OAT (Yeh et al.) & CAEA (Feng et al.)\\\midrule
+Label & set of contributing steps & one decisive step\\
+Data point & a step & a failed trajectory\\
+Calibration & successful runs, no labels & failures with step label\\
+Score & CDE reconstruction error & $1-p_i$, or $g$ of suffix / prefix\\
+Procedure & outlier detection (11) & set prediction (1, 3)\\
+Guarantee & false alarms $\le\alpha$ & error covered $\ge1-\alpha$\\
+Set shape & arbitrary & arbitrary or contiguous\\\bottomrule
+\end{tabular}
+\end{card}
+
+\begin{card}{22\quad What OAT asks and claims (\S6)}{clmbg}{clmfr}
+\row{Question} Can failures be attributed by a lightweight model, with no frontier LLM at inference and no step labels on failures?
+\begin{itemize}
+\item[\ctag{O1}] A practical attributor must be lightweight and label-free.
+\item[\ctag{O2}] Unsupervised attribution (train on successes only) is a new setting.
+\item[\ctag{O3}] Neural CDE with gated control path models the flow of success.
+\item[\ctag{O4}] $\approx$100 successes beat prompted GPT-5: $+20\%$ F1 in-domain, $+7\%$ OOD.
+\item[\ctag{O5}] Zero tokens, 200--5000$\times$ faster.
+\item[\ctag{O6}] Conformal threshold: adaptive set size and false positive rate on in-distribution steps $\le\alpha$.
+\item[\ctag{O7}] CDE $>$ ODE, RNN; gate $+0.172$ AUROC OOD.
+\item[\ctag{O8}] Transfers because it models dynamics, not behaviours.
+\end{itemize}
+\end{card}
+
+\begin{card}{23\quad What CAEA asks and claims (\S7)}{clmbg}{clmfr}
+\row{Question} Can attribution return a contiguous region guaranteed to contain the decisive error at a chosen confidence, instead of an unreliable point prediction?
+\begin{itemize}
+\item[\ctag{A1}] Framework with finite-sample, distribution-free coverage; wraps any scorer.
+\item[\ctag{A2}] New filtration algorithms: contiguous sets, lower and upper coverage bounds.
+\item[\ctag{A3}] Empirical coverage tracks the target.
+\item[\ctag{A4}] Match the algorithm to the error-position distribution of the calibration data.
+\item[\ctag{A5}] Filtration depends little on scorer quality.
+\item[\ctag{A6}] One-sided filtration: $\approx\frac12(\ell+1)$ scorer calls.
+\item[\ctag{A7}] Rollback from the first step of the set: success within one std.\ of top-1, but coverage is controlled.
+\item[\ctag{A8}] Limits: exchangeability, algorithm matching, single error.
+\end{itemize}
+\end{card}
+
+\end{multicols}
+\end{document}

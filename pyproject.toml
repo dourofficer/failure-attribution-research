@@ -1,0 +1,52 @@
+[project]
+name = "failure-attribution-research"
+version = "0.1.0"
+description = "Research project on failure attribution"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    # --- modelling ---
+    "torch==2.6.0",            # pinned: must match the flash-attn wheel below (torch2.6)
+    "transformers>=4.51.0",
+    "accelerate>=1.0.0",
+    "datasets>=3.0.0",
+    "huggingface-hub>=0.30.0",
+    "flash-attn",              # installed from a prebuilt wheel, see [tool.uv.sources]
+    # --- APIs ---
+    "openai>=1.60.0",
+    # --- numerics & analysis ---
+    "numpy>=2.0.0",
+    "scipy>=1.14.0",
+    "scikit-learn>=1.5.0",
+    "pandas>=2.2.0",
+    "joblib>=1.4.0",
+    # --- io & plumbing ---
+    "pyyaml>=6.0",
+    "tqdm>=4.66.0",
+    # --- plotting ---
+    "matplotlib>=3.9.0",
+    "seaborn>=0.13.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "watchdog>=4.0.0",         # decision-tracker --watch
+]
+
+# Prebuilt flash-attention wheel: never let this build from source.
+# The URL encodes (flash-attn, CUDA, torch, cxx11abi, python) and ALL must match
+# the installed torch. See the Environment section of README.md before changing it.
+# Verified working: python 3.12, torch 2.6.0+cu124, Ampere (sm_80+).
+[tool.uv.sources]
+flash-attn = { url = "https://github.com/Dao-AILab/flash-attention/releases/download/v2.7.4.post1/flash_attn-2.7.4.post1+cu12torch2.6cxx11abiFALSE-cp312-cp312-linux_x86_64.whl" }
+
+[tool.pytest.ini_options]
+testpaths = ["src"]
+pythonpath = ["."]
+# Default run is the fast tier: opt in with `-m slow` or `-m gpu`.
+addopts = "-m 'not slow and not gpu'"
+markers = [
+    "slow: opt-in, long-running (run with -m slow)",
+    "gpu: opt-in, requires a GPU (run with -m gpu)",
+]

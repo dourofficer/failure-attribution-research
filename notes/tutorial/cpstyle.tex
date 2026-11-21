@@ -1,0 +1,41 @@
+% Shared colours and boxes for tutorial.tex and cheatsheet.tex.
+% Needs: xcolor, framed. (tcolorbox is not available in this TeX install.)
+
+% ---------- palette ----------
+\definecolor{secblue}{rgb}{0.10,0.22,0.48}
+\definecolor{thmbg}{rgb}{0.93,0.95,1.00}   \definecolor{thmfr}{rgb}{0.20,0.33,0.68}
+\definecolor{defbg}{rgb}{0.93,0.98,0.97}   \definecolor{deffr}{rgb}{0.05,0.45,0.42}
+\definecolor{keybg}{rgb}{1.00,0.97,0.86}   \definecolor{keyfr}{rgb}{0.72,0.50,0.02}
+\definecolor{recbg}{rgb}{0.94,0.96,0.98}   \definecolor{recfr}{rgb}{0.25,0.35,0.45}
+\definecolor{clmbg}{rgb}{0.96,0.93,1.00}   \definecolor{clmfr}{rgb}{0.42,0.22,0.62}
+\definecolor{ourbg}{rgb}{0.96,0.96,0.96}   \definecolor{ourfr}{rgb}{0.35,0.35,0.35}
+\definecolor{okbg}{rgb}{0.92,0.98,0.92}    \definecolor{okfr}{rgb}{0.12,0.50,0.18}
+\definecolor{nobg}{rgb}{1.00,0.93,0.92}    \definecolor{nofr}{rgb}{0.70,0.16,0.12}
+\definecolor{codebg}{rgb}{0.965,0.965,0.955}
+\definecolor{shadecolor}{rgb}{0.965,0.965,0.955}
+
+% ---------- generic breakable colour box: \begin{cbox}[title]{background}{frame} ----------
+\newenvironment{cbox}[3][]{%
+  \def\FrameCommand{\fboxsep=7pt\fboxrule=0.9pt\fcolorbox{#3}{#2}}%
+  \MakeFramed{\advance\hsize-\width\FrameRestore}%
+  \if\relax\detokenize{#1}\relax\else
+    {\noindent\textcolor{#3}{\sffamily\bfseries #1}\par\nobreak\vspace{3pt}}%
+  \fi\noindent\ignorespaces}
+ {\endMakeFramed}
+
+% ---------- named boxes ----------
+\newenvironment{keybox}[1][Key point]{\cbox[#1]{keybg}{keyfr}}{\endcbox}                 % take-aways
+\newenvironment{recipebox}[1][Recipe]{\cbox[#1]{recbg}{recfr}}{\endcbox}                 % procedures
+\newenvironment{claimbox}[1][Claims of the paper]{\cbox[#1]{clmbg}{clmfr}}{\endcbox}     % what a paper asks and claims
+\newenvironment{oursbox}[1][Our reading]{\cbox[#1]{ourbg}{ourfr}}{\endcbox}              % remarks that are not the paper's
+\newenvironment{okbox}[1][Guaranteed]{\cbox[#1]{okbg}{okfr}}{\endcbox}                   % what holds
+\newenvironment{nobox}[1][Not guaranteed]{\cbox[#1]{nobg}{nofr}}{\endcbox}               % what does not
+\newenvironment{thmbox}{\cbox{thmbg}{thmfr}}{\endcbox}
+\newenvironment{defbox}{\cbox{defbg}{deffr}}{\endcbox}
+
+% ---------- inline highlights ----------
+\newcommand{\hl}[1]{\textcolor{secblue}{\textbf{#1}}}                    % key term
+\newcommand{\yes}[1]{\textcolor{okfr}{\textbf{#1}}}
+\newcommand{\no}[1]{\textcolor{nofr}{\textbf{#1}}}
+\newcommand{\ctag}[1]{{\fboxsep=1.5pt\colorbox{clmfr}{\textcolor{white}{\sffamily\bfseries\scriptsize #1}}}}  % claim id
+\newcommand{\kind}[1]{\textcolor{clmfr}{\textsf{\scriptsize[#1]}}}       % kind of claim

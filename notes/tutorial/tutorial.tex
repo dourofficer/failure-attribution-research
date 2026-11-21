@@ -1,0 +1,900 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{enumitem}
+\usepackage{booktabs,array}
+\usepackage{xcolor}
+\usepackage{fancyvrb}
+\usepackage{framed}
+\usepackage{float}
+\usepackage[font=small,labelfont=bf]{caption}
+\usepackage[colorlinks=true,linkcolor=blue!55!black,citecolor=blue!55!black,urlcolor=blue!55!black]{hyperref}
+
+% ---------- theorem environments (numbered as in the Gentle Introduction) ----------
+\input{cpstyle}
+
+% Theorems, propositions and lemmas sit in blue boxes, definitions in green ones.
+\newtheorem{theoreminner}{Theorem}
+\newtheorem{propositioninner}{Proposition}
+\newtheorem{lemmainner}{Lemma}
+\theoremstyle{definition}
+\newtheorem{definitioninner}{Definition}
+\newcommand{\boxedthm}[3]{% #1 public name, #2 inner name, #3 box
+  \newenvironment{#1}[1][]{\begin{#3}\def\thmtitle{##1}%
+    \ifx\thmtitle\empty\begin{#2}\else\begin{#2}[##1]\fi}{\end{#2}\end{#3}}}
+\boxedthm{theorem}{theoreminner}{thmbox}
+\boxedthm{proposition}{propositioninner}{thmbox}
+\boxedthm{lemma}{lemmainner}{thmbox}
+\boxedthm{definition}{definitioninner}{defbox}
+
+% Coloured section headings.
+\makeatletter
+\renewcommand\section{\@startsection{section}{1}{\z@}{-3.5ex \@plus -1ex \@minus -.2ex}{2.3ex \@plus.2ex}{\normalfont\Large\bfseries\color{secblue}}}
+\renewcommand\subsection{\@startsection{subsection}{2}{\z@}{-3.25ex\@plus -1ex \@minus -.2ex}{1.5ex \@plus .2ex}{\normalfont\large\bfseries\color{secblue}}}
+\makeatother
+
+% ---------- notation ----------
+\newcommand{\C}{\mathcal{C}}
+\newcommand{\Y}{\mathcal{Y}}
+\newcommand{\X}{\mathcal{X}}
+\newcommand{\F}{\mathcal{F}}
+\newcommand{\fhat}{\hat{f}}
+\newcommand{\qhat}{\hat{q}}
+\newcommand{\lhat}{\hat{\lambda}}
+\newcommand{\Xtest}{X_{\rm test}}
+\newcommand{\Ytest}{Y_{\rm test}}
+\newcommand{\stest}{s_{\rm test}}
+\newcommand{\PP}{\mathbb{P}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\ind}[1]{\mathbbm{1}\left\{#1\right\}}
+\renewcommand{\ind}[1]{\mathbf{1}\left\{#1\right\}}
+\newcommand{\kreg}{k_{\rm reg}}
+\newcommand{\LF}{\mathrm{LF}}
+\newcommand{\RF}{\mathrm{RF}}
+\newcommand{\TWF}{\mathrm{TWF}}
+\newcommand{\ystar}{y^*}
+\newcommand{\jstar}{j^*}
+
+% ---------- small drawing helpers (plain picture environment) ----------
+\definecolor{okgreen}{rgb}{0.80,0.92,0.80}
+\definecolor{errred}{rgb}{0.96,0.72,0.70}
+\definecolor{setblue}{rgb}{0.78,0.86,0.97}
+\definecolor{lightgray}{rgb}{0.93,0.93,0.93}
+% \cell{x}{y}{colour}{label}: one step of a trajectory
+\newcommand{\cell}[4]{\put(#1,#2){\textcolor{#3}{\rule{1\unitlength}{0.62\unitlength}}}\put(#1,#2){\framebox(1,0.62){\footnotesize #4}}}
+\newcommand{\diagbox}[5]{\put(#1,#2){\textcolor{#3}{\rule{#4\unitlength}{1.3\unitlength}}}\put(#1,#2){\framebox(#4,1.3){\parbox{#4\unitlength}{\centering\small #5}}}}
+
+\fvset{fontsize=\footnotesize,frame=leftline,framerule=1.2pt,framesep=2mm,rulecolor=\color{recfr}}
+
+\title{\textbf{A Gentle Introduction to Conformal Prediction\\ for Failure Attribution in Agentic Systems}}
+\author{Reading notes on Angelopoulos \& Bates, RAPS, OAT\\ and Conformal Agent Error Attribution}
+\date{November 16, 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent When a multi-agent system fails, we would like to know which step of its trajectory caused the failure. Existing attribution methods answer with a single step and are usually wrong; a \emph{set} of steps that provably contains the culprit with a chosen probability would be far more useful. Conformal prediction is the standard tool for producing such sets: it wraps any model, needs only a small labelled calibration set, and gives explicit finite-sample guarantees without assumptions on the model or the data distribution.
+
+This document is a self-contained introduction for a reader who knows failure attribution but not conformal prediction. Part~I teaches the core of conformal prediction, following the presentation and notation of Angelopoulos and Bates~\cite{gentle}: the basic procedure and its guarantee, adaptive prediction sets, their regularized version (RAPS), and four extensions---group-balanced coverage, class-conditional coverage, conformal risk control and outlier detection. Part~II reads the two existing works that use conformal prediction for failure attribution, \textsc{Oat}~\cite{oat} and Conformal Agent Error Attribution~\cite{caea}, in the language of Part~I: for each we state the problem, the heuristic notion of uncertainty, the score, the calibration step, and exactly what is and is not guaranteed.
+
+\medskip\noindent\textbf{Colour code.} \textcolor{thmfr}{\textbf{Blue}} boxes hold theorems, \textcolor{deffr}{\textbf{teal}} boxes definitions, \textcolor{recfr}{\textbf{slate}} boxes procedures, and \textcolor{keyfr}{\textbf{yellow}} boxes take-aways. In Part~II, \textcolor{clmfr}{\textbf{purple}} boxes list the research question and the claims of a paper, \textcolor{okfr}{\textbf{green}} and \textcolor{nofr}{\textbf{red}} boxes say what its conformal procedure does and does not guarantee, and \textcolor{ourfr}{\textbf{grey}} boxes hold our own remarks, which are not claims of the paper. A companion two-page \texttt{cheatsheet.pdf} lists every algorithm for quick reference.
+\end{abstract}
+
+\newpage
+\tableofcontents
+\newpage
+
+% =====================================================================
+\part*{Part I: Conformal Prediction}
+\addcontentsline{toc}{part}{Part I: Conformal Prediction}
+% =====================================================================
+
+\section{Conformal Prediction}\label{sec:cp}
+
+\emph{Conformal prediction}~\cite{vovk2005,gentle} (a.k.a.\ conformal inference) is a straightforward way to generate \emph{prediction sets} for any model. We introduce it with a short, pragmatic image classification example, and follow up with a general explanation. The high-level outline is as follows. First, we begin with a fitted prediction model (such as a neural network classifier) which we call $\fhat$. Then, we create prediction sets (sets of possible labels) for this classifier using a small amount of additional \emph{calibration data}---we will call this the \emph{calibration step}.
+
+Formally, suppose we have images as input and each contains one of $K$ classes. We begin with a classifier that outputs estimated probabilities (softmax scores) for each class: $\fhat(x)\in[0,1]^K$. Then, we reserve a moderate number (e.g., 500) of fresh i.i.d.\ pairs of images and classes unseen during training, $(X_1,Y_1),\dots,(X_n,Y_n)$, for use as calibration data. Using $\fhat$ and the calibration data, we seek to construct a prediction set of possible labels $\C(\Xtest)\subset\{1,\dots,K\}$ that is \emph{valid} in the following sense:
+\begin{equation}\label{eq:coverage}
+1-\alpha \;\le\; \PP\big(\Ytest\in\C(\Xtest)\big) \;\le\; 1-\alpha+\frac{1}{n+1},
+\end{equation}
+where $(\Xtest,\Ytest)$ is a fresh test point from the same distribution, and $\alpha\in[0,1]$ is a user-chosen error rate. In words, the probability that the prediction set contains the correct label is almost exactly $1-\alpha$; we call this property \emph{marginal coverage}, since the probability is marginal (averaged) over the randomness in the calibration and test points.
+
+To construct $\C$ from $\fhat$ and the calibration data, we perform a simple calibration step that requires only a few lines of code; see Figure~\ref{fig:code-basic}. We now describe it in more detail, introducing some terms that will be helpful later on.
+\begin{itemize}[leftmargin=1.5em]
+\item First, we set the \emph{conformal score} $s_i = 1-\fhat(X_i)_{Y_i}$ to be one minus the softmax output of the true class. The score is high when the softmax output of the true class is low, i.e., when the model is badly wrong.
+\item Next comes the critical step: define $\qhat$ to be the $\lceil (n+1)(1-\alpha)\rceil/n$ empirical quantile of $s_1,\dots,s_n$, where $\lceil\cdot\rceil$ is the ceiling function ($\qhat$ is essentially the $1-\alpha$ quantile, but with a small correction).
+\item Finally, for a new test data point (where $\Xtest$ is known but $\Ytest$ is not), create the prediction set $\C(\Xtest)=\{y:\fhat(\Xtest)_y\ge 1-\qhat\}$ that includes all classes with a high enough softmax output.
+\end{itemize}
+\begin{keybox}[The promise]
+Remarkably, this algorithm gives prediction sets that are guaranteed to satisfy~\eqref{eq:coverage}, \emph{no matter what (possibly incorrect) model is used or what the (unknown) distribution of the data is}.
+\end{keybox}
+
+\begin{figure}[H]
+\begin{snugshade}
+\begin{Verbatim}
+# 1: get conformal scores. n = calib_Y.shape[0]
+cal_smx = model(calib_X).softmax(dim=1).numpy()
+cal_scores = 1 - cal_smx[np.arange(n), calib_Y]
+# 2: get adjusted quantile
+q_level = np.ceil((n+1)*(1-alpha))/n
+qhat = np.quantile(cal_scores, q_level, method='higher')
+# 3: form prediction sets (boolean matrix, one row per test image)
+val_smx = model(val_X).softmax(dim=1).numpy()
+prediction_sets = val_smx >= (1-qhat)
+\end{Verbatim}
+\end{snugshade}
+\caption{Python code for conformal prediction in classification (after Figure~2 of~\cite{gentle}).}
+\label{fig:code-basic}
+\end{figure}
+
+\subsection*{Remarks}
+Let us think about the interpretation of $\C$. The function $\C$ is \emph{set-valued}---it takes in an image and outputs a set of classes. The model's softmax outputs help to generate the set. This method constructs a different output set \emph{adaptively to each particular input}: the sets become larger when the model is uncertain or the image is intrinsically hard. This is a property we want, because the size of the set gives an indicator of the model's certainty. Furthermore, $\C(\Xtest)$ can be interpreted as a set of plausible classes that the image could be assigned to. Finally, $\C$ is \emph{valid}, meaning it satisfies~\eqref{eq:coverage}.\footnote{Due to the discreteness of $Y$, a small modification involving tie-breaking is needed to additionally satisfy the upper bound; this randomization is usually ignored in practice. We meet it explicitly in Section~\ref{sec:raps}.}
+
+With an eye towards generalization, let us review what happened. We were handed a model that had an inbuilt, but \emph{heuristic}, notion of uncertainty: softmax outputs. The softmax outputs attempted to measure the conditional probability of each class, $\PP(Y=j\mid X=x)$. However, we had no guarantee that they were any good; they may have been arbitrarily overfit or otherwise untrustworthy. Therefore, instead of taking the softmax outputs at face value, we used the holdout set to adjust for their deficiencies.
+
+The holdout set contained $n\approx 500$ fresh data points that the model never saw during training, which allowed us to get an honest appraisal of its performance. The adjustment involved computing conformal scores, which grow when the model is uncertain, but are not valid prediction sets on their own. We then took $\qhat$ to be roughly the $1-\alpha$ quantile of the scores. When setting $\alpha=0.1$, at least $90\%$ of ground-truth softmax outputs are guaranteed to be above the level $1-\qhat$. Taking advantage of this fact, at test time we collected all classes with outputs above $1-\qhat$ into $\C(\Xtest)$. Since the softmax output of the new true class $\Ytest$ is above $1-\qhat$ with probability at least $90\%$, we finally got the guarantee in Eq.~\eqref{eq:coverage}.
+
+\subsection{Instructions for Conformal Prediction}\label{sec:instructions}
+Conformal prediction is not specific to softmax outputs or classification problems. In fact, it can be seen as a method for taking \emph{any heuristic notion of uncertainty from any model} and converting it to a rigorous one (see the diagram below). It does not care if the underlying prediction problem is discrete or continuous, classification or regression---or, as in Part~II, the localization of an error inside a trajectory.
+
+\begin{center}
+\setlength{\unitlength}{1cm}
+\begin{picture}(13,1.5)
+\diagbox{0}{0.1}{lightgray}{3.6}{Heuristic uncertainty\\(per input)}
+\put(3.7,0.75){\vector(1,0){1}}
+\diagbox{4.8}{0.1}{setblue}{3.4}{\textbf{conformal\\prediction}}
+\put(8.3,0.75){\vector(1,0){1}}
+\diagbox{9.4}{0.1}{okgreen}{3.6}{Rigorous uncertainty\\(per input)}
+\end{picture}
+\end{center}
+
+We next outline conformal prediction for a general input $x$ and output $y$ (not necessarily discrete).
+\begin{recipebox}[Instructions for conformal prediction]
+\begin{enumerate}[leftmargin=1.8em]
+\item Identify a heuristic notion of uncertainty using the pre-trained model.
+\item Define the score function $s(x,y)\in\R$. (Larger scores encode worse agreement between $x$ and $y$.)
+\item Compute $\qhat$ as the $\frac{\lceil(n+1)(1-\alpha)\rceil}{n}$ quantile of the calibration scores $s_1=s(X_1,Y_1),\dots,s_n=s(X_n,Y_n)$.
+\item Use this quantile to form the prediction sets for new examples:
+\begin{equation}\label{eq:set}
+\C(\Xtest)=\{y:\ s(\Xtest,y)\le\qhat\}.
+\end{equation}
+\end{enumerate}
+\end{recipebox}
+As before, these sets satisfy the validity property in~\eqref{eq:coverage}, for any (possibly uninformative) score function and (possibly unknown) distribution of the data. We formally state the coverage guarantee next.
+
+\begin{theorem}[Conformal coverage guarantee; Vovk, Gammerman, and Saunders~\cite{vovk1999}]\label{thm:coverage}
+Suppose $(X_i,Y_i)_{i=1,\dots,n}$ and $(\Xtest,\Ytest)$ are i.i.d.\ and define $\qhat$ as in step 3 above and $\C(\Xtest)$ as in step 4 above. Then the following holds:
+\[\PP\big(\Ytest\in\C(\Xtest)\big)\ \ge\ 1-\alpha.\]
+\end{theorem}
+
+\begin{proof}
+Let $s_i=s(X_i,Y_i)$ and $\stest=s(\Xtest,\Ytest)$. To avoid handling ties, consider the case where the scores are distinct with probability 1, and assume without loss of generality that the calibration scores are sorted, $s_1<\dots<s_n$. Then $\qhat=s_{\lceil(n+1)(1-\alpha)\rceil}$ when $\alpha\ge\frac{1}{n+1}$, and $\qhat=\infty$ otherwise; in the latter case $\C(\Xtest)=\Y$ and coverage is trivial. By the definition of the set in~\eqref{eq:set},
+\[\{\Ytest\in\C(\Xtest)\}=\{\stest\le\qhat\}=\{\stest\le s_{\lceil(n+1)(1-\alpha)\rceil}\}.\]
+Now comes the crucial insight. The same fixed function $s$ is applied to every data point, and the data points are exchangeable, so $\stest$ is equally likely to fall anywhere among the calibration scores: $\PP(\stest\le s_k)=\frac{k}{n+1}$ for any integer $k$. Therefore
+\[\PP\big(\stest\le s_{\lceil(n+1)(1-\alpha)\rceil}\big)=\frac{\lceil(n+1)(1-\alpha)\rceil}{n+1}\ \ge\ 1-\alpha. \qedhere\]
+\end{proof}
+
+Three remarks on this theorem will matter throughout the document.
+\begin{itemize}[leftmargin=1.5em]
+\item \textbf{Exchangeability is all that is used.} The proof needs only that the $n+1$ data points are \emph{exchangeable} (their joint distribution does not change when they are reordered), which is weaker than i.i.d. The model $\fhat$ must be fixed before seeing the calibration data, so that $s$ is a fixed function. Nothing is assumed about how good $\fhat$ is.
+\item \textbf{The upper bound.} The last display also gives $\PP(\stest\le\qhat)<1-\alpha+\frac{1}{n+1}$ when the scores are distinct, which is the upper bound in~\eqref{eq:coverage}: the sets are not needlessly conservative.
+\item \textbf{The guarantee is marginal.} The probability averages over the calibration set and the test point. For one fixed calibration set of size $n$, the coverage over an infinite stream of test points is itself a random quantity, distributed as $\mathrm{Beta}(n+1-l,\,l)$ with $l=\lfloor(n+1)\alpha\rfloor$~\cite{gentle}. With $n=1000$ and $\alpha=0.1$ its standard deviation is about $0.01$; with $n=92$ and $\alpha=0.2$---the calibration size available on the Who\&When benchmark in Section~\ref{sec:caea}---it is about $0.04$. Small calibration sets give valid but noisy coverage.
+\end{itemize}
+The procedure above is a special case called \emph{split conformal prediction}~\cite{papadopoulos2002,lei2018}. It is the most widely used version and the only one we need.
+
+\subsection*{Choice of score function}
+Upon first glance, this seems too good to be true, and a skeptical reader might ask:
+\begin{center}
+\emph{How is it possible to construct a statistically valid prediction set even if the heuristic notion of uncertainty of the underlying model is arbitrarily bad?}
+\end{center}
+Let us give some intuition. Roughly, if the scores $s_i$ correctly rank the inputs from lowest to highest magnitude of model error, then the resulting sets will be smaller for easy inputs and bigger for hard ones. If the scores are bad, in the sense that they do not approximate this ranking, then the sets will be useless. For example, if the scores are random noise, then the sets will contain a random sample of the label space, where that random sample is large enough to provide valid marginal coverage. This illustrates an important underlying fact.
+\begin{keybox}[The guarantee is cheap; the score is everything]
+Although \emph{the guarantee always holds}, the \emph{usefulness} of the prediction sets is primarily determined by the score function.
+\end{keybox}
+\noindent The score function incorporates almost all the information we know about our problem and data, including the underlying model itself. There are many possible score functions for a single underlying model, with different properties; constructing the right one is an engineering choice. Sections~\ref{sec:aps} and~\ref{sec:raps} show two better scores for classification, and Part~II is, in essence, a discussion of score functions for trajectories.
+
+% ---------------------------------------------------------------------
+\section{Classification with Adaptive Prediction Sets}\label{sec:aps}
+
+Let us begin with an improvement to the classification example of Section~\ref{sec:cp}. The previous method produces prediction sets with the smallest average size~\cite{sadinle2019}, but it tends to undercover hard subgroups and overcover easy ones. Here we develop a different method called \emph{adaptive prediction sets} (APS) that avoids this problem~\cite{romano2020,raps}.
+
+As motivation, note that if the softmax outputs $\fhat(\Xtest)$ were a perfect model of $\Ytest\mid\Xtest$, we would greedily include the top-scoring classes until their total mass just exceeded $1-\alpha$. Formally, we can describe this oracle algorithm as
+\[\{\pi_1(x),\dots,\pi_k(x)\},\quad\text{where }k=\sup\Big\{k':\ \sum_{j=1}^{k'}\fhat(\Xtest)_{\pi_j(x)}<1-\alpha\Big\}+1,\]
+and $\pi(x)$ is the permutation of $\{1,\dots,K\}$ that sorts $\fhat(\Xtest)$ from most likely to least likely. In practice, however, this procedure fails to provide coverage, since $\fhat(\Xtest)$ is not perfect; it only provides us a heuristic notion of uncertainty. Therefore, we use conformal prediction to turn it into a rigorous one.
+
+To proceed, we define a score function inspired by the oracle algorithm:
+\begin{equation}\label{eq:aps-score}
+s(x,y)=\sum_{j=1}^{k}\fhat(x)_{\pi_j(x)},\quad\text{where }y=\pi_k(x).
+\end{equation}
+In other words, we greedily include classes in our set until we reach the true label, then we stop. Unlike the score from Section~\ref{sec:cp}, this one uses the softmax outputs of all classes, not just the true class.
+
+The next step, as in all conformal procedures, is to set $\qhat=\mathrm{Quantile}\big(s_1,\dots,s_n;\frac{\lceil(n+1)(1-\alpha)\rceil}{n}\big)$. Having done so, we form the prediction set $\{y:s(x,y)\le\qhat\}$, modified slightly to avoid zero-size sets:
+\begin{equation}\label{eq:aps-set}
+\C(x)=\{\pi_1(x),\dots,\pi_k(x)\},\quad\text{where }k=\sup\Big\{k':\ \sum_{j=1}^{k'}\fhat(x)_{\pi_j(x)}<\qhat\Big\}+1.
+\end{equation}
+Figure~\ref{fig:code-aps} shows Python code for this method. Classes are included from most to least likely until their cumulative softmax output exceeds the quantile. As usual, these sets satisfy~\eqref{eq:coverage}.
+
+\begin{figure}[H]
+\begin{snugshade}
+\begin{Verbatim}
+# Get scores. cal_smx: n x K softmax outputs, cal_labels: n true classes
+cal_pi = cal_smx.argsort(1)[:,::-1]                     # classes sorted, most likely first
+cal_srt = np.take_along_axis(cal_smx,cal_pi,axis=1).cumsum(axis=1)
+cal_scores = np.take_along_axis(cal_srt,cal_pi.argsort(axis=1),axis=1)[range(n),cal_labels]
+# Get the score quantile
+qhat = np.quantile(cal_scores, np.ceil((n+1)*(1-alpha))/n, method='higher')
+# Deploy (boolean matrix, one row per test point)
+val_pi = val_smx.argsort(1)[:,::-1]
+val_srt = np.take_along_axis(val_smx,val_pi,axis=1).cumsum(axis=1)
+prediction_sets = np.take_along_axis(val_srt <= qhat,val_pi.argsort(axis=1),axis=1)
+\end{Verbatim}
+\end{snugshade}
+\caption{Python code for adaptive prediction sets (after Figure~3 of~\cite{gentle}).}
+\label{fig:code-aps}
+\end{figure}
+
+\begin{recipebox}[APS at a glance]
+\begin{tabular}{@{}lp{0.72\linewidth}@{}}
+\hl{Heuristic} & softmax vector $\fhat(x)$, sorted from most to least likely by $\pi(x)$\\
+\hl{Score} & $s(x,y)=$ total softmax mass of the classes ranked at or above $y$\\
+\hl{Set} & most likely classes, added until the cumulative mass passes $\qhat$\\
+\hl{Guarantee} & marginal coverage~\eqref{eq:coverage}\\
+\hl{Strength / weakness} & adaptive to the difficulty of $x$ / very large sets on big label spaces
+\end{tabular}
+\end{recipebox}
+
+Why is APS ``adaptive''? If $\fhat$ were the true conditional distribution, the score~\eqref{eq:aps-score} of the true label would be (after tie-breaking) uniformly distributed on $[0,1]$ \emph{for every} $x$, so the same threshold $\qhat\approx1-\alpha$ would give $1-\alpha$ coverage at every $x$, not just on average~\cite{romano2020}. The score $1-\fhat(x)_y$ of Section~\ref{sec:cp} has no such property: the same cut-off is applied to easy inputs (one class near probability 1) and hard inputs (all classes near $1/K$).
+
+% ---------------------------------------------------------------------
+\section{Regularized Adaptive Prediction Sets}\label{sec:raps}
+
+APS has a practical problem: on large label spaces its sets are far too big. On Imagenet with a ResNet-152 at $\alpha=0.1$, APS sets contain $10.4$ classes on average, and with a ResNeXt-101 they contain $19.7$---although the latter model is the more accurate one~\cite{raps}. \emph{Regularized adaptive prediction sets} (RAPS), due to Angelopoulos, Bates, Malik and Jordan~\cite{raps}, fix this with a one-line change of the score; the same two models then give sets of average size $2.11$ and $2.00$ at the same coverage. We follow~\cite{raps}, keeping the notation of the previous sections.
+
+\subsection*{Three desiderata, and why APS is too large}
+We want three things from a set-valued predictor: \emph{coverage}, i.e.~\eqref{eq:coverage}; small \emph{size}, since smaller sets are more informative; and \emph{adaptiveness}, i.e.\ smaller sets for easy inputs than for hard ones. Coverage and size obviously compete, but size and adaptiveness are also in tension: always returning the five most likely classes can achieve coverage with small sets, but it is not adaptive.
+
+APS is adaptive but large because its score~\eqref{eq:aps-score} is sensitive to the noisy probability estimates far down the sorted list of classes. Among the many classes with tiny estimated probability, the ordering is determined mostly by chance---the \emph{permutation problem}. If, say, $5\%$ of the true calibration labels sit deep in this tail, their scores are close to 1, the $95\%$ quantile $\qhat$ is close to 1, and every test set must swallow most of the tail.
+
+\subsection*{The RAPS score}
+Write $o_x(y)$ for the rank of $y$ among the classes sorted by $\fhat(x)$, so that $y=\pi_{o_x(y)}(x)$. RAPS adds to the APS score a penalty on classes ranked beyond a threshold $\kreg$:
+\begin{equation}\label{eq:raps-score}
+s(x,y)=\underbrace{\sum_{j=1}^{o_x(y)}\fhat(x)_{\pi_j(x)}}_{\text{APS score}}\;+\;\underbrace{\lambda\cdot\big(o_x(y)-\kreg\big)^+}_{\text{regularization}},
+\end{equation}
+where $(z)^+$ denotes the positive part of $z$, and $\lambda,\kreg\ge0$ are hyperparameters. Setting $\lambda=0$ recovers APS. The rest of the procedure is unchanged: compute $\qhat$ as the conformal quantile of the calibration scores and return $\C(x)=\{y:s(x,y)\le\qhat\}$. Figure~\ref{fig:code-raps} gives the code.
+
+Let us parse the penalty. For classes ranked $\kreg$ or better it is zero. Each rank beyond $\kreg$ costs an extra $\lambda$, so a class far down the list needs a much higher threshold before it is included. For example, with probabilities sorted as $(0.5,\,0.2,\,0.1,\,0.08,\,0.07,\,0.05)$ and the true label ranked fourth, the APS score is $0.88$; with $\kreg=2$ and $\lambda=0.1$ the RAPS score is $0.88+0.1\cdot2=1.08$. The penalty acts on \emph{both} sides of the calibration: calibration points whose true label is deep in the tail now have very large scores, but they are a small fraction and do not move the quantile; test-time tail classes also have very large scores and stay out of the set. The unreliable tail probabilities no longer decide the set.
+
+\begin{figure}[H]
+\begin{snugshade}
+\begin{Verbatim}
+# Regularization vector: 0 for the first k_reg ranks, lam for every later rank
+reg_vec = np.array(k_reg*[0,] + (K-k_reg)*[lam,])[None,:]
+# Get scores
+cal_pi = cal_smx.argsort(1)[:,::-1]
+cal_srt = np.take_along_axis(cal_smx,cal_pi,axis=1)
+cal_srt_reg = (cal_srt + reg_vec).cumsum(axis=1)        # APS cumulative mass + penalty
+cal_L = np.where(cal_pi == cal_labels[:,None])[1]       # rank of the true class (0-based)
+cal_scores = cal_srt_reg[np.arange(n),cal_L]
+# Get the score quantile
+qhat = np.quantile(cal_scores, np.ceil((n+1)*(1-alpha))/n, method='higher')
+# Deploy
+val_pi = val_smx.argsort(1)[:,::-1]
+val_srt = np.take_along_axis(val_smx,val_pi,axis=1)
+indicators = (val_srt + reg_vec).cumsum(axis=1) <= qhat
+prediction_sets = np.take_along_axis(indicators,val_pi.argsort(axis=1),axis=1)
+\end{Verbatim}
+\end{snugshade}
+\caption{Python code for regularized adaptive prediction sets (non-randomized version).}
+\label{fig:code-raps}
+\end{figure}
+
+\begin{recipebox}[RAPS at a glance]
+\begin{tabular}{@{}lp{0.72\linewidth}@{}}
+\hl{Heuristic} & sorted softmax vector, as in APS\\
+\hl{Score} & APS score $+\ \lambda\cdot(\text{rank of }y-\kreg)^+$\\
+\hl{Set} & most likely classes, added until cumulative mass plus penalty passes $\qhat$\\
+\hl{Guarantee} & marginal coverage~\eqref{eq:coverage}, for any $\lambda$ and $\kreg$\\
+\hl{Strength / weakness} & small, stable and still adaptive sets / two hyperparameters, one extra tuning split
+\end{tabular}
+\end{recipebox}
+
+\subsection*{Conformal calibration as a choice among nested sets}
+The authors of~\cite{raps} describe the calibration step in a slightly different, equivalent language that we will need again in Section~\ref{sec:caea}. Suppose we have any family of sets $\C(x,\tau)$ indexed by a parameter $\tau$ such that the sets are \emph{nested}: $\C(x,\tau_1)\subseteq\C(x,\tau_2)$ whenever $\tau_1\le\tau_2$, and $\C(x,\tau)=\Y$ for large enough $\tau$. Choose the smallest $\tau$ that covers enough calibration points,
+\begin{equation}\label{eq:ccal}
+\hat\tau=\inf\Big\{\tau:\ \frac{|\{i:Y_i\in\C(X_i,\tau)\}|}{n}\ \ge\ \frac{\lceil(n+1)(1-\alpha)\rceil}{n}\Big\}.
+\end{equation}
+Then $\PP(\Ytest\in\C(\Xtest,\hat\tau))\ge1-\alpha$. This is Theorem~\ref{thm:coverage} in disguise: define the score of a labelled point as the smallest parameter at which its label enters the set, $s(x,y)=\inf\{\tau:y\in\C(x,\tau)\}$; then $\hat\tau$ is exactly the conformal quantile $\qhat$ of these scores, and $\{y:s(x,y)\le\qhat\}=\C(x,\qhat)$. In RAPS, $\tau$ is the cumulative sum of sorted, penalized probabilities.
+
+\begin{keybox}[Design principle]
+To design a conformal method it suffices to design a \emph{nested family of sets}; the score and the guarantee follow mechanically. The filtration algorithms of Section~\ref{sec:caea} are built exactly this way.
+\end{keybox}
+
+\subsection*{Randomization and the coverage guarantee}
+Because including a class makes the cumulative sum jump, the scores~\eqref{eq:raps-score} are discrete and the sets slightly over-cover. The randomized version of RAPS smooths the jump with an independent $U\sim\mathrm{Unif}[0,1]$ per data point. Writing $\rho_x(y)=\sum_{j<o_x(y)}\fhat(x)_{\pi_j(x)}$ for the total mass of the classes more likely than $y$, the randomized sets are
+\begin{equation}\label{eq:raps-rand}
+\C^*(x,u,\tau)=\Big\{y:\ \rho_x(y)+\fhat(x)_y\cdot u+\lambda\cdot\big(o_x(y)-\kreg\big)^+\le\tau\Big\}.
+\end{equation}
+The first two terms are the usual randomized CDF transform, which is exactly uniform when $\fhat$ is the true conditional distribution. The randomization affects at most one class per input: the one at the boundary of the set.
+
+\begin{proposition}[RAPS coverage guarantee~\cite{raps}]\label{prop:raps}
+Suppose $(X_i,Y_i,U_i)_{i=1,\dots,n}$ and $(X_{n+1},Y_{n+1},U_{n+1})$ are i.i.d., let $\C^*$ be defined as in~\eqref{eq:raps-rand} and $\hat\tau$ as in~\eqref{eq:ccal}, and suppose $\fhat(x)_y>0$ for all $x$ and $y$. Then
+\[1-\alpha\ \le\ \PP\big(Y_{n+1}\in\C^*(X_{n+1},U_{n+1},\hat\tau)\big)\ \le\ 1-\alpha+\frac{1}{n+1}.\]
+\end{proposition}
+The lower bound holds for any $\lambda$ and $\kreg$---regularization changes the size of the sets, never their validity.
+
+\subsection*{RAPS is at least as good as fixed-size sets}
+A natural competitor is the \emph{top-$k$} set $\{\pi_1(x),\dots,\pi_k(x)\}$ with the same $k$ for every input.
+\begin{proposition}[RAPS dominates top-$k$ sets~\cite{raps}]\label{prop:topk}
+Let $k^*$ be the smallest $k$ such that the top-$k$ sets have coverage at least $\lceil(n+1)(1-\alpha)\rceil/n$ on the calibration points. Take $\C^*$ as in~\eqref{eq:raps-rand} with any $\kreg\le k^*$ and $\lambda=1$. Then, with $\hat\tau$ chosen as in~\eqref{eq:ccal},
+\[\C^*(X_{n+1},U_{n+1},\hat\tau)\subseteq\{\pi_1(X_{n+1}),\dots,\pi_{k^*}(X_{n+1})\}.\]
+\end{proposition}
+In words, RAPS with heavy regularization is never larger than the best fixed-size set while keeping coverage. This is not true of APS, whose sets are usually much larger than $k^*$ (on Imagenet with ResNet-152 and $\alpha=0.1$: fixed size $2.63$, APS $10.4$, RAPS $2.11$).
+
+\subsection*{Choosing $\kreg$ and $\lambda$}
+The two hyperparameters are picked on a small extra tuning split of $m\approx1000$ labelled points, disjoint from the calibration data (so the guarantee is untouched).
+\begin{itemize}[leftmargin=1.5em]
+\item $\kreg$ is set to an estimate of $k^*$: the $\lceil(1-\alpha)(1+m)\rceil$-th smallest rank of the true label on the tuning data, which is itself a conformal quantile, this time of the ranks.
+\item $\lambda$ is chosen from a coarse grid such as $\{0.001,0.01,0.1,0.2,0.5\}$, either to minimise the average set size or to optimise adaptiveness (below). The method is not sensitive to either parameter.
+\end{itemize}
+
+\subsection*{Adaptiveness}
+Exact conditional coverage, $\PP(Y\in\C(X)\mid X=x)=1-\alpha$ for every $x$, is impossible to guarantee without assumptions~\cite{vovk2012}, but it can be probed. If conditional coverage held, coverage would also hold after stratifying test points \emph{by the size of their prediction set}. The \emph{size-stratified coverage violation} measures the worst deviation: for disjoint set-size strata $S_1,\dots,S_s$ and $J_j=\{i:|\C(X_i)|\in S_j\}$,
+\begin{equation}\label{eq:sscv}
+\mathrm{SSCV}(\C)=\sup_j\Big|\frac{|\{i\in J_j:\ Y_i\in\C(X_i)\}|}{|J_j|}-(1-\alpha)\Big|.
+\end{equation}
+On Imagenet, APS sets of size 101--1000 have $97\%$ coverage at a $90\%$ target: APS reaches marginal coverage by over-covering hard images and under-covering easy ones. RAPS with light regularization ($\lambda$ between $0.001$ and $0.01$) is more balanced (SSCV $0.048$ against $0.088$ for APS with ResNeXt-101 at $\alpha=0.1$). So even judged by adaptiveness alone, a little regularization helps.
+
+% ---------------------------------------------------------------------
+\section{Extensions of Conformal Prediction}\label{sec:ext}
+
+At this point, we have seen the core of the matter: how to construct prediction sets with coverage in a standard supervised problem. We now broaden our horizons to four variations of the guarantee. Each one reappears in Part~II, either in a published method or as the natural tool for something the published methods leave open.
+
+\subsection{Group-Balanced Conformal Prediction}\label{sec:group}
+In certain settings, we might want prediction sets that have equal error rates across certain subsets of the data. To formalize this, suppose the first feature of our inputs, $X_{i,1}$, takes values in a discrete set $\{1,\dots,G\}$ of groups. We then ask for \emph{group-balanced coverage}:
+\begin{equation}\label{eq:group}
+\PP\big(\Ytest\in\C(\Xtest)\mid X_{{\rm test},1}=g\big)\ge1-\alpha\quad\text{for all groups }g\in\{1,\dots,G\}.
+\end{equation}
+The group can be a post-processing of the original features; for instance, we might bin a continuous feature. A standard application of conformal prediction will not necessarily satisfy~\eqref{eq:group}: the marginal guarantee can hold even if all errors happen in one group.
+
+To achieve group-balanced coverage, we simply run conformal prediction separately for each group. Given a score function $s$, we stratify the calibration scores by group, compute within each group the conformal quantile
+\[\qhat^{(g)}=\mathrm{Quantile}\Big(s^{(g)}_1,\dots,s^{(g)}_{n^{(g)}};\ \frac{\lceil(n^{(g)}+1)(1-\alpha)\rceil}{n^{(g)}}\Big),\]
+where $n^{(g)}$ is the number of calibration examples of group $g$, and form prediction sets with the quantile of the test point's own group:
+\[\C(x)=\{y:\ s(x,y)\le\qhat^{(x_1)}\}.\]
+\begin{proposition}[Error control guarantee for group-balanced conformal prediction~\cite{vovk2012}]
+Suppose $(X_1,Y_1),\dots,(X_n,Y_n),(\Xtest,\Ytest)$ are an i.i.d.\ sample. Then the set $\C$ defined above satisfies~\eqref{eq:group}.
+\end{proposition}
+The price is data: each group needs its own calibration set, and by the remark after Theorem~\ref{thm:coverage} small groups get noisy coverage.
+
+\subsection{Class-Conditional Conformal Prediction}\label{sec:class}
+In classification problems, we might similarly ask for coverage on every ground-truth class,
+\begin{equation}\label{eq:class}
+\PP\big(\Ytest\in\C(\Xtest)\mid\Ytest=y\big)\ge1-\alpha\quad\text{for all classes }y\in\{1,\dots,K\}.
+\end{equation}
+For a medical classifier, this asks that the sets are $1-\alpha$ accurate both when the truth is \emph{cancer} and when it is \emph{normal}. We again calibrate within each class separately, but the algorithm must change because we do not know the correct class at test time (in Section~\ref{sec:group} the group was an observed feature). Stratify the calibration scores by true class, compute the per-class conformal quantiles $\qhat^{(k)}$ as above, and include each candidate label according to \emph{its own} threshold:
+\[\C(x)=\{y:\ s(x,y)\le\qhat^{(y)}\}.\]
+We take a provisional value $y$ of the response and use the threshold $\qhat^{(y)}$ to decide whether it is included.
+\begin{proposition}[Error control guarantee for class-balanced conformal prediction~\cite{vovk2012}]
+Under the same assumption, the set $\C$ defined above satisfies~\eqref{eq:class}.
+\end{proposition}
+
+\subsection{Conformal Risk Control}\label{sec:crc}
+So far, we have used conformal prediction to bound the miscoverage, $\PP(\Ytest\notin\C(\Xtest))\le\alpha$. For many problems the natural notion of error is not miscoverage. Conformal prediction can also provide guarantees of the form
+\begin{equation}\label{eq:risk}
+\E\big[\ell\big(\C(\Xtest),\Ytest\big)\big]\le\alpha,
+\end{equation}
+for any bounded loss function $\ell$ that shrinks as $\C$ grows. This is called a \emph{conformal risk control} guarantee~\cite{crc}. It recovers the coverage guarantee with the miscoverage loss $\ell(\C(\Xtest),\Ytest)=\ind{\Ytest\notin\C(\Xtest)}$.
+
+As an example, consider multilabel classification, where the response $Y_i\subseteq\{1,\dots,K\}$ is itself a \emph{set} of correct classes. Given a model $f:\X\to[0,1]^K$, we post-process its outputs into the set of classes with sufficiently high scores, $\C_\lambda(x)=\{k:f(x)_k\ge1-\lambda\}$. As $\lambda$ grows, the set grows and is less likely to omit true classes. Conformal risk control finds a threshold $\lhat$ that controls the \emph{fraction of missed classes}, i.e.\ the false negative rate
+\[\ell\big(\C_\lambda(\Xtest),\Ytest\big)=1-\frac{|\Ytest\cap\C_\lambda(\Xtest)|}{|\Ytest|}.\]
+Setting $\alpha=0.1$ ensures that $\C_{\lhat}(\Xtest)$ contains $90\%$ of the true classes on average.
+
+Formally, let $\C_\lambda$ be a prediction set with a parameter $\lambda$ that encodes its level of conservativeness, let $\ell(\C_\lambda(x),y)\in(-\infty,B]$ be a loss that is non-increasing in $\lambda$, and let $\widehat R(\lambda)=\frac1n\sum_{i=1}^n\ell(\C_\lambda(X_i),Y_i)$ be the empirical risk on the calibration data. Pick
+\begin{equation}\label{eq:crc}
+\lhat=\inf\Big\{\lambda:\ \widehat R(\lambda)\le\alpha-\frac{B-\alpha}{n}\Big\}.
+\end{equation}
+This simply tunes $\lambda$ on the empirical risk at a slightly more conservative level than $\alpha$: with $B=1$, $\alpha=0.1$ and $n=1000$, we select the $\lambda$ at which the empirical risk hits $0.0991$ instead of $0.1$.
+\begin{theorem}[Conformal Risk Control~\cite{crc}]\label{thm:crc}
+Suppose $(X_1,Y_1),\dots,(X_n,Y_n),(\Xtest,\Ytest)$ are an i.i.d.\ sample, and $\ell$ is monotone in $\lambda$: $\ell(\C_{\lambda_1}(x),y)\ge\ell(\C_{\lambda_2}(x),y)$ for all $(x,y)$ and $\lambda_1\le\lambda_2$. Then $\E[\ell(\C_{\lhat}(\Xtest),\Ytest)]\le\alpha$, where $\lhat$ is picked as in~\eqref{eq:crc}.
+\end{theorem}
+Note the two ingredients: a nested family of sets (as in Section~\ref{sec:raps}) and a loss that is monotone along it. Losses that are not monotone need the more general Learn-then-Test framework~\cite{ltt}.
+
+\begin{figure}[H]
+\begin{snugshade}
+\begin{Verbatim}
+# cal_sgm: n x K per-class scores in [0,1]; cal_labels: n x K boolean (several true classes)
+def false_negative_rate(prediction_set, gt_labels):
+    return 1 - ((prediction_set * gt_labels).sum(axis=1) / gt_labels.sum(axis=1)).mean()
+# Empirical risk on the calibration set as a function of the threshold
+def lamhat_threshold(lam):
+    return false_negative_rate(cal_sgm >= (1-lam), cal_labels) - ((n+1)/n*alpha - 1/n)
+lamhat = brentq(lamhat_threshold, 0, 1)                 # root of a monotone function
+prediction_sets = val_sgm >= (1-lamhat)
+\end{Verbatim}
+\end{snugshade}
+\caption{Python code for conformal risk control of the false negative rate in multilabel classification (after~\cite{gentle}; here $B=1$, and \texttt{brentq} is the root finder of \texttt{scipy.optimize}).}
+\label{fig:code-crc}
+\end{figure}
+
+\subsection{Outlier Detection}\label{sec:outlier}
+Conformal prediction can also be adapted to \emph{unsupervised} outlier detection. Here, we have access to a clean dataset $X_1,\dots,X_n$ and wish to detect when test points do not come from the same distribution. As before, we begin with a heuristic model that tries to identify outliers; a larger score means the model judges the point more likely to be an outlier. We then calibrate it so that \emph{it does not return too many false positives}.
+
+Formally, we construct a function that labels test points as outliers or inliers, $\C:\X\to\{\text{outlier},\text{inlier}\}$, such that
+\begin{equation}\label{eq:outlier}
+\PP\big(\C(\Xtest)=\text{outlier}\big)\le\alpha,
+\end{equation}
+where the probability is over $\Xtest$, \emph{a fresh sample from the clean-data distribution}. The algorithm is similar to the usual one. We start with a conformal score $s:\X\to\R$ (since we are in the unsupervised setting, the score depends only on the features). Next, we compute the score on the clean data, $s_i=s(X_i)$ for $i=1,\dots,n$, and the conformal threshold in the usual way,
+\[\qhat=\mathrm{Quantile}\Big(s_1,\dots,s_n;\ \frac{\lceil(n+1)(1-\alpha)\rceil}{n}\Big).\]
+Lastly, we declare a test point to be an outlier if its score exceeds $\qhat$:
+\[\C(x)=\begin{cases}\text{inlier}&\text{if }s(x)\le\qhat,\\ \text{outlier}&\text{if }s(x)>\qhat.\end{cases}\]
+\begin{proposition}[Error control guarantee for outlier detection]\label{prop:outlier}
+Suppose $X_1,\dots,X_n,\Xtest$ are an i.i.d.\ sample from some distribution. Then the function $\C$ defined above satisfies~\eqref{eq:outlier}.
+\end{proposition}
+
+Two points deserve emphasis, because Section~\ref{sec:oat} depends on them.
+\begin{nobox}[Outlier detection controls false alarms, not misses]
+\begin{itemize}[leftmargin=1.5em]
+\item \textbf{The guarantee is one-sided.} Proposition~\ref{prop:outlier} bounds the \emph{false positive rate}: a clean point is wrongly flagged with probability at most $\alpha$. It is a hypothesis test of the null ``$\Xtest$ is exchangeable with the calibration data'' at level $\alpha$~\cite{bates2023}. It says \emph{nothing} about how many true outliers are caught; that power depends entirely on the score function.
+\item \textbf{The score matters as much as ever.} We wish to choose the score to distinguish the type of outliers we expect from the clean data. Training such models is called anomaly detection, novelty detection, or one-class classification.
+\end{itemize}
+\end{nobox}
+
+\begin{figure}[H]
+\begin{snugshade}
+\begin{Verbatim}
+# cal_scores: outlier scores of n clean points (larger = more anomalous)
+qhat = np.quantile(cal_scores, np.ceil((n+1)*(1-alpha))/n, method='higher')
+outliers = val_scores > qhat
+\end{Verbatim}
+\end{snugshade}
+\caption{Python code for conformal outlier detection.}
+\label{fig:code-outlier}
+\end{figure}
+
+\subsection*{Summary of Part I}
+Table~\ref{tab:part1} collects the guarantees we have met. \begin{keybox}[Two questions to ask of any paper that ``uses conformal prediction'']
+\textbf{(1) What is calibrated on?} Labelled pairs, or clean unlabelled points? \quad \textbf{(2) Which error is controlled?} Missing the true label, a general loss, or a false alarm?
+\end{keybox}
+
+\begin{table}[H]
+\centering\small
+\begin{tabular}{@{}p{3.4cm}p{3.6cm}p{4.3cm}p{3.3cm}@{}}\toprule
+Method & Calibration data & Guarantee & Controlled error\\\midrule
+Split conformal (\S\ref{sec:cp}); APS (\S\ref{sec:aps}); RAPS (\S\ref{sec:raps}) & labelled pairs $(X_i,Y_i)$ & $\PP(\Ytest\in\C(\Xtest))\ge1-\alpha$ & miscoverage of the true label\\[2pt]
+Group-balanced (\S\ref{sec:group}) & labelled pairs, per group & coverage within each group & miscoverage per group\\[2pt]
+Class-conditional (\S\ref{sec:class}) & labelled pairs, per class & coverage for each true class & miscoverage per class\\[2pt]
+Risk control (\S\ref{sec:crc}) & labelled pairs, $Y_i$ may be a set & $\E[\ell(\C(\Xtest),\Ytest)]\le\alpha$ & any monotone loss, e.g.\ fraction of missed labels\\[2pt]
+Outlier detection (\S\ref{sec:outlier}) & clean, \emph{unlabelled} $X_i$ & $\PP(\text{flag}\mid\text{clean})\le\alpha$ & false alarms on clean points\\\bottomrule
+\end{tabular}
+\caption{The conformal guarantees of Part~I.}
+\label{tab:part1}
+\end{table}
+
+% =====================================================================
+\newpage
+\part*{Part II: Conformal Prediction in Failure Attribution}
+\addcontentsline{toc}{part}{Part II: Conformal Prediction in Failure Attribution}
+% =====================================================================
+
+\section{The Failure Attribution Problem}\label{sec:fa}
+
+An LLM-based agentic system solves a task by executing a sequence of steps---model calls, tool calls and observations---often emitted by several cooperating agents. We write a \emph{trajectory} as $x=(c_1,\dots,c_\ell)$, where the length $\ell$ varies from run to run and each step $c_j$ may contain any available information (the acting agent, its output, the tool result). An evaluation function tells us whether the run completed the task; we are interested in runs that \emph{failed}.
+
+\emph{Failure attribution}, formalized by Zhang et al.~\cite{whowhen} with the Who\&When benchmark, asks which step is responsible. The usual target is the \emph{decisive error}: the earliest step from which the system cannot recover, or equivalently the earliest step whose correction would have made the run succeed. We write $\ystar=c_{\jstar}$ for this step and $\jstar\in\{1,\dots,\ell\}$ for its index. Some works instead label a \emph{set} of failure-contributing steps, $y(x)\subseteq\{1,\dots,\ell\}$.
+
+The task is hard. Errors propagate, so the step where the failure becomes visible is often far from the step that caused it, and even frontier reasoning models find the labelled step in fewer than $15\%$ of Who\&When trajectories~\cite{whowhen,oat}. Yet almost every method commits to a \emph{point prediction}---one step---and offers no indication of how far it can be trusted. This is precisely the situation of Section~\ref{sec:cp}: a heuristic notion of uncertainty (some per-step score from an LLM or a learned model) waiting to be made rigorous.
+
+There is a dictionary between the two worlds, and the two papers we read next fill it in differently:
+\begin{center}\small
+\begin{tabular}{@{}ll@{}}\toprule
+Conformal prediction (Part~I) & Failure attribution\\\midrule
+input $X$ & a failed trajectory $x=(c_1,\dots,c_\ell)$ --- or a single step\\
+label $Y$ & the decisive step $\ystar$ --- or ``is this step normal?''\\
+label space $\Y=\{1,\dots,K\}$ & the steps $\{1,\dots,\ell\}$ of that trajectory; size varies with $x$\\
+model $\fhat$ and heuristic uncertainty & a per-step suspicion score from an LLM judge or a learned model\\
+calibration data & labelled failed trajectories --- or unlabelled successful ones\\
+prediction set $\C(X)$ & a set of suspect steps\\\bottomrule
+\end{tabular}
+\end{center}
+The two alternatives on the right-hand side are not cosmetic.
+\begin{keybox}[Two ways to fill in the dictionary]
+\begin{itemize}[leftmargin=1.5em]
+\item Data point $=$ \hl{trajectory}, calibration on \hl{labelled failures} $\Rightarrow$ a \yes{coverage guarantee on the decisive step} (Section~\ref{sec:caea}).
+\item Data point $=$ \hl{step}, calibration on \hl{successful runs} $\Rightarrow$ outlier detection and a \no{false-alarm guarantee only} (Section~\ref{sec:oat}).
+\end{itemize}
+\end{keybox}
+\noindent We take them in the order of increasing closeness to Section~\ref{sec:cp}.
+
+% ---------------------------------------------------------------------
+\section{\textsc{Oat}: Conformal Outlier Detection on Steps}\label{sec:oat}
+
+\textsc{Oat} (One-class Agent Tracing; Yeh, Zhu, Deep and Li~\cite{oat}) is first of all a new \emph{score function} for steps, trained without any step-level label. Conformal prediction enters at the very end, as one of two ways to turn scores into a set.
+
+\begin{claimbox}[Research question and claims of OAT~\cite{oat}]
+\textbf{Research question.} When an agentic system fails, which of its steps went wrong---and can this be answered by a \emph{lightweight} model that needs \emph{neither a frontier LLM at inference nor step-level labels on failures}?
+\begin{description}[leftmargin=2.6em,labelwidth=2.1em,labelsep=0.5em,itemsep=2pt,topsep=4pt]
+\item[\ctag{O1}] \kind{position} ``A practical failure attribution model should be lightweight, deployable without frontier LLM inference, and trainable without step-level supervision on failure data.''
+\item[\ctag{O2}] \kind{problem} \emph{Unsupervised failure attribution}---training only on successful trajectories---is a new problem setting that removes the annotation bottleneck, since successes are a by-product of normal operation.
+\item[\ctag{O3}] \kind{method} A neural CDE with a novel \emph{gated control path} models the dynamics of successful trajectories in latent space; deviation from these dynamics identifies failure-contributing steps.
+\item[\ctag{O4}] \kind{empirical} Trained on about 100 successful trajectories and no failure data, \textsc{Oat} outperforms prompted frontier LLMs, including GPT-5: $+20\%$ F1 in-domain and $+7\%$ F1 out-of-distribution.
+\item[\ctag{O5}] \kind{empirical} Zero token cost at inference and 200--5000$\times$ lower latency than prompting, ``making real-time failure attribution practical for the first time''.
+\item[\ctag{O6}] \kind{guarantee} Conformal detection ``adaptively determines the number of failure-contributing steps \dots\ and provides a formal guarantee that the false positive rate on in-distribution steps is controlled at level $\alpha$''; empirically it is more precise than top-$k$.
+\item[\ctag{O7}] \kind{ablation} Continuous dynamics matter: the CDE beats a neural ODE and an RNN predictor; the gate adds $+0.172$ AUROC out-of-distribution at $-0.028$ in-domain; later-layer representations work best.
+\item[\ctag{O8}] \kind{interpretation} The method transfers across tasks and models because it ``models the dynamics rather than specific behaviors''.
+\end{description}
+Only \ctag{O6} concerns conformal prediction; it is the claim this section examines.
+\end{claimbox}
+
+\subsection*{Problem}
+The authors label a set of steps rather than one decisive step.
+\begin{definition}[Failure-contributing steps~\cite{oat}]\label{def:fcs}
+Given a failed trajectory, step $t$ is \emph{failure-contributing} if (i) its action is erroneous given the query and the prefix---it contains a hallucination, makes an erroneous tool call, or fails to handle a tool error---and (ii) the error is not corrected later and contributes to the failure. The set of such steps is $y(x)\subseteq\{1,\dots,\ell\}$.
+\end{definition}
+Unlike the decisive-error criterion, this does not require that correcting step $t$ alone would rescue the run; failures often arise from several compounding errors.
+\begin{definition}[Unsupervised failure attribution~\cite{oat}]
+Given only a dataset $D_{\rm succ}$ of \emph{successful} trajectories with no step-level annotation, learn a predictor $\psi$ that, at inference time, identifies the failure-contributing steps of a failed trajectory: $\psi(x)\approx y(x)$.
+\end{definition}
+The appeal is practical: successful trajectories are a free by-product of normal operation, whereas step-level labels on failures are expensive and ambiguous.
+
+\subsection*{Heuristic notion of uncertainty: deviation from the flow of success}
+\textsc{Oat} casts the problem as one-class learning in the representation space of an LLM.
+\begin{itemize}[leftmargin=1.5em]
+\item Each step $t$ is represented by a vector $h_t$: the mean-pooled last-layer hidden states of an LLM over the tokens of the step, reduced to 64 dimensions by PCA. The query gives an initial vector $h_Q$.
+\item A neural controlled differential equation~\cite{kidger2020} is trained on successful trajectories to \emph{reconstruct} the sequence $h_1,\dots,h_\ell$. The latent state starts from $h_Q$ and is driven by the derivative of a cubic-spline interpolation of the observed step vectors; a learned gate damps this driving signal when it is unlike anything seen in training. The training loss is the squared reconstruction error $\sum_t\|h_t-\hat h_t\|_2^2$ on $D_{\rm succ}$.
+\item At inference, the \emph{anomaly score} of step $t$ of a failed trajectory is its reconstruction error,
+\begin{equation}\label{eq:oat-score}
+e_t=\|h_t-\hat h_t\|_2^2 .
+\end{equation}
+\end{itemize}
+Since the model has only seen successful runs, it predicts how a well-functioning system would evolve; steps that depart from that prediction receive high scores.
+
+\subsection*{From scores to a set: top-$k$ or conformal detection}
+Two decoders turn $(e_1,\dots,e_\ell)$ into a predicted set $\hat y(x)$.
+\begin{itemize}[leftmargin=1.5em]
+\item \textbf{Top-$k$}: flag the $k$ highest-scoring steps (the paper uses $k=3$). This requires knowing in advance how many erroneous steps a typical failure has.
+\item \textbf{Conformal prediction detection}: hold out a calibration set $D_{\rm cal}\subset D_{\rm succ}$ of successful trajectories, pool the anomaly scores of \emph{all their steps}, and set the threshold to their $1-\alpha$ quantile,
+\begin{equation}\label{eq:oat-cp}
+\delta=\mathrm{Quantile}\Big(1-\alpha;\ \big\{e^{(\tau)}_t\big\}_{\tau\in D_{\rm cal},\ t\in\{1,\dots,T_\tau\}}\Big),\qquad \hat y(x)=\{t:\ e_t>\delta\}.
+\end{equation}
+The paper uses $\alpha=0.2$, with $20\%$ of the 103 successful trajectories held out.
+\end{itemize}
+
+\begin{figure}[H]
+\begin{snugshade}
+\begin{Verbatim}
+# cal_e: anomaly scores of all steps of the held-out successful trajectories (pooled)
+delta = np.quantile(cal_e, 1-alpha)
+# e: anomaly scores of the steps of one failed trajectory
+flagged_steps = np.where(e > delta)[0]
+\end{Verbatim}
+\end{snugshade}
+\caption{\textsc{Oat}'s conformal detection, Eq.~\eqref{eq:oat-cp}. Compare with Figure~\ref{fig:code-outlier}.}
+\label{fig:code-oat}
+\end{figure}
+
+\subsection*{The conformal formulation}
+Placing~\eqref{eq:oat-cp} next to Section~\ref{sec:outlier} shows that this is \emph{conformal outlier detection}, not the set-valued prediction of Section~\ref{sec:cp}:
+\begin{center}\small
+\begin{tabular}{@{}ll@{}}\toprule
+Section~\ref{sec:outlier} & \textsc{Oat}\\\midrule
+data point $X_i$ & one step (with its prefix), \emph{not} one trajectory\\
+clean calibration data & the steps of held-out successful trajectories\\
+score $s(X)$ & reconstruction error $e_t$ of Eq.~\eqref{eq:oat-score}\\
+threshold $\qhat$ & $\delta$, the $1-\alpha$ quantile of pooled calibration scores\\
+$\C(X)=\text{outlier}$ & step $t$ is flagged as failure-contributing\\
+guarantee & $\PP(\text{a normal step is flagged})\le\alpha$\\\bottomrule
+\end{tabular}
+\end{center}
+The authors state the guarantee accordingly (claim \ctag{O6}). No label of any kind is used in calibration, which is what makes the method unsupervised.
+
+\subsection*{What is and is not guaranteed}
+\begin{okbox}[Guaranteed (under exchangeability of steps)]
+A step drawn from the distribution of steps of successful trajectories is flagged with probability at most $\alpha$:
+\[\PP\big(e_t>\delta\ \big|\ \text{step }t\text{ is a normal step}\big)\le\alpha .\]
+With $\alpha=0.2$, about one normal step in five is flagged.
+\end{okbox}
+\begin{nobox}[Not guaranteed: that the true error is in the set]
+By Section~\ref{sec:outlier} the guarantee is one-sided. Nothing bounds the probability that a failure-contributing step is missed, and the phrase ``miscoverage rate $\alpha$'' should not be read as a statement like~\eqref{eq:coverage} about $y(x)$. Empirically (Table~\ref{tab:oat}) the conformal sets contain $48\%$ of the labelled steps on MCP-Atlas and contain the decisive step of a Who\&When trajectory $33\%$ of the time.
+\end{nobox}
+\begin{oursbox}[Our reading of claim O6 (not claims of the paper)]
+\begin{itemize}[leftmargin=1.5em]
+\item \textbf{The exchangeability that is needed is delicate.} First, the data points are steps, pooled across trajectories; steps of one trajectory are dependent and have different positions, so step-level exchangeability is an approximation. Second, the test steps come from \emph{failed} trajectories, and even their error-free steps need not be distributed like steps of successful runs. Third, in the out-of-distribution experiment the test trajectories come from a different system (Who\&When), where no part of the guarantee applies.
+\item \textbf{Small details.} Eq.~\eqref{eq:oat-cp} uses the plain $1-\alpha$ quantile rather than the corrected $\lceil(n+1)(1-\alpha)\rceil/n$ level, which matters little when many steps are pooled; and the same held-out $20\%$ is used for early stopping and for the threshold.
+\item \textbf{``Adaptive'' means something different here.} In \ctag{O6} the number of flagged steps adapts to the scores of the trajectory, as with any threshold. It is not the adaptiveness of Section~\ref{sec:raps}, which concerns coverage of the true label on easy and hard inputs.
+\end{itemize}
+\end{oursbox}
+
+\subsection*{Results}
+Training uses 103 successful trajectories of a Qwen3.5-27B tool-calling agent on MCP-Atlas; evaluation uses 88 failed MCP-Atlas trajectories annotated by the authors with Definition~\ref{def:fcs} (in-domain) and the 184 Who\&When trajectories (out-of-distribution, single decisive step). Table~\ref{tab:oat} reproduces the main numbers. Conformal detection is the more precise decoder and top-$k$ the one with higher recall; both run in milliseconds, 200--5000 times faster than prompting.
+
+\begin{table}[H]
+\centering\small
+\begin{tabular}{@{}lcccc@{\qquad}cccc@{}}\toprule
+ & \multicolumn{4}{c}{MCP-Atlas (in-domain)} & \multicolumn{4}{c}{Who\&When (OOD)}\\
+Approach & Prec. & Recall & F1 & Hit & Prec. & Recall & F1 & Hit\\\midrule
+GPT-4o (prompting) & 0.233 & 0.210 & 0.212 & 0.250 & 0.129 & 0.198 & 0.151 & 0.198\\
+GPT-5 (prompting) & 0.217 & 0.183 & 0.181 & 0.250 & 0.111 & 0.275 & 0.152 & 0.275\\
+\textsc{Oat} (top-$k$, $k=3$) & 0.321 & 0.706 & 0.420 & 0.777 & 0.150 & 0.451 & 0.225 & 0.451\\
+\textsc{Oat} (CP, $\alpha=0.2$) & 0.443 & 0.484 & 0.435 & 0.566 & 0.184 & 0.330 & 0.211 & 0.330\\\bottomrule
+\end{tabular}
+\caption{Results of \textsc{Oat} (from Tables~1 and~2 of~\cite{oat}). Hit is the fraction of trajectories whose predicted set contains at least one labelled step; on Who\&When there is one label per trajectory, so recall and hit coincide and are the empirical coverage of the decisive step.}
+\label{tab:oat}
+\end{table}
+
+\begin{keybox}[OAT in one sentence]
+\textsc{Oat} contributes a label-free \emph{score} and uses conformal prediction to choose a threshold with a controlled \emph{false-alarm rate}. It does not attempt the guarantee ``the set contains the error''; for that we need labelled failures in the calibration set, which is the setting of the next section.
+\end{keybox}
+
+% ---------------------------------------------------------------------
+\section{Conformal Agent Error Attribution: Coverage of the Decisive Step}\label{sec:caea}
+
+Feng, Sui, Hou, Wu and Cresswell~\cite{caea} apply the set-valued conformal prediction of Section~\ref{sec:cp} to failure attribution directly, and add a structural requirement: the predicted set should be a \emph{contiguous} block of steps.
+
+\begin{claimbox}[Research question and claims of Conformal Agent Error Attribution~\cite{caea}]
+\textbf{Research question.} Point predictions of the error step ``offer no principled form of uncertainty quantification''. Can attribution instead return a \emph{localized region} of the trace that is ``guaranteed to contain the decisive error at a user-specified confidence level''---and can that region be \emph{contiguous}, so that it supports debugging and automated rollback?
+\begin{description}[leftmargin=2.6em,labelwidth=2.1em,labelsep=0.5em,itemsep=2pt,topsep=4pt]
+\item[\ctag{A1}] \kind{framework} An uncertainty-aware framework for error attribution in multi-agent systems with ``finite-sample, distribution-free coverage guarantees''; it is model-agnostic and can wrap existing black-box attribution scores.
+\item[\ctag{A2}] \kind{method, theory} Novel \emph{filtration-based} conformal algorithms for sequential data (left, right and two-way filtration). ``Unlike existing CP approaches that produce arbitrary sets'', they produce contiguous sets, with both a lower and an upper bound on coverage (Theorem~\ref{thm:lf}).
+\item[\ctag{A3}] \kind{empirical} The guarantees are verified: empirical coverage tracks the target for every algorithm, and exchangeability is a reasonable assumption for the task.
+\item[\ctag{A4}] \kind{empirical} ``Conformal error attribution is most successful when the CP algorithm is matched to the data's error distribution'', which is ``simple to achieve in practice'' by inspecting the calibration data.
+\item[\ctag{A5}] \kind{empirical} ``Filtering algorithms are less dependent on the discriminatory power of the scoring function'' than the baselines, so they work with simple scorers and remain practical when labelled data are too scarce to fine-tune a judge.
+\item[\ctag{A6}] \kind{efficiency} One-sided filtration needs about $\frac12(\ell+1)$ evaluations of the scorer instead of $\ell$; right filtration uses $36\%$ of the calls on left-dense data.
+\item[\ctag{A7}] \kind{downstream} Prediction sets enable automated \emph{rollback}: left filtration reaches the highest success rate ``by a small margin, within one standard deviation of baselines'', and ``is the only method which gives control over coverage''.
+\item[\ctag{A8}] \kind{stated limits} Exchangeable data are required; the algorithm must be matched to the error distribution; a single decisive error is assumed.
+\end{description}
+\end{claimbox}
+
+\subsection*{Problem}
+The data point is a whole failed trajectory $x=(c_1,\dots,c_\ell)$ with a single labelled decisive error $\ystar=c_{\jstar}$---the earliest error that the system cannot recover from. Given calibration trajectories $\{(x_i,\ystar_i)\}_{i=1}^n$ and a new failed trajectory $x_{n+1}$, produce a set of steps with
+\begin{equation}\label{eq:caea-goal}
+\PP\big[\ystar_{n+1}\in\C(x_{n+1};\qhat)\big]\ge1-\alpha,\qquad\C(x_{n+1};\qhat)=(c_j,\dots,c_k)\ \text{ contiguous},
+\end{equation}
+with smaller sets preferred. Contiguity is motivated by use: a person debugs consecutive steps more easily than scattered ones, and an automated \emph{rollback} needs a single restart point.
+
+Two components are designed separately and are interchangeable: a \emph{conformal algorithm} that turns scores and calibration data into sets, and a \emph{scoring function} $g$ that says how likely a step, or a block of steps, is to contain $\ystar$.
+
+\subsection*{Baseline 1: vanilla conformal prediction on steps}
+The simplest approach ignores the order of the steps and treats them as $\ell$ unordered classes. With a per-step likelihood $g(c_i)\in[0,1]$, the score and the set are
+\[S_{\rm VCP}(x,c_i)=1-g(c_i),\qquad\C_{\rm VCP}(x_{n+1};\qhat)=\{c_i\in x_{n+1}:\ 1-g(c_i)\le\qhat\}.\]
+This is exactly the procedure of Section~\ref{sec:cp}, with the step likelihood in place of the softmax output. The only novelty is that the number of ``classes'' $\ell$ changes from one data point to the next. This is harmless: the proof of Theorem~\ref{thm:coverage} never mentions the label space, only the exchangeability of the scores $S(x_i,\ystar_i)$, and the length $\ell_i$ can be regarded as part of the random input $x_i$. Vanilla CP needs $\ell$ evaluations of $g$ per trajectory and does not produce contiguous sets.
+
+\subsection*{Baseline 2: leaf-to-root tree traversal}
+To obtain contiguous sets one can borrow from hierarchical classification~\cite{mortier2026}: place the steps at the leaves of a binary tree whose internal nodes are blocks of consecutive steps (the root is the whole trajectory), start at the most likely leaf, and climb towards the root until a calibrated threshold is passed. The output is one node of the tree, hence contiguous. Its drawbacks are that the possible sets are fixed by the tree's splits (two adjacent steps on either side of the middle can only be returned together with the entire trajectory), and that it has no upper bound on coverage.
+
+\subsection*{Left and right filtration}
+The paper's own algorithms follow the nested-sets recipe of Section~\ref{sec:raps}. Let $c_{j:k}=(c_j,\dots,c_k)$ denote a block of steps, and let $g_\LF$ be a scoring function on blocks, larger when the block is more likely to contain $\ystar$, with $g_\LF(\emptyset)=0$. It is desirable, but not mandatory, that $g_\LF$ be \emph{monotone}:
+\begin{equation}\label{eq:mono}
+c_{b:c}\subseteq c_{a:d}\ \Longrightarrow\ g_\LF(c_{b:c})\le g_\LF(c_{a:d}).
+\end{equation}
+
+\emph{Left filtration} (LF) removes steps from the left, starting with $c_1$, and returns a \emph{suffix} of the trajectory. The \emph{filtering function} returns the longest suffix whose score is at most $q$:
+\begin{equation}\label{eq:FLF}
+\F_\LF(x;q)=\mathop{\arg\max}_{c_{j:\ell},\ 1\le j\le\ell+1}\big\{|c_{j:\ell}|\ :\ g_\LF(c_{j:\ell})\le q\big\}.
+\end{equation}
+As $q$ decreases, more steps are filtered out; as $q\to\infty$ the whole trajectory is returned.
+
+\begin{lemma}[Nesting~\cite{caea}]\label{lem:nest}
+For any $x$ and thresholds $0\le q_1\le q_2$, $\F_\LF(x;q_1)\subseteq\F_\LF(x;q_2)$.
+\end{lemma}
+\noindent This holds because suffixes are nested in one another and raising $q$ can only enlarge the collection of admissible suffixes.
+
+So $\{\F_\LF(x;q)\}_q$ is a nested family of sets, and the general recipe applies: the conformal score of a labelled trajectory is the smallest threshold at which the decisive error is \emph{not} filtered out,
+\begin{equation}\label{eq:SLF}
+S_\LF(x,\ystar)=\inf\big\{q\in\R^+:\ \ystar\in\F_\LF(x;q)\big\}.
+\end{equation}
+
+\begin{proposition}[Closed form under monotonicity~\cite{caea}]\label{prop:closed}
+When $g_\LF$ obeys~\eqref{eq:mono}, the score is simply the value of $g_\LF$ on the suffix that starts at the decisive error: $S_\LF(x,\ystar)=g_\LF(c_{\jstar:\ell})$.
+\end{proposition}
+
+\begin{lemma}[\cite{caea}]\label{lem:equiv}
+For a fixed $\qhat$, $\ S_\LF(x,\ystar)\le\qhat\iff\ystar\in\F_\LF(x;\qhat)$.
+\end{lemma}
+
+The LF conformal algorithm is then the four steps of Section~\ref{sec:instructions}: compute $S_\LF(x_i,\ystar_i)$ on the calibration trajectories, set $\qhat$ to their $\lceil(n+1)(1-\alpha)\rceil/n$ quantile, and predict $\C_\LF(x_{n+1};\qhat)=\F_\LF(x_{n+1};\qhat)$.
+
+\begin{theorem}[Coverage of left filtration~\cite{caea}]\label{thm:lf}
+Suppose $\{(x_i,\ystar_i)\}_{i=1}^n$ and $(x_{n+1},\ystar_{n+1})$ are exchangeable, and let $\qhat$ be the $\lceil(n+1)(1-\alpha)\rceil/n$ quantile of the scores $\{S_\LF(x_i,\ystar_i)\}_{i=1}^n$. Then
+\[1-\alpha\ \le\ \PP\big[\ystar_{n+1}\in\C_\LF(x_{n+1};\qhat)\big]\ <\ 1-\alpha+\frac{1}{n+1}.\]
+\end{theorem}
+\begin{proof}
+By Lemma~\ref{lem:equiv} the event $\{\ystar_{n+1}\in\F_\LF(x_{n+1};\qhat)\}$ equals $\{S_{n+1}\le\qhat\}$. From here the proof is that of Theorem~\ref{thm:coverage}: the scores are exchangeable, so (assuming no ties) $\PP[S_{n+1}\le\qhat]=\lceil(n+1)(1-\alpha)\rceil/(n+1)$, which lies in the stated interval.
+\end{proof}
+The guarantee holds for \emph{any} scoring function $g_\LF$; monotonicity only buys the closed form of Proposition~\ref{prop:closed} and cheaper inference. With a monotone $g_\LF$, prediction starts from the last step and grows the suffix leftwards until the score exceeds $\qhat$, so it stops early when errors are late.
+
+\emph{Right filtration} (RF) is the mirror image: with a scoring function $g_\RF$ it filters from the right and returns the longest \emph{prefix} $c_{1:k}$ with $g_\RF(c_{1:k})\le q$. Under monotonicity $S_\RF(x,\ystar)=g_\RF(c_{1:\jstar})$, and the same theorem holds. RF is preferable when errors tend to occur early in the trajectory.
+
+\subsection*{Two-way filtration}
+One-sided filtering has an obvious weakness: when the decisive error is at the start, the suffix that covers it is the whole trajectory (and symmetrically for prefixes), and an error in the middle cannot be isolated from both sides. \emph{Two-way filtration} (TWF) intersects the two:
+\begin{equation}\label{eq:FTWF}
+\F_\TWF(x;q)=\F_\LF(x;q)\cap\F_\RF(x;q).
+\end{equation}
+The intersection of two nested families is nested, and the score $S_\TWF(x,\ystar)=\inf\{q:\ystar\in\F_\TWF(x;q)\}$ has a simple form.
+\begin{proposition}[\cite{caea}]\label{prop:twf}
+$S_\TWF(x,\ystar)=\max\{S_\LF(x,\ystar),S_\RF(x,\ystar)\}$. When $g_\LF$ and $g_\RF$ are monotone, $S_\TWF(x,\ystar)=\max\{g_\LF(c_{\jstar:\ell}),\,g_\RF(c_{1:\jstar})\}$.
+\end{proposition}
+\noindent The threshold must be high enough for the error to survive filtering from both sides, hence the maximum. Calibration and prediction proceed as before, and the coverage statement of Theorem~\ref{thm:lf} holds verbatim for TWF. The intersection may be empty, in which case one can fall back to the single most likely step. Figure~\ref{fig:filtration} illustrates the three algorithms, Figure~\ref{fig:code-lf} gives the code, and Table~\ref{tab:algos} summarizes their properties.
+
+\begin{figure}[H]
+\centering
+\setlength{\unitlength}{0.95cm}
+\begin{picture}(14.2,4.5)
+% trajectory
+\put(0,3.95){\makebox(3,0.62)[l]{\small trajectory $x$}}
+\cell{3.2}{3.95}{white}{$c_1$}\cell{4.2}{3.95}{white}{$c_2$}\cell{5.2}{3.95}{white}{$c_3$}\cell{6.2}{3.95}{errred}{$\ystar$}\cell{7.2}{3.95}{white}{$c_5$}
+\cell{8.2}{3.95}{white}{$c_6$}\cell{9.2}{3.95}{white}{$c_7$}\cell{10.2}{3.95}{white}{$c_8$}\cell{11.2}{3.95}{white}{$c_9$}\cell{12.2}{3.95}{white}{$c_{10}$}
+% LF
+\put(0,2.75){\makebox(3,0.62)[l]{\small left filtration}}
+\cell{3.2}{2.75}{lightgray}{}\cell{4.2}{2.75}{lightgray}{}\cell{5.2}{2.75}{setblue}{}\cell{6.2}{2.75}{errred}{}\cell{7.2}{2.75}{setblue}{}
+\cell{8.2}{2.75}{setblue}{}\cell{9.2}{2.75}{setblue}{}\cell{10.2}{2.75}{setblue}{}\cell{11.2}{2.75}{setblue}{}\cell{12.2}{2.75}{setblue}{}
+\put(3.2,2.5){\vector(1,0){1.9}}\put(3.25,2.18){\scriptsize remove while $g_\LF(\text{suffix})>\qhat$}
+% RF
+\put(0,1.45){\makebox(3,0.62)[l]{\small right filtration}}
+\cell{3.2}{1.45}{setblue}{}\cell{4.2}{1.45}{setblue}{}\cell{5.2}{1.45}{setblue}{}\cell{6.2}{1.45}{errred}{}\cell{7.2}{1.45}{setblue}{}
+\cell{8.2}{1.45}{setblue}{}\cell{9.2}{1.45}{lightgray}{}\cell{10.2}{1.45}{lightgray}{}\cell{11.2}{1.45}{lightgray}{}\cell{12.2}{1.45}{lightgray}{}
+\put(13.2,1.2){\vector(-1,0){3.9}}\put(9.4,0.88){\scriptsize remove while $g_\RF(\text{prefix})>\qhat$}
+% TWF
+\put(0,0.1){\makebox(3,0.62)[l]{\small two-way filtration}}
+\cell{3.2}{0.1}{lightgray}{}\cell{4.2}{0.1}{lightgray}{}\cell{5.2}{0.1}{setblue}{}\cell{6.2}{0.1}{errred}{}\cell{7.2}{0.1}{setblue}{}
+\cell{8.2}{0.1}{setblue}{}\cell{9.2}{0.1}{lightgray}{}\cell{10.2}{0.1}{lightgray}{}\cell{11.2}{0.1}{lightgray}{}\cell{12.2}{0.1}{lightgray}{}
+\end{picture}
+\caption{The three filtration algorithms on a ten-step trajectory whose decisive error is $c_4$ (red). Blue and red steps form the prediction set; grey steps are filtered out. Left filtration returns a suffix, right filtration a prefix, and two-way filtration their intersection.}
+\label{fig:filtration}
+\end{figure}
+
+\begin{figure}[H]
+\begin{snugshade}
+\begin{Verbatim}
+# p: per-step likelihoods LLM(c_1..c_l) of one trajectory; jstar: 0-based index of the error
+def suffix_mass(p): return np.cumsum(p[::-1])[::-1] / len(p)   # g_LF(c_{j:l}) for every j
+def prefix_mass(p): return np.cumsum(p) / len(p)               # g_RF(c_{1:k}) for every k
+# 1: conformal scores on the calibration trajectories (closed forms under monotonicity)
+S_LF  = np.array([suffix_mass(p)[j] for p, j in calib])
+S_TWF = np.array([max(suffix_mass(p)[j], prefix_mass(p)[j]) for p, j in calib])
+# 2: adjusted quantile
+qhat = np.quantile(S_LF, np.ceil((n+1)*(1-alpha))/n, method='higher')
+# 3: prediction set for a new trajectory = longest suffix with mass <= qhat
+keep = np.where(suffix_mass(p_test) <= qhat)[0]
+C_LF = np.arange(keep[0], len(p_test)) if len(keep) > 0 else np.array([])
+\end{Verbatim}
+\end{snugshade}
+\caption{Python code for left filtration with the normalized-sum scoring function of Eq.~\eqref{eq:sumscore}. Two-way filtration calibrates on \texttt{S\_TWF} and intersects the longest admissible suffix with the longest admissible prefix.}
+\label{fig:code-lf}
+\end{figure}
+
+\begin{table}[H]
+\centering\small
+\begin{tabular}{@{}lccc@{}}\toprule
+Method & Contiguous sets & Evaluations of $g$ at inference & Coverage upper bound\\\midrule
+Vanilla CP & no & $\ell$ & yes\\
+Tree traversal~\cite{mortier2026} & yes & $\ell$ & no\\
+Left / right filtration & yes & $\approx\frac12(\ell+1)$ & yes\\
+Two-way filtration & yes & $\ell$ & yes\\\bottomrule
+\end{tabular}
+\caption{Properties of the five conformal algorithms compared in~\cite{caea}. The evaluation count for one-sided filtration assumes a strong, monotone $g$ and uniformly placed errors.}
+\label{tab:algos}
+\end{table}
+
+\subsection*{Scoring functions}
+Every algorithm above needs a heuristic notion of uncertainty. The paper obtains a per-step likelihood $\mathrm{LLM}(c_i)\in[0,1]$ in three ways:
+\begin{enumerate}[leftmargin=1.8em]
+\item a \emph{naive LLM judge} (gpt-4o-mini) prompted with the task, the correct answer, the wrong answer and one step, asked for the probability that the critical error occurs in that step;
+\item a \emph{role-prompted} ensemble: four judges with conservative, liberal, skeptical and pattern-seeking instructions, whose confidences are averaged;
+\item a \emph{fine-tuned} small model (Qwen3-1.7B) trained on 4{,}000 trajectories with synthetically injected errors.
+\end{enumerate}
+Vanilla CP uses the step likelihoods directly. The filtration algorithms need scores for blocks, obtained by a monotone aggregation; the main choice is the sum normalized by the trajectory length,
+\begin{equation}\label{eq:sumscore}
+g(c_{j:k})=\frac{1}{\ell}\sum_{i=j}^{k}\mathrm{LLM}(c_i),
+\end{equation}
+with maximum and log-sum-exp aggregations as alternatives. A small example: for $\ell=5$ and step likelihoods $(0.1,0.6,0.1,0.1,0.1)$ with the error at $\jstar=2$, the suffix from the error has mass $0.9/5=0.18$ and the prefix up to it $0.7/5=0.14$, so $S_\LF=0.18$, $S_\RF=0.14$ and $S_\TWF=0.18$.
+
+\subsection*{Downstream use: conformal rollbacks}
+Given a prediction set for a failed run, the state of the system is rolled back to the \emph{first step of the set} and the run is restarted, with the failed trace added to the prompt and an instruction to avoid the same mistake. Coverage ensures, with the chosen confidence, that the rollback goes far enough to undo the decisive error; contiguity keeps it from going much further.
+
+\subsection*{Experiments and results}
+\begin{itemize}[leftmargin=1.5em]
+\item \textbf{Data.} Who\&When (184 human-labelled natural failures), and synthetic failures obtained by injecting an error at a uniformly chosen step of MACNET and DyLAN runs on GSM8k and MATH (1{,}200 failed trajectories per combination, about 8.5 steps each). The GSM8k data are sub-sampled into \emph{Left-}, \emph{Mid-} and \emph{Right-Dense} variants according to which third of the trajectory holds the error.
+\item \textbf{Metrics.} \emph{Empirical coverage}, the fraction of test trajectories whose set contains $\ystar$; and \emph{removal rate}, $\mathrm{RR}=\frac1m\sum_i\big(1-|\C(x_i)|/\ell_i\big)$, the average fraction of the trajectory filtered out (higher means smaller sets). All numbers average over 1{,}000 random even splits into calibration and test data.
+\item \textbf{Coverage.} Empirical coverage tracks the target $1-\alpha$ for every algorithm, as the theory predicts.
+\item \textbf{Scoring functions.} As step classifiers the naive judge is barely better than chance (AUROC $0.519$), role prompting helps a little ($0.554$), and fine-tuning helps substantially ($0.762$).
+\item \textbf{Set size.} Table~\ref{tab:caea} shows the removal rate at $80\%$ target coverage. Which filtration works depends on where errors sit: RF on left-dense data (and on Who\&When, whose errors are skewed early), TWF on mid-dense, LF on right-dense. The authors recommend choosing the algorithm by inspecting the error positions in the calibration data.
+\item \textbf{Rollbacks.} On 100 GSM8k trajectories per variant, restarting from the first step of an LF set gives success rates of $0.68$--$0.77$, within one standard deviation of restarting from the single most likely step; LF is the only method whose rollback coverage sits at the requested $80\%$.
+\end{itemize}
+
+\begin{table}[H]
+\centering\small
+\begin{tabular}{@{}l@{\quad}c@{\qquad}ccc@{\qquad}ccc@{}}\toprule
+ & Who\&When & \multicolumn{3}{c}{GSM8k, naive LLM judge} & \multicolumn{3}{c}{GSM8k, fine-tuned judge}\\
+Method & naive judge & Left & Mid & Right & Left & Mid & Right\\\midrule
+Vanilla CP & 0.20 & 0.21 & 0.18 & 0.16 & \textbf{0.78} & \textbf{0.66} & 0.34\\
+Tree traversal & 0.21 & 0.58 & 0.29 & 0.21 & 0.69 & 0.36 & 0.24\\
+Left filtration & 0.12 & 0.10 & 0.31 & \textbf{0.53} & 0.09 & 0.31 & \textbf{0.52}\\
+Right filtration & \textbf{0.31} & \textbf{0.64} & 0.43 & 0.20 & 0.65 & 0.44 & 0.20\\
+Two-way filtration & 0.19 & 0.17 & \textbf{0.59} & 0.40 & 0.18 & 0.63 & 0.40\\\bottomrule
+\end{tabular}
+\caption{Removal rate at $1-\alpha=0.8$ (from Table~3 of~\cite{caea}; DyLAN agent on the GSM8k variants; higher is better; best per column in bold). Fine-tuning is not possible on Who\&When for lack of data.}
+\label{tab:caea}
+\end{table}
+
+\subsection*{What is and is not guaranteed}
+\begin{okbox}[Guaranteed (under exchangeability of trajectories)]
+For any scoring function and any of the algorithms above, the set contains the labelled decisive step with probability at least $1-\alpha$ (claims \ctag{A1}, \ctag{A2}):
+\[1-\alpha\ \le\ \PP\big[\ystar_{n+1}\in\C(x_{n+1};\qhat)\big]\ <\ 1-\alpha+\tfrac{1}{n+1}\quad\text{(upper bound: all but tree traversal)}.\]
+\end{okbox}
+\begin{nobox}[Not guaranteed]
+Coverage for a \emph{particular} trajectory length, agent system or error position (the guarantee is marginal); that the set is small; coverage of \emph{all} errors when there are several; anything when calibration and test failures come from different distributions.
+\end{nobox}
+
+\subsection*{Reading the results with Part I in mind}
+\begin{oursbox}[Our reading (not claims of the paper)]
+These remarks connect the paper to Part~I and are meant as starting points for discussion.
+\begin{itemize}[leftmargin=1.5em]
+\item \textbf{This is Section~\ref{sec:cp} with a structured family of sets.} Vanilla CP uses the score $1-\fhat(x)_y$; the filtrations are nested-set constructions in the sense of Eq.~\eqref{eq:ccal}, so Theorem~\ref{thm:lf} is Theorem~\ref{thm:coverage}. Neither the cumulative score of APS nor the rank penalty of RAPS is used.
+\item \textbf{The filtration sets are nearly insensitive to the judge (claim \ctag{A5}).} In Table~\ref{tab:caea} the removal rates of LF, RF and TWF are almost the same with the naive judge (AUROC $0.52$) and the fine-tuned one ($0.76$), whereas vanilla CP improves from $0.21$ to $0.78$. The authors read this as robustness. An alternative reading follows from Eq.~\eqref{eq:sumscore}: when step likelihoods are roughly flat, the normalized mass of a suffix is close to the \emph{fraction of the trajectory} it spans, so the conformal score is close to the relative position of the error and the set is close to a fixed fraction of the trajectory. The guarantee is intact, but in the language of Section~\ref{sec:raps} such sets are valid without being adaptive, much like a calibrated top-$k$ set.
+\item \textbf{Contiguity has a price when the judge is good (claim \ctag{A2}).} With the fine-tuned judge on left-dense data, non-contiguous vanilla sets remove $78\%$ of the trajectory and the best contiguous method $65\%$.
+\item \textbf{The guarantee is marginal and the calibration sets are small (claim \ctag{A3}).} On Who\&When, half of 184 trajectories calibrate the threshold; by the remark after Theorem~\ref{thm:coverage} the realized coverage of any one split varies by several points. Nothing is claimed conditionally on trajectory length, system, or error position---the questions that Sections~\ref{sec:group} and~\ref{sec:class} and the SSCV metric~\eqref{eq:sscv} are designed to ask.
+\item \textbf{One label per trajectory (claim \ctag{A8}).} The method assumes a single decisive error. The authors note that the multiple-error setting could be handled by a guarantee on the recall over all errors; this is conformal risk control with the false-negative-rate loss of Section~\ref{sec:crc}.
+\item \textbf{Exchangeability is between trajectories.} Calibration and test failures must come from the same system and task distribution; calibrating on injected errors and testing on natural ones is outside the guarantee.
+\item \textbf{Rollback needs less than two-sided coverage (claim \ctag{A7}).} A rollback succeeds in covering the error as soon as the set \emph{starts} at or before it, so only the left end of the set matters; restarting from the single most likely step already reaches $86$--$92\%$ rollback coverage in the paper's Table~5.
+\end{itemize}
+\end{oursbox}
+
+% ---------------------------------------------------------------------
+\section{The Two Formulations Side by Side}\label{sec:compare}
+
+Table~\ref{tab:compare} sets the two works against each other in the vocabulary of Part~I. They are complementary rather than competing: they calibrate on different data and control different errors.
+
+\begin{table}[H]
+\centering\small
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{@{}p{3.1cm}p{5.6cm}p{6.1cm}@{}}\toprule
+ & \textsc{Oat}~\cite{oat} & Conformal Agent Error Attribution~\cite{caea}\\\midrule
+Target label & set of failure-contributing steps & single decisive error step\\
+Exchangeable unit & a step & a failed trajectory\\
+Calibration data & steps of successful runs, unlabelled & failed runs with the decisive step labelled\\
+Heuristic uncertainty & reconstruction error of a neural CDE trained on successful runs & per-step likelihood from an LLM judge (naive, role-prompted or fine-tuned)\\
+Conformal score & $e_t=\|h_t-\hat h_t\|_2^2$ & $1-g(c_i)$; or $g$ of the suffix / prefix at the error\\
+Type of procedure & outlier detection (\S\ref{sec:outlier}) & set-valued prediction (\S\ref{sec:cp}) with nested sets (\S\ref{sec:raps})\\
+Guarantee & $\PP(\text{normal step flagged})\le\alpha$ & $1-\alpha\le\PP(\ystar\in\C(x))<1-\alpha+\frac1{n+1}$\\
+Not guaranteed & that an erroneous step is flagged & anything conditional on length, position or system; more than one error\\
+Shape of the set & arbitrary subset of steps & arbitrary (vanilla) or contiguous (filtration)\\
+Labels needed & outcome of each run only & step-level label on every calibration failure\\\bottomrule
+\end{tabular}
+\caption{Two ways of applying conformal prediction to failure attribution.}
+\label{tab:compare}
+\end{table}
+
+Three lessons from Part~I carry over directly and organize what remains open.
+\begin{keybox}[Three lessons]
+\begin{itemize}[leftmargin=1.5em]
+\item \textbf{Ask what is calibrated and which error is controlled.} A threshold fitted on clean data controls false alarms; only a threshold fitted on labelled failures can control the probability of missing the error. A statement of the form ``the set contains the decisive step with probability $1-\alpha$'' therefore needs step-labelled failed trajectories that are exchangeable with the test trajectories.
+\item \textbf{The guarantee is cheap; the score is everything.} Both papers obtain valid guarantees with a few lines of calibration. Whether the resulting sets are small and adaptive depends on the score, and the progression of Part~I---from $1-\fhat(x)_y$ to APS to RAPS---shows how much room there is between a valid set and a useful one.
+\item \textbf{Marginal validity leaves the interesting questions.} Coverage that holds on average may fail for long trajectories, for a particular agent system, or for errors in a particular position, and labels may be sets rather than single steps. The extensions of Section~\ref{sec:ext} are the tools for these questions.
+\end{itemize}
+\end{keybox}
+
+% ---------------------------------------------------------------------
+\begin{thebibliography}{99}\small
+\bibitem{gentle} A.~N. Angelopoulos and S.~Bates. A gentle introduction to conformal prediction and distribution-free uncertainty quantification. \emph{arXiv:2107.07511}, 2021. Published as: Conformal prediction: A gentle introduction, \emph{Foundations and Trends in Machine Learning}, 16(4), 2023.
+\bibitem{vovk2005} V.~Vovk, A.~Gammerman, and G.~Shafer. \emph{Algorithmic Learning in a Random World}. Springer, 2005.
+\bibitem{vovk1999} V.~Vovk, A.~Gammerman, and C.~Saunders. Machine-learning applications of algorithmic randomness. In \emph{International Conference on Machine Learning}, 1999.
+\bibitem{papadopoulos2002} H.~Papadopoulos, K.~Proedrou, V.~Vovk, and A.~Gammerman. Inductive confidence machines for regression. In \emph{European Conference on Machine Learning}, 2002.
+\bibitem{lei2018} J.~Lei, M.~G'Sell, A.~Rinaldo, R.~J. Tibshirani, and L.~Wasserman. Distribution-free predictive inference for regression. \emph{Journal of the American Statistical Association}, 113(523), 2018.
+\bibitem{sadinle2019} M.~Sadinle, J.~Lei, and L.~Wasserman. Least ambiguous set-valued classifiers with bounded error levels. \emph{Journal of the American Statistical Association}, 114:223--234, 2019.
+\bibitem{romano2020} Y.~Romano, M.~Sesia, and E.~J. Cand\`es. Classification with valid and adaptive coverage. \emph{arXiv:2006.02544}, 2020.
+\bibitem{raps} A.~N. Angelopoulos, S.~Bates, J.~Malik, and M.~I. Jordan. Uncertainty sets for image classifiers using conformal prediction. In \emph{International Conference on Learning Representations}, 2021. \emph{arXiv:2009.14193}.
+\bibitem{vovk2012} V.~Vovk. Conditional validity of inductive conformal predictors. In \emph{Proceedings of the Asian Conference on Machine Learning}, vol.~25, pp.~475--490, 2012.
+\bibitem{crc} A.~N. Angelopoulos, S.~Bates, A.~Fisch, L.~Lei, and T.~Schuster. Conformal risk control. \emph{arXiv:2208.02814}, 2022.
+\bibitem{ltt} A.~N. Angelopoulos, S.~Bates, E.~J. Cand\`es, M.~I. Jordan, and L.~Lei. Learn then test: Calibrating predictive algorithms to achieve risk control. \emph{arXiv:2110.01052}, 2021.
+\bibitem{bates2023} S.~Bates, E.~Cand\`es, L.~Lei, Y.~Romano, and M.~Sesia. Testing for outliers with conformal p-values. \emph{The Annals of Statistics}, 51(1), 2023.
+\bibitem{whowhen} S.~Zhang, M.~Yin, J.~Zhang, J.~Liu, Z.~Han, J.~Zhang, B.~Li, C.~Wang, H.~Wang, Y.~Chen, and Q.~Wu. Which agent causes task failures and when? On automated failure attribution of LLM multi-agent systems. In \emph{International Conference on Machine Learning}, 2025.
+\bibitem{oat} S.~Yeh, Y.~Zhu, S.~Deep, and S.~Li. Tracing agentic failure from the flow of success. \emph{arXiv:2607.12747}, 2026.
+\bibitem{caea} N.~Feng, Y.~Sui, S.~Hou, G.~Wu, and J.~C. Cresswell. Conformal agent error attribution. \emph{arXiv:2605.06788}, 2026.
+\bibitem{kidger2020} P.~Kidger, J.~Morrill, J.~Foster, and T.~Lyons. Neural controlled differential equations for irregular time series. In \emph{Advances in Neural Information Processing Systems}, 2020.
+\bibitem{mortier2026} T.~Mortier, A.~Javanmardi, Y.~Sale, E.~H\"ullermeier, and W.~Waegeman. Conformal prediction in hierarchical classification with constrained representation complexity. In \emph{International Conference on Artificial Intelligence and Statistics}, 2026.
+\end{thebibliography}
+
+\end{document}

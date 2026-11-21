@@ -1,0 +1,5 @@
+# EXAMPLE setup file. Delete with the rest of the example.
+hub_id: example-org/example-lm-32l
+n_layers: 32
+dtype: bf16
+attn_implementation: flash_attention_2

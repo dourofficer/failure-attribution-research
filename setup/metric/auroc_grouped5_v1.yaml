@@ -1,0 +1,9 @@
+# EXAMPLE setup file. Delete with the rest of the example.
+metric: auroc
+cv: GroupKFold
+n_folds: 5
+group_key: source_id
+probe:
+  type: logistic
+  C: 1.0
+  max_iter: 2000

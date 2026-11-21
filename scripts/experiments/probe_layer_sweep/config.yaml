@@ -1,0 +1,8 @@
+# EXAMPLE experiment config. `setup` names shared setup files by id (setup/<kind>/<id>.yaml);
+# `params` holds what is specific to this experiment. Never override a setup field here.
+setup:
+  dataset: example_dev_v1
+  model: example_lm_v1
+  metric: auroc_grouped5_v1
+params:
+  layers: all

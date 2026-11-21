@@ -1,0 +1,557 @@
+<title>Conformal Failure Attribution Pipelines</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Space+Grotesk:wght@500;600&display=swap">
+<script>
+window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},svg:{fontCache:'none'},
+  startup:{pageReady(){return MathJax.startup.defaultPageReady().then(()=>{window.MJ=true;if(window.renderAll)window.renderAll();});}}};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg.js" async></script>
+<style>
+/* Layout: one reading column; each paper = Stage 1 card, then Stage 2 card split into three numbered CP steps (formula left, figure right). */
+:root{
+  --bg:#f5f7fa; --surface:#ffffff; --fg:#18202c; --muted:#5b6678; --line:#d8dee7; --bar:#c3cbd7;
+  --oat:#0d766f; --caea:#3a4db3; --err:#c4342a; --ok:#2c7a37; --no:#b0352a;
+  --display:"Space Grotesk",system-ui,sans-serif; --body:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#11151c; --surface:#181e27; --fg:#e4e8ef; --muted:#9aa5b6; --line:#2b3341; --bar:#475163;
+  --oat:#3dbdb1; --caea:#8d9cff; --err:#ff6a5c; --ok:#6cc47a; --no:#ff7b6e; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11151c; --surface:#181e27; --fg:#e4e8ef; --muted:#9aa5b6; --line:#2b3341; --bar:#475163;
+  --oat:#3dbdb1; --caea:#8d9cff; --err:#ff6a5c; --ok:#6cc47a; --no:#ff7b6e; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.55}
+.wrap{max-width:1040px;margin:0 auto;padding-block:32px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:36px}
+h1,h2,h3,h4{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.25}
+h1{font-size:2rem;font-weight:600} h2{font-size:1.45rem;font-weight:600} h3{font-size:1.05rem;font-weight:600} h4{font-size:.95rem;font-weight:600}
+p{margin:0}
+.lede{color:var(--muted)} .lede b{color:var(--fg)}
+.eyebrow{font-family:var(--mono);font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;color:var(--acc,var(--muted))}
+section.paper{--acc:var(--oat);display:grid;gap:18px}
+section.paper.caea{--acc:var(--caea)}
+.paper-head{display:grid;gap:6px;border-left:4px solid var(--acc);padding-left:14px}
+.paper-head p{color:var(--muted)}
+.stage{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;display:grid;gap:16px;min-width:0}
+.stage-title{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.tag{font-family:var(--mono);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;background:color-mix(in srgb,var(--acc) 14%,transparent);color:var(--acc);padding:2px 8px;border-radius:4px}
+.s1{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:18px;align-items:center}
+.s1 ul{margin:0;padding-left:1.1em;display:grid;gap:4px}
+.cpstep{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.25fr);gap:18px;padding-top:14px;border-top:1px solid var(--line);align-items:start}
+.cpstep .txt{display:grid;gap:8px;min-width:0;align-content:start}
+.cpstep .fig{display:grid;gap:6px;min-width:0}
+.num{display:inline-grid;place-items:center;width:1.5em;height:1.5em;border-radius:50%;background:var(--acc);color:var(--surface);font-family:var(--mono);font-size:.8rem;margin-right:8px;vertical-align:1px}
+.cap{font-size:.85rem;color:var(--muted)}
+.eq{background:var(--bg);border:1px solid var(--line);border-left:3px solid var(--acc);border-radius:6px;padding:8px 12px;overflow-x:auto;font-size:.95rem}
+.eq.work{border-left-color:var(--fg)}
+svg.chart{width:100%;height:auto;display:block}
+mjx-container svg{display:inline-block}
+mjx-container[display="true"]{margin:.3em 0!important}
+svg text{font-family:var(--mono);font-size:11px;fill:var(--muted)}
+svg .fg{fill:var(--fg)} svg .acc{fill:var(--acc)} svg .err{fill:var(--err)}
+mjx-container{color:inherit}
+.controls{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center;padding:10px 12px;border:1px dashed var(--line);border-radius:8px}
+.controls label,.controls .grp{display:flex;align-items:center;gap:8px;font-size:.9rem}
+input[type=range]{accent-color:var(--acc);width:150px}
+input[type=checkbox]{accent-color:var(--acc)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{font:inherit;font-size:.85rem;border:0;background:transparent;color:var(--fg);padding:4px 10px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed=true]{background:var(--acc);color:var(--surface)}
+button.plain{font:inherit;font-size:.85rem;border:1px solid var(--line);background:transparent;color:var(--fg);padding:4px 10px;border-radius:6px;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.val{font-family:var(--mono);font-variant-numeric:tabular-nums;min-width:3.2em}
+.verdict{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+.box{border-radius:8px;padding:12px 14px;display:grid;gap:6px;font-size:.92rem;align-content:start;min-width:0}
+.box .h{font-family:var(--mono);font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;font-weight:500}
+.box.ok{background:color-mix(in srgb,var(--ok) 11%,transparent);border:1px solid color-mix(in srgb,var(--ok) 45%,transparent)} .box.ok .h{color:var(--ok)}
+.box.no{background:color-mix(in srgb,var(--no) 9%,transparent);border:1px solid color-mix(in srgb,var(--no) 40%,transparent)} .box.no .h{color:var(--no)}
+.stat{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:1.05rem;font-weight:500}
+.stat.good{color:var(--ok)} .stat.bad{color:var(--no)}
+.readout{font-size:.9rem;display:flex;flex-wrap:wrap;gap:4px 18px}
+.chips{display:inline-flex;flex-wrap:wrap;gap:4px;vertical-align:middle}
+.chip{font-family:var(--mono);font-size:.8rem;padding:0 6px;border-radius:4px;border:1px solid var(--line)}
+.chip.on{background:var(--acc);border-color:var(--acc);color:var(--surface)}
+.chip.e{border-color:var(--err);color:var(--err)}
+.judges{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.judge{border:1px solid var(--line);border-radius:8px;padding:12px;display:grid;gap:10px;grid-template-rows:auto auto 1fr auto;background:var(--bg);min-width:0}
+.judge .who{font-size:.82rem;color:var(--muted)}
+.pipe{display:grid;gap:6px;justify-items:center;font-size:.82rem;text-align:center}
+.pipe .n{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:4px 8px;max-width:100%}
+.pipe .n.k{border-color:var(--acc);color:var(--acc);font-weight:500}
+.pipe .ar{color:var(--muted);line-height:1}
+.pipe .ens{display:grid;grid-template-columns:1fr 1fr;gap:4px;width:100%}
+.pipe .ens .n{font-size:.76rem;padding:3px 4px}
+.auroc{display:grid;gap:3px;font-size:.78rem;color:var(--muted)}
+.auroc .track{position:relative;height:8px;background:var(--line);border-radius:4px}
+.auroc .fill{position:absolute;left:0;top:0;bottom:0;background:var(--acc);border-radius:4px}
+.auroc .chance{position:absolute;left:50%;top:-3px;bottom:-3px;width:2px;background:var(--fg)}
+.agg{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:center}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.9rem;min-width:640px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+thead th{font-family:var(--display);font-weight:600}
+tbody th{font-weight:500;color:var(--muted);width:18%}
+tr:last-child td,tr:last-child th{border-bottom:0}
+th.o{color:var(--oat)} th.c{color:var(--caea)}
+.simtab{min-width:0;font-size:.86rem;width:auto}
+.simtab td,.simtab th{padding:5px 8px;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.simtab tr.cur td{background:color-mix(in srgb,var(--acc) 12%,transparent)}
+.simtab td.best{font-weight:600;color:var(--acc)}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.8rem;color:var(--muted)}
+.sw{display:inline-block;width:11px;height:11px;border-radius:2px;vertical-align:-1px;margin-right:5px}
+.note{font-size:.82rem;color:var(--muted)}
+@media (max-width:780px){.s1,.cpstep,.verdict,.judges,.agg{grid-template-columns:minmax(0,1fr)}}
+</style>
+
+<div class="wrap">
+<header style="display:grid;gap:10px">
+  <span class="eyebrow">OAT · Conformal Agent Error Attribution</span>
+  <h1>How conformal prediction enters two failure-attribution methods</h1>
+  <p class="lede">Both methods have the same shape. <b>Stage 1</b> gives every step a heuristic score. <b>Stage 2</b> is split conformal prediction in three steps: ① compute a calibration score on held-out data, ② take a quantile of those scores as the threshold, ③ threshold a new run. The two papers differ in what a calibration score is computed on, and so in what the guarantee promises. OAT bounds how often a <b>normal step is flagged</b>. Feng et al. bound how often the <b>decisive error is missed</b>. All data below are simulated; move α to see each guarantee at work.</p>
+</header>
+
+<!-- ======================= OAT ======================= -->
+<section class="paper" id="oat">
+  <div class="paper-head">
+    <span class="eyebrow">Yeh et al. · OAT</span>
+    <h2>OAT: conformal outlier detection on steps</h2>
+    <p>Learns from successful runs only. Calibration needs no labels, and the guarantee is about false alarms.</p>
+  </div>
+
+  <div class="stage">
+    <div class="stage-title"><span class="tag">Stage 1</span><h3>Scoring: how surprising is each step?</h3></div>
+    <div class="s1">
+      <svg class="chart" id="oat-s1" viewBox="0 0 440 150" role="img" aria-label="Predicted flow of a successful run with one observed step far from the prediction"></svg>
+      <ul>
+        <li>Each step becomes a vector \(h_t\) (an LLM's hidden states).</li>
+        <li>A sequence model trained <b>only on successful runs</b> predicts what the step should look like, \(\hat h_t\).</li>
+        <li>The anomaly score is the prediction error \(e_t=\|h_t-\hat h_t\|_2^2\). High means the step leaves the usual path of a successful run.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="stage-title"><span class="tag">Stage 2</span><h3>Conformal prediction: a threshold with a known false-alarm rate</h3></div>
+    <div class="controls">
+      <label for="oat-alpha">\(\alpha\) <input id="oat-alpha" type="range" min="0.05" max="0.4" step="0.01" value="0.2"><span class="val" id="oat-alpha-v">0.20</span></label>
+      <label for="oat-shift"><input id="oat-shift" type="checkbox"> Normal steps in failed runs look slightly unusual</label>
+      <button class="plain" id="oat-new" type="button">Resample data</button>
+    </div>
+
+    <div class="cpstep">
+      <div class="txt">
+        <h4><span class="num">1</span>Calibration score of one step</h4>
+        <p>Run the Stage 1 model on held-out <b>successful</b> runs. Every step of every run is one calibration point, and its score is just its anomaly score. No label is needed, because every step of a successful run is treated as normal.</p>
+        <div class="eq">\[ s\big(\text{step } t \text{ of run } \tau\big) \;=\; e^{(\tau)}_t \;=\; \big\|h^{(\tau)}_t-\hat h^{(\tau)}_t\big\|_2^2 \]</div>
+        <p class="cap" id="oat-pool-cap"></p>
+      </div>
+      <div class="fig">
+        <svg class="chart" id="oat-cal" viewBox="0 0 520 200"></svg>
+        <p class="cap">First four held-out successful runs. Each cell is one step and shows its score \(e_t\). Cells above the threshold of step 2 are outlined.</p>
+      </div>
+    </div>
+
+    <div class="cpstep">
+      <div class="txt">
+        <h4><span class="num">2</span>Threshold = quantile of the pooled scores</h4>
+        <p>Pool all \(N\) step scores and take the \(1-\alpha\) quantile.</p>
+        <div class="eq">\[ \delta=\mathrm{Quantile}\Big(1-\alpha;\ \big\{e^{(\tau)}_t\big\}_{\tau\in D_{\rm cal},\,t\le T_\tau}\Big) \]</div>
+        <div class="eq work" id="oat-q"></div>
+        <p class="note">The paper uses the plain \(1-\alpha\) quantile; with hundreds of pooled steps the \(\lceil (N+1)(1-\alpha)\rceil\) correction used here changes little.</p>
+      </div>
+      <div class="fig">
+        <svg class="chart" id="oat-hist" viewBox="0 0 520 230"></svg>
+        <p class="cap">Histogram of all pooled calibration scores. The shaded tail to the right of \(\delta\) holds a fraction \(\approx\alpha\) of normal steps.</p>
+      </div>
+    </div>
+
+    <div class="cpstep">
+      <div class="txt">
+        <h4><span class="num">3</span>Flag steps of a new failed run</h4>
+        <p>Score every step of the failed run with Stage 1 and flag those above \(\delta\).</p>
+        <div class="eq">\[ \hat y(x)=\{\,t:\ e_t>\delta\,\} \]</div>
+        <div class="readout" id="oat-read"></div>
+      </div>
+      <div class="fig">
+        <svg class="chart" id="oat-test" viewBox="0 0 520 220"></svg>
+        <div class="legend"><span><i class="sw" style="background:var(--acc)"></i>flagged</span><span><i class="sw" style="background:var(--bar)"></i>not flagged</span><span><i class="sw" style="background:var(--err)"></i>true failure-contributing step</span></div>
+      </div>
+    </div>
+
+    <div class="verdict">
+      <div class="box ok"><span class="h">Guaranteed</span>
+        <span>\(\mathbb P\big(e_t>\delta \mid t \text{ is a normal step}\big)\le\alpha\)</span>
+        <span>Over 1,000 simulated failed runs, <span class="stat" id="oat-far"></span> of normal steps are flagged.</span>
+        <span class="note" id="oat-far-note"></span></div>
+      <div class="box no"><span class="h">Not guaranteed</span>
+        <span>That the real error is flagged. Outlier detection controls false alarms, not misses.</span>
+        <span>Same runs: <span class="stat" id="oat-rec"></span> of error steps flagged; <span class="stat" id="oat-hit"></span> of runs have at least one flagged.</span>
+        <span class="note">Paper (\(\alpha=0.2\)): recall 0.48 on MCP-Atlas, 0.33 on Who&amp;When.</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= Feng et al. ======================= -->
+<section class="paper caea" id="caea">
+  <div class="paper-head">
+    <span class="eyebrow">Feng et al. · Conformal Agent Error Attribution</span>
+    <h2>Feng et al.: a contiguous block that covers the decisive error</h2>
+    <p>Calibrates on failed runs with the decisive step labelled. The guarantee is coverage of that step, as in split conformal prediction.</p>
+  </div>
+
+  <div class="stage">
+    <div class="stage-title"><span class="tag">Stage 1</span><h3>Scoring: a step score from an LLM judge, then a block score</h3></div>
+    <p>The judge looks at one step \(c_i\), shown together with the conversation it comes from, and returns \(p_i=\mathrm{LLM}(c_i)\in[0,1]\), its belief that the decisive error is in that step. The paper builds this judge in three ways. (AUROCs below are from the paper's Table 2, measured on MATH + GSM8k test runs, not on Who&amp;When.)</p>
+    <div class="judges">
+      <div class="judge">
+        <h4>(a) Naive judge</h4>
+        <span class="who">One call to gpt-4o-mini per step.</span>
+        <div class="pipe">
+          <span class="n">task · correct answer · wrong answer · step \(c_i\) · chat history</span><span class="ar">↓</span>
+          <span class="n k">gpt-4o-mini</span><span class="ar">↓</span>
+          <span class="n">"probability the critical error is in this step" \(\to p_i\)</span>
+        </div>
+        <div class="auroc"><span>AUROC 0.519 (line = chance)</span><div class="track"><div class="fill" style="width:51.9%"></div><div class="chance"></div></div></div>
+      </div>
+      <div class="judge">
+        <h4>(b) Role-prompted ensemble</h4>
+        <span class="who">An LLM first summarizes why the run failed; four role judges then score the step, and their confidences are averaged.</span>
+        <div class="pipe">
+          <span class="n">whole trace \(\to\) LLM summary of why the run failed</span><span class="ar">↓</span>
+          <span class="n">task · correct answer · summary · step \(c_i\) · chat history</span><span class="ar">↓</span>
+          <div class="ens"><span class="n k">conservative</span><span class="n k">liberal</span><span class="n k">skeptical</span><span class="n k">pattern-seeking</span></div><span class="ar">↓</span>
+          <span class="n">\(p_i=\tfrac14\sum_{r=1}^{4}\mathrm{LLM}_r(c_i)\)</span>
+        </div>
+        <div class="auroc"><span>AUROC 0.554</span><div class="track"><div class="fill" style="width:55.4%"></div><div class="chance"></div></div></div>
+      </div>
+      <div class="judge">
+        <h4>(c) Fine-tuned small model</h4>
+        <span class="who">Needs training data, so not used on Who&amp;When.</span>
+        <div class="pipe">
+          <span class="n">4,000 trajectories with injected errors</span><span class="ar">↓ fine-tune</span>
+          <span class="n k">Qwen3-1.7B</span><span class="ar">↓ step \(c_i\)</span>
+          <span class="n">\(p_i\)</span>
+        </div>
+        <div class="auroc"><span>AUROC 0.762</span><div class="track"><div class="fill" style="width:76.2%"></div><div class="chance"></div></div></div>
+      </div>
+    </div>
+    <div class="agg">
+      <div style="display:grid;gap:8px">
+        <h4>From step scores to block scores</h4>
+        <p>Filtration needs a score for a whole block \(c_{j:k}=(c_j,\dots,c_k)\). The main choice sums the step scores and divides by the trajectory length \(\ell\):</p>
+        <div class="eq">\[ g(c_{j:k})=\frac{1}{\ell}\sum_{i=j}^{k} p_i \]</div>
+        <p class="note">A bigger block never scores lower (monotone), which gives the closed-form calibration scores in Stage 2. Max and log-sum-exp aggregations are alternatives. Vanilla CP skips this and uses \(p_i\) directly.</p>
+        <p class="note">The paper also fixes the ends: \(g(\emptyset)=0\) and \(g(x)=\infty\) for the whole trajectory, so left filtration gives \(S=\infty\) when the error is at \(c_1\) (right filtration when it is at \(c_\ell\)). This page keeps the finite normalized sum for the whole run. Coverage holds either way; only the numbers change.</p>
+      </div>
+      <svg class="chart" id="c-agg" viewBox="0 0 420 170"></svg>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="stage-title"><span class="tag">Stage 2</span><h3>Conformal prediction: calibrate how far filtering may go</h3></div>
+    <div class="controls">
+      <label for="c-alpha">\(\alpha\) <input id="c-alpha" type="range" min="0.05" max="0.4" step="0.01" value="0.2"><span class="val" id="c-alpha-v">0.20</span></label>
+      <span class="grp">Algorithm
+        <span class="seg" id="c-algo"><button type="button" data-v="VCP" aria-pressed="false">Vanilla</button><button type="button" data-v="LF" aria-pressed="true">Left</button><button type="button" data-v="RF" aria-pressed="false">Right</button><button type="button" data-v="TWF" aria-pressed="false">Two-way</button></span></span>
+      <span class="grp">Errors sit
+        <span class="seg" id="c-pos"><button type="button" data-v="early" aria-pressed="false">early</button><button type="button" data-v="mid" aria-pressed="false">middle</button><button type="button" data-v="late" aria-pressed="false">late</button><button type="button" data-v="uniform" aria-pressed="true">anywhere</button></span></span>
+      <button class="plain" id="c-new" type="button">Resample data</button>
+    </div>
+
+    <div class="cpstep">
+      <div class="txt">
+        <h4><span class="num">1</span>Calibration score of one labelled run</h4>
+        <p id="c-s-intro"></p>
+        <div class="eq" id="c-s-def"></div>
+        <p class="cap">Worked example, run 1 of the figure:</p>
+        <div class="eq work" id="c-s-work"></div>
+      </div>
+      <div class="fig">
+        <svg class="chart" id="c-cal" viewBox="0 0 520 215"></svg>
+        <p class="cap">First five labelled failed runs. Cells show \(p_i\); the red cell is the labelled \(y^*\); shaded cells are the ones that enter \(S\) (for vanilla CP, only the error step).</p>
+      </div>
+    </div>
+
+    <div class="cpstep">
+      <div class="txt">
+        <h4><span class="num">2</span>Threshold = conformal quantile of the run scores</h4>
+        <p>Each calibration run contributes <b>one</b> score. Sort the \(n\) scores and take number \(k\).</p>
+        <div class="eq">\[ \hat q = S_{(k)},\qquad k=\big\lceil (n+1)(1-\alpha)\big\rceil \]</div>
+        <div class="eq work" id="c-q"></div>
+      </div>
+      <div class="fig">
+        <svg class="chart" id="c-strip" viewBox="0 0 520 120"></svg>
+        <p class="cap">One dot per calibration run (\(n=92\), about half of Who&amp;When's 184; the paper drops a few runs whose labelled error index exceeds the trajectory length). Runs left of \(\hat q\) would have kept their error after filtering.</p>
+      </div>
+    </div>
+
+    <div class="cpstep">
+      <div class="txt">
+        <h4><span class="num">3</span>Filter a new failed run with \(\hat q\)</h4>
+        <div class="eq" id="c-set-def"></div>
+        <p class="note">Bold values are \(\le\hat q\) (admissible). Filtration keeps the longest admissible block of the right shape; vanilla CP keeps every admissible step, wherever it is.</p>
+        <div class="readout" id="c-read"></div>
+      </div>
+      <div class="fig">
+        <svg class="chart" id="c-test" viewBox="0 0 540 260"></svg>
+        <div class="legend"><span><i class="sw" style="background:var(--acc)"></i>in the set</span><span><i class="sw" style="background:var(--bar)"></i>filtered out</span><span><i class="sw" style="border:2px solid var(--err)"></i>decisive error</span></div>
+      </div>
+    </div>
+
+    <div class="verdict">
+      <div class="box ok"><span class="h">Guaranteed</span>
+        <span id="c-guar"></span>
+        <span>Over 2,000 simulated test runs: coverage <span class="stat" id="c-cov"></span> (target <span id="c-target"></span>)</span>
+        <span class="note">Coverage holds on average over calibration draws. With \(n=92\) a single draw can be off by about ±0.04; resample to watch it move.</span></div>
+      <div class="box no"><span class="h">Not guaranteed</span>
+        <span>A small set, coverage for each length or error position (it is marginal), coverage of other errors when there are several, or anything under shift between calibration and test.</span>
+        <span class="note">Set size depends on matching the algorithm to where errors sit. The toy judge here finds the error about two times in three, far better than the paper's naive judge (AUROC 0.52), and that favours vanilla CP, which can keep the judge's top step on its own.</span>
+        <table class="simtab" id="c-simtab"></table></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= Side by side ======================= -->
+<section style="display:grid;gap:14px">
+  <h2>Side by side</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th></th><th class="o">OAT</th><th class="c">Feng et al.</th></tr></thead>
+    <tbody>
+      <tr><th>Stage 1 score</th><td>\(e_t=\|h_t-\hat h_t\|_2^2\) from a model of successful runs</td><td>Judge \(p_i\); block score \(g(c_{j:k})=\frac1\ell\sum_{i=j}^k p_i\)</td></tr>
+      <tr><th>Calibration point</th><td>One step, pooled across runs</td><td>One whole failed trajectory</td></tr>
+      <tr><th>Calibration data</th><td>All steps of held-out <b>successful</b> runs, no labels</td><td>Held-out <b>failed</b> runs with \(y^*\) labelled</td></tr>
+      <tr><th>Calibration score</th><td>\(e^{(\tau)}_t\) itself</td><td>\(S_{\rm LF}=g(c_{j^*:\ell})\), \(S_{\rm RF}=g(c_{1:j^*})\), \(S_{\rm TWF}=\max(S_{\rm LF},S_{\rm RF})\)</td></tr>
+      <tr><th>Threshold</th><td>\(\delta\) = \(1-\alpha\) quantile of pooled step scores</td><td>\(\hat q=S_{(k)}\), \(k=\lceil (n+1)(1-\alpha)\rceil\)</td></tr>
+      <tr><th>Set</th><td>\(\{t: e_t>\delta\}\); any shape, can be empty</td><td>Longest suffix / prefix / their overlap with \(g\le\hat q\); contiguous</td></tr>
+      <tr><th>Guarantee</th><td>\(\mathbb P(\text{normal step flagged})\le\alpha\)</td><td>\(\mathbb P(y^*\in\mathcal C(x))\ge1-\alpha\)</td></tr>
+      <tr><th>Needs</th><td>Steps of failed runs exchangeable with steps of successful runs</td><td>Calibration and test failures exchangeable</td></tr>
+    </tbody>
+  </table></div>
+</section>
+</div>
+
+<script>
+// ---------- helpers ----------
+function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function normal(r){let u=0;while(u===0)u=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*r());}
+const $=id=>document.getElementById(id);
+const f2=x=>isFinite(x)?x.toFixed(2):'\\infty';
+const pct=x=>(100*x).toFixed(1)+'%';
+const dot=x=>x.toFixed(2).replace(/^0/,'');
+function cpQuantile(scores,alpha){const s=[...scores].sort((a,b)=>a-b);const n=s.length;const k=Math.ceil((n+1)*(1-alpha));return {q:k>n?Infinity:s[k-1],k,n};}
+// LaTeX inside SVG: MathJax SVG placed at baseline (x,y); falls back to plain text before MathJax loads.
+function tex(t,x,y,o={}){const size=o.size||12,anchor=o.anchor||'start',color=o.color||'var(--muted)';
+  if(!window.MJ)return `<text x="${x}" y="${y}" text-anchor="${anchor}" style="fill:${color}">${o.alt||t.replace(/[\\{}^_]/g,'')}</text>`;
+  const s=MathJax.tex2svg(t,{display:false}).querySelector('svg');const vb=s.getAttribute('viewBox').split(/\s+/).map(Number);
+  const w=vb[2]/1000*size,h=vb[3]/1000*size;let x0=anchor==='end'?x-w:anchor==='middle'?x-w/2:x;
+  s.setAttribute('x',x0);s.setAttribute('y',y+vb[1]/1000*size);s.setAttribute('width',w);s.setAttribute('height',h);
+  s.removeAttribute('style');s.setAttribute('style',`color:${color};overflow:visible`);return s.outerHTML;}
+function setTex(el,html){if(window.MJ&&MathJax.typesetClear)MathJax.typesetClear([el]);el.innerHTML=html;if(window.MJ)MathJax.typeset([el]);}
+function niceStep(range,target){const raw=range/target;const p=Math.pow(10,Math.floor(Math.log10(raw)));const m=raw/p;return (m<1.5?1:m<3?2:m<7?5:10)*p;}
+function axisX(x0,x1,y,vmax,X,step,dec){let s=`<line x1="${x0}" y1="${y}" x2="${x1}" y2="${y}" stroke="var(--muted)"/>`;
+  for(let v=0;v<=vmax+1e-9;v+=step){const x=X(v);s+=`<line x1="${x}" y1="${y}" x2="${x}" y2="${y+4}" stroke="var(--muted)"/><text x="${x}" y="${y+16}" text-anchor="middle">${v.toFixed(dec)}</text>`;}return s;}
+function axisY(x,y0,y1,vmax,Y,step,dec){let s=`<line x1="${x}" y1="${y0}" x2="${x}" y2="${y1}" stroke="var(--muted)"/>`;
+  for(let v=0;v<=vmax+1e-9;v+=step){const y=Y(v);s+=`<line x1="${x-4}" y1="${y}" x2="${x}" y2="${y}" stroke="var(--muted)"/><line x1="${x}" y1="${y}" x2="520" y2="${y}" stroke="var(--line)" stroke-width="0.6"/><text x="${x-7}" y="${y+4}" text-anchor="end">${v.toFixed(dec)}</text>`;}return s;}
+
+// ---------- OAT ----------
+const OAT={seed:11,alpha:0.2,shift:false};
+const normScore=(r,mu)=>Math.exp(mu+0.5*normal(r));
+const errScore=r=>Math.exp(0.6+0.6*normal(r));
+function oatStage1(){let s=`<path d="M20 110 C 90 60, 150 50, 210 70 S 330 110, 420 50" fill="none" stroke="var(--acc)" stroke-width="2" stroke-dasharray="5 4"/>`;
+  s+=tex('\\text{predicted }\\hat h_t',300,140,{color:'var(--acc)',alt:'predicted ĥ_t'});
+  [[60,88],[120,66],[180,64],[360,86]].forEach(([x,y])=>s+=`<circle cx="${x}" cy="${y}" r="5" fill="var(--fg)"/>`);
+  s+=`<line x1="250" y1="22" x2="252" y2="84" stroke="var(--err)" stroke-width="1.5"/><circle cx="250" cy="20" r="6" fill="var(--err)"/><circle cx="252" cy="86" r="3.5" fill="var(--acc)"/>`;
+  s+=tex('e_t=\\|h_t-\\hat h_t\\|_2^2\\ \\text{(large)}',262,50,{color:'var(--err)',alt:'e_t = ‖h_t − ĥ_t‖² (large)'});
+  s+=`<circle cx="26" cy="16" r="5" fill="var(--fg)"/>`+tex('\\text{observed step } h_t',36,20,{alt:'observed step h_t'});
+  $('oat-s1').innerHTML=s;}
+function oatRender(){
+  oatStage1();
+  const r=rng(OAT.seed), mu=OAT.shift?0.35:0;
+  const runs=[]; for(let k=0;k<20;k++){const L=8+Math.floor(r()*7);const a=[];for(let t=0;t<L;t++)a.push(normScore(r,0));runs.push(a);}
+  const cal=runs.flat();
+  const L=12, errs=new Set([4,5,9]);
+  const test=[]; for(let t=0;t<L;t++)test.push(errs.has(t)?errScore(r):normScore(r,mu));
+  const {q:delta,k,n}=cpQuantile(cal,OAT.alpha);
+
+  // step 1: calibration runs as cells
+  let c=''; const x0=70, st=31, cs=28;
+  runs.slice(0,4).forEach((a,ri)=>{const y=14+ri*40;c+=tex(`\\tau=${ri+1}`,0,y+19,{alt:'run '+(ri+1)});
+    a.forEach((v,i)=>{const hi=v>delta;c+=`<rect x="${x0+i*st}" y="${y}" width="${cs}" height="${cs}" rx="3" fill="var(--surface)" stroke="${hi?'var(--acc)':'var(--line)'}" stroke-width="${hi?2.2:1}"/><text x="${x0+i*st+cs/2}" y="${y+18}" text-anchor="middle" class="${hi?'acc':'fg'}" style="font-size:9.5px">${v.toFixed(2)}</text>`;});});
+  c+=tex('t=1,2,\\dots',x0,186,{alt:'t = 1, 2, …'});
+  c+=`<text x="520" y="186" text-anchor="end">… 16 more runs, ${n} steps in total</text>`;
+  $('oat-cal').innerHTML=c;
+  $('oat-pool-cap').textContent=`Here: 20 held-out runs with ${n} steps give N = ${n} calibration scores. (Paper: 20% of 103 successful MCP-Atlas runs.)`;
+
+  // step 2: histogram with axes
+  const W=520,H=230,ml=46,mr=12,mt=22,mb=48, xmax=Math.ceil(Math.max(...cal)*2)/2, B=Math.round(xmax*8);
+  const bins=new Array(B).fill(0); cal.forEach(v=>bins[Math.min(B-1,Math.floor(v/xmax*B))]++);
+  const bmax=Math.max(...bins), ys=niceStep(bmax,4), ytop=Math.ceil(bmax/ys)*ys;
+  const X=v=>ml+v/xmax*(W-ml-mr), Y=v=>H-mb-v/ytop*(H-mt-mb), bw=(W-ml-mr)/B;
+  let s=axisY(ml,mt,H-mb,ytop,Y,ys,0);
+  bins.forEach((cnt,i)=>{const hi=(i+0.5)*xmax/B>delta;s+=`<rect x="${X(i*xmax/B)+0.5}" y="${Y(cnt)}" width="${bw-1}" height="${H-mb-Y(cnt)}" fill="${hi?'var(--acc)':'var(--bar)'}"/>`;});
+  s+=axisX(ml,W-mr,H-mb,xmax,X,0.5,1);
+  s+=tex('\\text{calibration score } e^{(\\tau)}_t',(ml+W-mr)/2,H-6,{anchor:'middle',color:'var(--fg)',alt:'calibration score e_t'});
+  s+=`<text x="12" y="${(mt+H-mb)/2}" text-anchor="middle" transform="rotate(-90 12 ${(mt+H-mb)/2})" class="fg">number of steps</text>`;
+  if(isFinite(delta)){const xd=X(delta);s+=`<line x1="${xd}" y1="${mt-6}" x2="${xd}" y2="${H-mb}" stroke="var(--fg)" stroke-width="1.5" stroke-dasharray="4 3"/>`;
+    s+=tex(`\\delta=${delta.toFixed(2)}`,xd+5,mt+4,{color:'var(--fg)'});
+    s+=tex(`\\text{tail}\\approx\\alpha=${OAT.alpha.toFixed(2)}`,xd+5,mt+22,{color:'var(--acc)'});}
+  $('oat-hist').innerHTML=s;
+  setTex($('oat-q'),`\\[ N=${n},\\quad k=\\lceil (N+1)(1-\\alpha)\\rceil=\\lceil ${n+1}\\times${(1-OAT.alpha).toFixed(2)}\\rceil=${k},\\quad \\delta=e_{(${k})}=${f2(delta)} \\]`);
+
+  // step 3: test run with axes
+  const H2=220, mt2=16, mb2=44, ml2=46, tmax=Math.max(...test,isFinite(delta)?delta:0)*1.1, ys2=niceStep(tmax,4), ytop2=Math.ceil(tmax/ys2)*ys2;
+  const Y2=v=>H2-mb2-v/ytop2*(H2-mt2-mb2), bw2=(W-ml2-mr)/L;
+  let t2=axisY(ml2,mt2,H2-mb2,ytop2,Y2,ys2,1);
+  t2+=`<text x="12" y="${(mt2+H2-mb2)/2}" text-anchor="middle" transform="rotate(-90 12 ${(mt2+H2-mb2)/2})" class="fg">anomaly score</text>`;
+  test.forEach((v,i)=>{const fl=v>delta, xb=ml2+i*bw2;
+    t2+=`<rect x="${xb+5}" y="${Y2(v)}" width="${bw2-10}" height="${H2-mb2-Y2(v)}" fill="${fl?'var(--acc)':'var(--bar)'}" rx="2"/>`;
+    t2+=`<text x="${xb+bw2/2}" y="${H2-mb2+15}" text-anchor="middle" class="${errs.has(i)?'err':''}">${i+1}</text>`;
+    if(errs.has(i))t2+=`<path d="M${xb+bw2/2-5} ${H2-mb2+28} l5 -7 l5 7z" fill="var(--err)"/>`;});
+  t2+=`<line x1="${ml2}" y1="${H2-mb2}" x2="${W-mr}" y2="${H2-mb2}" stroke="var(--muted)"/>`;
+  t2+=tex('\\text{step } t',(ml2+W)/2,H2-2,{anchor:'middle',color:'var(--fg)',alt:'step t'});
+  if(isFinite(delta)){t2+=`<line x1="${ml2}" y1="${Y2(delta)}" x2="${W-mr}" y2="${Y2(delta)}" stroke="var(--fg)" stroke-width="1.5" stroke-dasharray="4 3"/>`+tex('\\delta',W-mr,Y2(delta)-5,{anchor:'end',color:'var(--fg)'});}
+  $('oat-test').innerHTML=t2;
+  const flagged=test.map((v,i)=>v>delta?i:-1).filter(i=>i>=0);
+  const chips=a=>a.length?a.map(i=>`<span class="chip ${errs.has(i)?'e':''}">${i+1}</span>`).join(''):'<span class="chip">∅ empty</span>';
+  $('oat-read').innerHTML=`<span>Flagged: <span class="chips">${chips(flagged)}</span></span><span>True: <span class="chips">${chips([...errs])}</span></span>`;
+
+  // simulation
+  const r2=rng(OAT.seed*7919+3); let nf=0,nn=0,ef=0,en=0,hit=0;
+  for(let run=0;run<1000;run++){const L=8+Math.floor(r2()*7);const ne=1+Math.floor(r2()*3);const E=new Set();while(E.size<ne)E.add(Math.floor(r2()*L));let h=false;
+    for(let t=0;t<L;t++){if(E.has(t)){const v=errScore(r2);en++;if(v>delta){ef++;h=true;}}else{const v=normScore(r2,mu);nn++;if(v>delta)nf++;}}if(h)hit++;}
+  const far=nf/nn, ok=far<=OAT.alpha+0.02;
+  $('oat-far').textContent=pct(far); $('oat-far').className='stat '+(ok?'good':'bad');
+  $('oat-far-note').textContent=ok?`Within α = ${OAT.alpha.toFixed(2)} up to simulation noise.`:`Above α = ${OAT.alpha.toFixed(2)}. The bound assumed normal steps of failed runs look like steps of successful runs, which no longer holds.`;
+  $('oat-rec').textContent=pct(ef/en); $('oat-hit').textContent=pct(hit/1000);
+}
+$('oat-alpha').addEventListener('input',e=>{OAT.alpha=+e.target.value;$('oat-alpha-v').textContent=OAT.alpha.toFixed(2);oatRender();});
+$('oat-shift').addEventListener('change',e=>{OAT.shift=e.target.checked;oatRender();});
+$('oat-new').addEventListener('click',()=>{OAT.seed=Math.floor(Math.random()*1e9);oatRender();});
+
+// ---------- Feng et al. ----------
+const C={seed:5,alpha:0.2,algo:'LF',pos:'uniform',n:92};
+const INTRO={VCP:'Vanilla CP ignores the order of steps and treats them as unordered classes, exactly as in split conformal prediction for classification, with the judge in place of the softmax. A run\'s score is one minus the judge\'s score of the labelled error step. No block score is needed, and sets need not be contiguous.',
+  LF:'Left filtration removes steps from the left, so its sets are suffixes. A run\'s score is the smallest threshold at which its error survives filtering, which (by monotonicity) is the block score of the suffix that starts at the error.',
+  RF:'Right filtration removes steps from the right, so its sets are prefixes. A run\'s score is the block score of the prefix that ends at the error.',
+  TWF:'Two-way filtration intersects a suffix and a prefix. The error must survive filtering from both sides, so the score is the larger of the two one-sided scores.'};
+const SDEF={VCP:'\\[ S_{\\rm VCP}(x,y^*)=1-p_{j^*}=1-\\mathrm{LLM}(c_{j^*}) \\]',
+  LF:'\\[ S_{\\rm LF}(x,y^*)=g(c_{j^*:\\ell})=\\frac{1}{\\ell}\\sum_{i=j^*}^{\\ell}p_i \\]',
+  RF:'\\[ S_{\\rm RF}(x,y^*)=g(c_{1:j^*})=\\frac{1}{\\ell}\\sum_{i=1}^{j^*}p_i \\]',
+  TWF:'\\[ S_{\\rm TWF}(x,y^*)=\\max\\Big\\{\\underbrace{\\tfrac{1}{\\ell}\\textstyle\\sum_{i=j^*}^{\\ell}p_i}_{S_{\\rm LF}},\\ \\underbrace{\\tfrac{1}{\\ell}\\textstyle\\sum_{i=1}^{j^*}p_i}_{S_{\\rm RF}}\\Big\\} \\]'};
+const SETDEF={VCP:'\\[ \\mathcal C_{\\rm VCP}(x)=\\{\\,c_i:\\ 1-p_i\\le\\hat q\\,\\}\\quad\\text{(any subset, not necessarily contiguous)} \\]',
+  LF:'\\[ \\mathcal C_{\\rm LF}(x)=c_{\\hat j:\\ell},\\quad \\hat j=\\min\\{j:\\ g(c_{j:\\ell})\\le\\hat q\\} \\]',
+  RF:'\\[ \\mathcal C_{\\rm RF}(x)=c_{1:\\hat k},\\quad \\hat k=\\max\\{k:\\ g(c_{1:k})\\le\\hat q\\} \\]',
+  TWF:'\\[ \\mathcal C_{\\rm TWF}(x)=\\mathcal C_{\\rm LF}(x)\\cap\\mathcal C_{\\rm RF}(x)=c_{\\hat j:\\hat k} \\]'};
+function pickPos(r,L,pos){let u;const a=r(),b=r();
+  if(pos==='early')u=a*b; else if(pos==='late')u=1-a*b; else if(pos==='mid')u=(a+b+r())/3; else u=a;
+  return Math.min(L-1,Math.floor(u*L));}
+const r2d=v=>Math.round(v*100)/100;
+function genTraj(r,pos){const L=6+Math.floor(r()*7);const j=pickPos(r,L,pos);const p=[];
+  for(let i=0;i<L;i++)p.push(r2d(0.05+0.25*r()));
+  if(r()<0.65)p[j]=r2d(0.35+0.55*r());
+  const suf=new Array(L),pre=new Array(L);let a=0;for(let i=L-1;i>=0;i--){a+=p[i];suf[i]=a/L;}a=0;for(let i=0;i<L;i++){a+=p[i];pre[i]=a/L;}
+  return {L,j,p,suf,pre};}
+function score(algo,t){if(algo==='LF')return t.suf[t.j];if(algo==='RF')return t.pre[t.j];if(algo==='TWF')return Math.max(t.suf[t.j],t.pre[t.j]);return 1-t.p[t.j];}
+function predict(algo,t,q){
+  if(algo==='VCP')return t.p.map((v,i)=>1-v<=q?i:-1).filter(i=>i>=0);
+  let s=t.L;for(let i=0;i<t.L;i++)if(t.suf[i]<=q){s=i;break;}
+  let e=-1;for(let i=t.L-1;i>=0;i--)if(t.pre[i]<=q){e=i;break;}
+  let a=0,b=t.L-1; if(algo==='LF'||algo==='TWF')a=s; if(algo==='RF'||algo==='TWF')b=e;
+  return a<=b?[a,b]:null;}
+function members(algo,set){if(algo==='VCP')return set;if(!set)return[];const m=[];for(let i=set[0];i<=set[1];i++)m.push(i);return m;}
+
+function aggFigure(){ // Stage 1 block-score illustration
+  const p=[.12,.08,.71,.15,.10,.09], L=p.length, x0=30, st=62, bw=40, base=110; let s='';
+  p.forEach((v,i)=>{const h=v*90, inb=i>=2&&i<=4;
+    s+=`<rect x="${x0+i*st}" y="${base-h}" width="${bw}" height="${h}" rx="2" fill="${inb?'var(--acc)':'var(--bar)'}"/>`;
+    s+=`<text x="${x0+i*st+bw/2}" y="${base-h-5}" text-anchor="middle" class="fg">${v.toFixed(2)}</text>`;
+    s+=tex(`c_{${i+1}}`,x0+i*st+bw/2,base+16,{anchor:'middle',color:'var(--fg)'});});
+  s+=`<path d="M${x0+2*st} ${base+24} v6 H${x0+4*st+bw} v-6" fill="none" stroke="var(--acc)" stroke-width="1.5"/>`;
+  s+=tex('g(c_{3:5})=\\tfrac{1}{6}(0.71+0.15+0.10)=0.16',x0+3*st+bw/2,base+50,{anchor:'middle',color:'var(--acc)',size:12.5});
+  s+=tex('p_i',4,20,{color:'var(--fg)'});
+  $('c-agg').innerHTML=s;}
+
+function cRender(){
+  aggFigure();
+  const r=rng(C.seed*1009+C.pos.length);
+  const cal=[];for(let i=0;i<C.n;i++)cal.push(genTraj(r,C.pos));
+  const test=genTraj(rng(C.seed*31+7+C.pos.length),C.pos);
+  const S=cal.map(t=>score(C.algo,t));
+  const {q,k,n}=cpQuantile(S,C.alpha);
+
+  // step 1 text
+  $('c-s-intro').textContent=INTRO[C.algo];
+  setTex($('c-s-def'),SDEF[C.algo]);
+  const t1=cal[0], jj=t1.j+1, Ls=t1.L;
+  const sumStr=(a,b)=>t1.p.slice(a,b+1).map(v=>v.toFixed(2)).join('+');
+  const lf=`\\tfrac{1}{${Ls}}(${sumStr(t1.j,Ls-1)})=${t1.suf[t1.j].toFixed(3)}`, rf=`\\tfrac{1}{${Ls}}(${sumStr(0,t1.j)})=${t1.pre[t1.j].toFixed(3)}`;
+  let w=`\\ell=${Ls},\\ j^*=${jj}:\\quad `;
+  if(C.algo==='LF')w+=`S_{\\rm LF}=${lf}`; else if(C.algo==='RF')w+=`S_{\\rm RF}=${rf}`;
+  else if(C.algo==='VCP')w+=`S_{\\rm VCP}=1-p_{${jj}}=1-${t1.p[t1.j].toFixed(2)}=${S[0].toFixed(3)}`;
+  else w=`\\begin{aligned}&\\ell=${Ls},\\ j^*=${jj}\\\\ &S_{\\rm LF}=${lf}\\\\ &S_{\\rm RF}=${rf}\\\\ &S_{\\rm TWF}=\\max=${S[0].toFixed(3)}\\end{aligned}`;
+  setTex($('c-s-work'),`\\[ ${w} \\]`);
+
+  // step 1 figure: calibration rows
+  const rows=5, cs=26, st=29, x0=62; let s='';
+  for(let ri=0;ri<rows;ri++){const t=cal[ri];const y=10+ri*38;
+    const useSuf = C.algo==='LF' || (C.algo==='TWF' && t.suf[t.j]>=t.pre[t.j]);
+    s+=tex(`x_{${ri+1}}`,4,y+18,{color:'var(--fg)'});
+    for(let i=0;i<t.L;i++){const inc=C.algo==='VCP'? i===t.j : (useSuf? i>=t.j : i<=t.j);const isE=i===t.j;
+      s+=`<rect x="${x0+i*st}" y="${y}" width="${cs}" height="${cs}" rx="3" fill="${inc?'color-mix(in srgb, var(--acc) 30%, var(--surface))':'var(--surface)'}" stroke="${isE?'var(--err)':'var(--line)'}" stroke-width="${isE?2.5:1}"/>`;
+      s+=`<text x="${x0+i*st+cs/2}" y="${y+17}" text-anchor="middle" class="${isE?'err':'fg'}" style="font-size:9.5px">${dot(t.p[i])}</text>`;}
+    s+=tex(`S_{${ri+1}}=${S[ri].toFixed(3)}`,x0+12*st+6,y+18,{color:'var(--fg)'});}
+  s+=tex('\\text{step } i=1,2,\\dots,\\ell',x0,205,{alt:'step i = 1, 2, …'});
+  if(C.algo==='TWF')s+=`<text x="520" y="205" text-anchor="end">shaded: the side giving the max</text>`;
+  $('c-cal').innerHTML=s;
+
+  // step 2: strip with axis
+  const W=520, ml=16, mr=16, sm=Math.max(...S), xs=niceStep(sm,6), xmax=Math.ceil(sm*1.02/xs)*xs, X=v=>ml+v/xmax*(W-ml-mr); const rj=rng(99);
+  let d='';S.forEach(v=>{d+=`<circle cx="${X(v)}" cy="${30+rj()*36}" r="3.3" fill="${v<=q?'var(--acc)':'var(--bar)'}"/>`;});
+  d+=axisX(ml,W-mr,74,xmax,X,xs,2);
+  d+=tex(`\\text{calibration score } S_{\\rm ${C.algo}}(x_i,y_i^*)`,W/2,116,{anchor:'middle',color:'var(--fg)'});
+  if(isFinite(q)){const xq=X(q),R=xq>W*0.7;d+=`<line x1="${xq}" y1="10" x2="${xq}" y2="74" stroke="var(--fg)" stroke-width="1.5" stroke-dasharray="4 3"/>`;
+    d+=tex(`\\hat q=${q.toFixed(3)}`,R?xq-5:xq+5,18,{anchor:R?'end':'start',color:'var(--fg)'});}
+  $('c-strip').innerHTML=d;
+  setTex($('c-q'),`\\[ n=${n},\\quad k=\\lceil ${n+1}\\times${(1-C.alpha).toFixed(2)}\\rceil=${k},\\quad \\hat q=S_{(${k})}=${isFinite(q)?q.toFixed(3):'\\infty'} \\]`);
+
+  // step 3: test run
+  setTex($('c-set-def'),SETDEF[C.algo]);
+  const t=test, set=predict(C.algo,t,q), mem=new Set(members(C.algo,set));
+  const cx0=104, cst=36, csz=32, by=78, cy=96; let g='';
+  t.p.forEach((v,i)=>{const h=v*66;g+=`<rect x="${cx0+i*cst+7}" y="${by-h}" width="${csz-14}" height="${h}" rx="2" fill="var(--fg)" opacity="0.5"/>`;});
+  g+=tex('\\text{judge } p_i',0,by-30,{color:'var(--fg)'});
+  g+=`<text x="0" y="${cy+20}" class="fg">trajectory</text>`;
+  for(let i=0;i<t.L;i++){const on=mem.has(i), e=i===t.j;
+    g+=`<rect x="${cx0+i*cst}" y="${cy}" width="${csz}" height="${csz}" rx="4" fill="${on?'var(--acc)':'var(--bar)'}" opacity="${on?1:0.55}" stroke="${e?'var(--err)':'none'}" stroke-width="3"/>`;
+    g+=tex(`c_{${i+1}}`,cx0+i*cst+csz/2,cy+21,{anchor:'middle',color:on?'var(--surface)':'var(--fg)'});
+    if(e)g+=tex('y^*',cx0+i*cst+csz/2,cy+csz+15,{anchor:'middle',color:'var(--err)'});}
+  const rowsM=[]; if(C.algo==='VCP')rowsM.push(['vcp','1-p_i']); else{ if(C.algo!=='RF')rowsM.push(['suf','g(c_{j:\\ell})']); if(C.algo!=='LF')rowsM.push(['pre','g(c_{1:k})']); }
+  rowsM.forEach(([key,lab],ri)=>{const y=cy+csz+44+ri*34;
+    g+=tex(lab,0,y+4,{color:'var(--fg)'});
+    (key==='vcp'?t.p.map(v=>1-v):t[key]).forEach((v,i)=>{const adm=v<=q;g+=`<text x="${cx0+i*cst+csz/2}" y="${y+4}" text-anchor="middle" style="font-size:10.5px;${adm?'font-weight:600;fill:var(--acc)':''}">${dot(v)}</text>`;});});
+  let Hs=260;
+  $('c-test').setAttribute('viewBox',`0 0 540 ${Hs}`);
+  g+=tex(`\\hat q=${f2(q)}`,540,Hs-6,{anchor:'end',color:'var(--fg)'});
+  $('c-test').innerHTML=g;
+  const covered=mem.has(t.j);
+  $('c-read').innerHTML=`<span>Set: <span class="chips">${mem.size?[...mem].map(i=>`<span class="chip on">c${i+1}</span>`).join(''):'<span class="chip">∅ empty</span>'}</span></span><span>${mem.size} of ${t.L} steps kept · error at c${t.j+1} <b style="color:${covered?'var(--ok)':'var(--no)'}">${covered?'covered':'missed'}</b></span>`;
+
+  // simulation
+  const algos=[['VCP','Vanilla CP'],['LF','Left'],['RF','Right'],['TWF','Two-way']];
+  const r3=rng(C.seed*577+C.pos.length*13); const tests=[];for(let i=0;i<2000;i++)tests.push(genTraj(r3,C.pos));
+  const res={};algos.forEach(([a])=>{const qa=cpQuantile(cal.map(t=>score(a,t)),C.alpha).q;let cov=0,rr=0;
+    tests.forEach(t=>{const m=new Set(members(a,predict(a,t,qa)));if(m.has(t.j))cov++;rr+=1-m.size/t.L;});res[a]={cov:cov/2000,rr:rr/2000};});
+  $('c-cov').textContent=res[C.algo].cov.toFixed(3); $('c-cov').className='stat '+(res[C.algo].cov>=1-C.alpha-0.04?'good':'bad');
+  $('c-target').textContent='≥ '+(1-C.alpha).toFixed(2);
+  setTex($('c-guar'),'\\(1-\\alpha\\le\\mathbb P\\big[y^*\\in\\mathcal C(x)\\big]<1-\\alpha+\\frac{1}{n+1}\\), for any judge. The upper bound also needs scores without ties; the toy \\(p_i\\) here are rounded to 0.01, so it can be exceeded slightly.');
+  const best=Math.max(...algos.filter(([a])=>a!=='VCP').map(([a])=>res[a].rr));
+  $('c-simtab').innerHTML=`<tr><th>algorithm</th><th>coverage</th><th>removal rate</th></tr>`+algos.map(([a,l])=>`<tr class="${a===C.algo?'cur':''}"><td>${l}${a==='VCP'?' (not contiguous)':''}</td><td>${res[a].cov.toFixed(3)}</td><td class="${a!=='VCP'&&res[a].rr===best?'best':''}">${res[a].rr.toFixed(2)}</td></tr>`).join('');
+}
+function seg(id,key){$(id).addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;C[key]=b.dataset.v;
+  $(id).querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));cRender();});}
+seg('c-algo','algo'); seg('c-pos','pos');
+$('c-alpha').addEventListener('input',e=>{C.alpha=+e.target.value;$('c-alpha-v').textContent=C.alpha.toFixed(2);cRender();});
+$('c-new').addEventListener('click',()=>{C.seed=Math.floor(Math.random()*1e9);cRender();});
+window.renderAll=()=>{oatRender();cRender();};
+window.renderAll();
+</script>

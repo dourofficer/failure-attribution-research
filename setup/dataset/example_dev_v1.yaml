@@ -1,0 +1,6 @@
+# EXAMPLE setup file. Delete with the rest of the example.
+# One shared dataset. Frozen once a run has used it; to change it, copy to example_dev_v2.yaml.
+name: example corpus, dev split
+path: data/example_corpus/dev.jsonl
+n_examples: 4000
+group_key: source_id        # examples from one source document must stay in one fold
