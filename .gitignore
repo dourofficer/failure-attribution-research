@@ -35,6 +35,9 @@ assets/experiments/**/logs/
 assets/experiments/**/plots/
 **/judge_cache/
 
+# ---- Cloned reference code (upstream + commit in data/SOURCES.md) ----
+/assets/StepFinder/
+
 # ---- Large binary / tensor / data formats anywhere ----
 *.npy
 *.npz

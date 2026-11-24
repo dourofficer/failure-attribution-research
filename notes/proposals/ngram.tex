@@ -1,0 +1,92 @@
+% Agent n-gram transition score -- short idea note.
+% Build: ./build.sh ngram  (pdflatex, output ngram.pdf)
+\documentclass[10pt,a4paper]{article}
+\usepackage[margin=1.8cm,top=1.5cm,bottom=1.6cm,footskip=0.8cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb}
+\usepackage{times}  % Times text; mathptmx needs the rsfs font, which this TeX install lacks
+\usepackage{enumitem}
+\usepackage{float}
+\usepackage{xcolor}
+\usepackage[hidelinks]{hyperref}
+
+\setlist{nosep,leftmargin=1.3em}
+\setlength{\parskip}{3pt}
+\setlength{\parindent}{0pt}
+\setlength{\emergencystretch}{2em}
+\pagestyle{plain}
+\makeatletter
+\renewcommand\section{\@startsection{section}{1}{\z@}{9pt plus 2pt minus 1pt}{3pt}{\large\bfseries}}
+\makeatother
+
+% ---------- algorithm float (the algorithm/algorithmic packages are not installed; this reproduces their ruled layout) ----------
+\floatstyle{ruled}
+\newfloat{algorithm}{tbp}{loa}
+\floatname{algorithm}{Algorithm}
+\newlist{alglines}{enumerate}{1}
+\setlist[alglines]{label=\footnotesize\arabic*:,leftmargin=2.2em,labelsep=0.6em,itemsep=1pt,topsep=1pt,parsep=0pt}
+\newcommand{\ind}{\hspace*{1.3em}}  % one level of indentation inside a loop
+\newcommand{\kw}[1]{\textbf{#1}}
+
+% ---------- notation ----------
+\newcommand{\Dref}{\mathcal{D}_{\mathrm{ref}}}
+\newcommand{\R}{\mathcal{R}}
+\newcommand{\bos}{\langle\mathrm{s}\rangle}
+\newcommand{\norm}[1]{\lVert #1\rVert}
+
+\begin{document}
+
+\begin{center}
+{\Large\bfseries An Agent $n$-gram Transition Score for Step Suspiciousness}\\[4pt]
+{\small Idea note \textperiodcentered\ draft, November 2026}
+\end{center}
+\vspace{-2pt}
+
+\section{Idea}
+
+How suspicious a step looks depends on which agent wrote it and on which agents spoke just before it. We assume that most steps of a multi-agent system are correct, so the steps written under one \emph{agent pattern} (the same sequence of $n$ responsible agents) are mostly correct, and that in a step-embedding space a correct hand-off between two given agents moves in a similar direction each time. A step is then suspicious when its movement is far from the usual movement of its agent pattern. The score needs no error labels.
+
+\section{Notation}
+
+A trajectory is $x=(s_1,\dots,s_T)$ and $a_t=A(s_t)$ is the agent responsible for step $t$. A proxy encoder $\phi$ reads the whole trajectory and returns one vector per step, $\phi(x)=(e_1,\dots,e_T)$, $e_t\in\mathbb{R}^d$ (for example the mean of the token states of step $t$). The \emph{movement} into step $t$ is $d_t=e_t-e_{t-1}$, with $e_0=0$. As in an $n$-gram language model, the trajectory is padded on the left with a start symbol, $a_t=\bos$ for $t\le 0$, and the \emph{key of order $j$} of step $t$ is the pattern of the last $j$ agents,
+\begin{equation}
+k_t^{(j)}=(a_{t-j+1},\dots,a_t),\qquad j=0,1,\dots,n,
+\end{equation}
+where $k_t^{(0)}$ is the empty key shared by all steps. For a reference corpus $\Dref$, the \emph{reference set} $\R(k)$ of a key $k$ holds the movements of all steps of $\Dref$ that have this key. A rare key has too few reference movements, so we \emph{back off}: step $t$ uses the longest key with at least $m$ reference movements.
+
+\section{Algorithm}
+
+\begin{algorithm}[H]
+\caption{Agent $n$-gram Transition Score}\label{alg:ngram}
+\begin{alglines}
+\item \kw{Input}: reference trajectories $\Dref$, trajectory to score $x=(s_1,\dots,s_T)$, proxy encoder $\phi$, agent map $A$, order $n$, minimum count $m$
+\item \kw{for} each trajectory $x'\in\Dref\cup\{x\}$ \kw{do}
+\item \ind Embed the steps $(e_1,\dots,e_{T'})\leftarrow\phi(x')$ and set $e_0\leftarrow 0$
+\item \ind Compute the movements $d_t\leftarrow e_t-e_{t-1}$ and the keys $k_t^{(j)}\leftarrow(a_{t-j+1},\dots,a_t)$ for $t\in[T']$, $j=0,\dots,n$
+\item \kw{end for}
+\item \kw{for} each key $k$ that occurs in $\Dref$ \kw{do}
+\item \ind Collect the reference set $\R(k)\leftarrow\{\,d_{t'}(x') : x'\in\Dref,\ k_{t'}^{(j)}(x')=k \text{ for some } j\,\}$
+\item \ind Compute the mean movement $\mu_k\leftarrow\frac{1}{|\R(k)|}\sum_{d\in\R(k)}d$ and the spread $v_k\leftarrow\frac{1}{|\R(k)|}\sum_{d\in\R(k)}\norm{d-\mu_k}^2$
+\item \kw{end for}
+\item \kw{for} $t\leftarrow 1:T$ \kw{do}
+\item \ind Back off: $j^\star\leftarrow\max\{\,j\le n : |\R(k_t^{(j)})|\ge m\,\}$ and $k\leftarrow k_t^{(j^\star)}$
+\item \ind $\sigma_t\leftarrow\norm{d_t-\mu_k}^2/\,v_k$
+\item \kw{end for}
+\item \kw{Output}: the suspiciousness scores $(\sigma_1,\dots,\sigma_T)$ of the steps of $x$
+\end{alglines}
+\end{algorithm}
+
+Lines 2--9 run once for the corpus, lines 10--13 per trajectory. We assume $\Dref$ has at least $m$ steps, so the empty key always qualifies in Line 11. If $x$ itself belongs to $\Dref$, its own movements are left out of $\R(k)$ in Lines 7--8, otherwise a step is compared with itself.
+
+\section{Remarks}
+
+\begin{itemize}
+\item \textbf{What the key does.} With $n=3$ and agents $(a_1,a_2,a_3)$, only the movement $e_3-e_2$ is scored; $a_1$ selects the reference set and its embedding $e_1$ is not used. A variant scores the stacked movements $(e_2-e_1,\,e_3-e_2)$.
+\item \textbf{Open choices.} The distance in Line 12 (alternatives: the cosine to $\mu_k$, a nearest-neighbour distance in $\R(k)$, the residual of a per-key regression of $e_t$ on $e_{t-1}$); the pooling in $\phi$; the agent map $A$, which should send agent names to a few roles when names differ between systems.
+\item \textbf{From score to set.} $\sigma_t$ plays the role of the step score $\pi_t$ in the conformal-training proposal (pps06): any increasing map of $\sigma_t$ can be calibrated by split conformal prediction. Coverage does not depend on how good $\sigma$ is; set size does.
+\item \textbf{Where it can break.} (i) Agent patterns are sparse when every team has its own agent names, and the back-off then ends at short keys. (ii) An unusual step is not the same as the step that caused the failure: steps after the error can move more unusually than the error itself, and an omission can move normally. (iii) The movement may depend more on the task than on the agents, so that $v_k$ is large for every key. (iv) A $\Dref$ of failed trajectories contains error steps.
+\item \textbf{First check.} On a system with fixed roles, compare the within-trajectory AUROC of the labelled step for step position only, $n=0$ (empty key), $n=1$ and $n=3$. The key is useful only if $n\ge1$ beats both position and $n=0$.
+\end{itemize}
+
+\end{document}

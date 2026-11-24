@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DPSM: the original work and an encoder on frozen step vectors</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Space+Grotesk:wght@500;600&display=swap">
+<script>
+window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},svg:{fontCache:'none'},
+  startup:{pageReady(){return MathJax.startup.defaultPageReady().then(()=>{window.MJ=true;if(window.renderAll)window.renderAll();});}}};
+// LaTeX inside SVG, as in conftr-dpsm.html: each <text data-tex> is replaced by MathJax SVG placed at its baseline (x,y); until then the plain-text fallback shows.
+window.renderAll=()=>document.querySelectorAll('svg.chart text[data-tex]').forEach(el=>{
+  const size=+el.dataset.size,anchor=el.getAttribute('text-anchor')||'start',color=el.dataset.color,x=+el.getAttribute('x'),y=+el.getAttribute('y');
+  const s=MathJax.tex2svg(el.dataset.tex,{display:false}).querySelector('svg');const vb=s.getAttribute('viewBox').split(/\s+/).map(Number);
+  const w=vb[2]/1000*size,h=vb[3]/1000*size,x0=anchor==='end'?x-w:anchor==='middle'?x-w/2:x;
+  s.setAttribute('x',x0);s.setAttribute('y',y+vb[1]/1000*size);s.setAttribute('width',w);s.setAttribute('height',h);
+  s.removeAttribute('style');s.setAttribute('style',`color:${color};overflow:visible`);el.replaceWith(s);});
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg.js" async></script>
+<style>
+/* Layout and tokens as in conftr-dpsm.html (--dm for DPSM). Added: --df, the accent for what the encoder setting changes (the --ct values, unused otherwise on this page). */
+:root{
+  --bg:#f5f7fa; --surface:#ffffff; --fg:#18202c; --muted:#5b6678; --line:#d8dee7; --bar:#c3cbd7;
+  --cp:#0d766f; --ct:#3a4db3; --dm:#a85500; --err:#c4342a; --ok:#2c7a37; --no:#b0352a; --df:#3a4db3;
+  --display:"Space Grotesk",system-ui,sans-serif; --body:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#11151c; --surface:#181e27; --fg:#e4e8ef; --muted:#9aa5b6; --line:#2b3341; --bar:#475163;
+  --cp:#3dbdb1; --ct:#8d9cff; --dm:#d98b3a; --err:#ff6a5c; --ok:#6cc47a; --no:#ff7b6e; --df:#8d9cff; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11151c; --surface:#181e27; --fg:#e4e8ef; --muted:#9aa5b6; --line:#2b3341; --bar:#475163;
+  --cp:#3dbdb1; --ct:#8d9cff; --dm:#d98b3a; --err:#ff6a5c; --ok:#6cc47a; --no:#ff7b6e; --df:#8d9cff; color-scheme:dark}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.55}
+.wrap{max-width:1040px;margin:0 auto;padding-block:32px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:36px}
+.wrap>*{min-width:0}
+h1,h2,h3,h4{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.25}
+h1{font-size:2rem;font-weight:600} h2{font-size:1.45rem;font-weight:600} h3{font-size:1.05rem;font-weight:600} h4{font-size:.95rem;font-weight:600}
+p{margin:0}
+dfn{font-style:normal;font-weight:600}
+.lede{color:var(--muted)} .lede b{color:var(--fg)}
+.eyebrow{font-family:var(--mono);font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;color:var(--acc,var(--muted))}
+section.paper{--acc:var(--cp);display:grid;gap:18px;min-width:0}
+section.paper.ct{--acc:var(--ct)} section.paper.dm{--acc:var(--dm)}
+.paper-head{display:grid;gap:6px;border-left:4px solid var(--acc);padding-left:14px}
+.paper-head p{color:var(--muted)}
+.stage{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;display:grid;gap:16px;min-width:0}
+.stage-title{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.tag{font-family:var(--mono);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;background:color-mix(in srgb,var(--acc) 14%,transparent);color:var(--acc);padding:2px 8px;border-radius:4px}
+.cap{font-size:.85rem;color:var(--muted)}
+.eq{background:var(--bg);border:1px solid var(--line);border-left:3px solid var(--acc);border-radius:6px;padding:8px 12px;overflow-x:auto;font-size:.95rem;min-width:0}
+svg.chart{width:100%;height:auto;display:block}
+.figwrap{overflow-x:auto;min-width:0} .figwrap svg.chart{min-width:640px}
+mjx-container svg{display:inline-block}
+mjx-container[display="true"]{margin:.3em 0!important}
+mjx-container{color:inherit}
+svg text{font-family:var(--mono);font-size:11px;fill:var(--muted)}
+svg .fg{fill:var(--fg)} svg .acc{fill:var(--acc)}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface);min-width:0}
+table{border-collapse:collapse;width:100%;font-size:.9rem;min-width:680px}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+thead th{font-family:var(--display);font-weight:600}
+tbody th{font-weight:500;color:var(--muted);width:18%}
+tr:last-child td,tr:last-child th{border-bottom:0}
+th.c{color:var(--ct)} th.d{color:var(--dm)}
+.cmp td{font-size:.88rem}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.8rem;color:var(--muted)}
+.sw{display:inline-block;width:11px;height:11px;border-radius:2px;vertical-align:-1px;margin-right:5px}
+.ln-sw{display:inline-block;width:22px;height:0;vertical-align:3px;margin-right:5px;border-top:2px solid var(--muted)}
+.note{font-size:.82rem;color:var(--muted)}
+.grid2{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:16px;align-items:start}
+.algo{font-family:var(--mono);font-size:.8rem;line-height:1.75;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;overflow-x:auto;display:grid;gap:2px;align-content:start;min-width:0}
+.algo .ln{color:var(--muted);display:inline-block;width:2.2em;text-align:right;margin-right:6px}
+.algo .i1{padding-left:1.4em}
+.algo .cm{color:var(--muted);font-style:italic}
+.algo .hd{font-family:var(--display);font-weight:600;font-size:.85rem;margin-bottom:4px}
+.algo>div:not(.hd){padding-left:calc(2.2em + 6px);text-indent:calc(-2.2em - 6px)}
+.algo>div.i1{padding-left:calc(3.6em + 6px)}
+.algo>div *{text-indent:0}
+.algo .hl{background:color-mix(in srgb,var(--acc) 11%,transparent);border-radius:4px}
+ul.notes{margin:0;padding-left:1.25em;display:grid;gap:6px;font-size:.88rem;color:var(--muted)}
+ul.notes b{color:var(--fg);font-weight:500}
+@media (max-width:780px){.grid2{grid-template-columns:minmax(0,1fr)} h1{font-size:1.6rem}}
+/* what differs in the encoder setting */
+.df,.lede b.df{color:var(--df)}
+.algo .cm.df{color:var(--df)}
+.algo .dl{box-shadow:inset 3px 0 0 var(--df);border-radius:4px}
+ul.notes b.df{color:var(--df)}
+.pair td{width:41%}
+.pair tbody th{width:18%}
+.pair .shared td,.pair .shared th{background:var(--bg)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header style="display:grid;gap:10px">
+  <span class="eyebrow">Conformal training for failure attribution · DPSM (Shi et al., ICML 2025)</span>
+  <h1>DPSM in the original work and on frozen step vectors</h1>
+  <p class="lede">The same bilevel problem and the same Algorithm 1, first as published for a classifier, then for an encoder on frozen step vectors whose candidates are the steps of a trajectory. <b class="df">Blue</b> marks what differs from the original.</p>
+</header>
+
+<!-- ======================= 1. Bilevel formulation ======================= -->
+<section class="paper dm" id="bilevel">
+  <div class="paper-head">
+    <span class="eyebrow">Shi et al. · Sec. 4, Eqs. 6–9 · Proposal · Sec. 2–3, Family 2</span>
+    <h2>The bilevel formulation</h2>
+    <p>Steps play the role of classes; the label becomes a set of steps.</p>
+  </div>
+  <div class="tablewrap"><table class="cmp pair">
+    <thead><tr><th></th><th class="d">DPSM, original: a classifier</th><th>Encoder on frozen step vectors</th></tr></thead>
+    <tbody>
+      <tr><th>Bilevel problem</th>
+        <td>\[ \begin{aligned}&\min_{\theta,\,q}\ \widehat{\mathcal L}_{\rm cls}(\theta)+\lambda\,\widehat{\mathcal L}^{\rm DM}_c(\theta,q)\\ &\ \text{s.t.}\ \ q\in\mathcal U(\theta)\triangleq\arg\min_{q'}\widehat{\mathcal L}^{\rm QR}(\theta,q')\end{aligned} \]</td>
+        <td>\[ \begin{aligned}&\min_{\theta,\,q}\ \widehat{\mathcal L}_{\rm cls}(\theta)+\lambda\,\widehat{\mathcal L}_{\rm size}(\theta,q)\\ &\ \text{s.t.}\ \ q\in\mathcal U(\theta)\triangleq\arg\min_{q'}\widehat{\mathcal L}^{\rm QR}(\theta,q')\end{aligned} \]</td></tr>
+      <tr><th>Input and candidates</th>
+        <td>an input \(X\); candidate labels \(y\in\mathcal Y\), the same \(K\) classes for every input</td>
+        <td>a failed trajectory \(x=(s_1,\dots,s_T)\), a task and \(T\) agent turns; candidate steps \(t\in[T]=\{1,\dots,T\}\), <span class="df">with \(T\) different for each trajectory</span></td></tr>
+      <tr><th>Label</th>
+        <td>one true class \(Y\in\mathcal Y\)</td>
+        <td><span class="df">a non-empty error set \(Y\subseteq[T]\)</span>; every step in \(Y\) is a valid answer</td></tr>
+      <tr><th>Model</th>
+        <td>a network \(f_\theta\) with softmax output \(f_\theta(X)_y\) over \(\mathcal Y\); every parameter in \(\theta\) is trained</td>
+        <td>\[ \begin{aligned}h_t&=\tfrac{1}{|I_t|}\textstyle\sum_{j\in I_t}H_j\quad\class{df}{\text{(frozen LLM, cached)}}\\ u_t&=Wh_t+e^{\rm agent}_{a(t)}+e^{\rm pos}_t\\ (v_1,\dots,v_T)&=\mathrm{Enc}_\phi(u_1,\dots,u_T)\\ \pi_t(x)&=\frac{\exp(w^\top v_t)}{\class{df}{\sum_{t'=1}^{T}}\exp(w^\top v_{t'})}\end{aligned} \]
+        \(H_j\): hidden state of token \(j\); \(I_t\): the tokens of step \(t\); \(a(t)\): the agent of step \(t\); \(\mathrm{Enc}_\phi\): a two-layer transformer encoder. Trained: \(\theta=(W,e^{\rm agent},e^{\rm pos},\phi,w)\); <span class="df">the LLM stays frozen</span>.</td></tr>
+      <tr><th>Score</th>
+        <td>\(S_f(X,y)=1-f_\theta(X)_y\)</td>
+        <td>\(S_\theta(x,t)=1-\pi_t(x)\)</td></tr>
+      <tr><th>True-label score</th>
+        <td>\(S_f(X,Y)\)</td>
+        <td>\(\class{df}{S^{\min}_\theta(x,Y)=\min_{t\in Y}S_\theta(x,t)}=1-\max_{t\in Y}\pi_t(x)\); the set \(\{t: S_\theta(x,t)\le q\}\) contains a step of \(Y\) exactly when \(S^{\min}_\theta(x,Y)\le q\)</td></tr>
+      <tr><th>Classification loss</th>
+        <td>\(\widehat{\mathcal L}_{\rm cls}(\theta)=\frac1n\sum_{i=1}^n-\log f_\theta(X_i)_{Y_i}\)</td>
+        <td>\(\widehat{\mathcal L}_{\rm cls}(\theta)=\frac1n\sum_{i=1}^n-\log\class{df}{\sum_{t\in Y_i}}\pi_t(x_i)\)</td></tr>
+      <tr><th>Size loss (upper level)</th>
+        <td>\(\widehat{\mathcal L}^{\rm DM}_c(\theta,q)=\frac1n\sum_{i=1}^n\sum_{y\in\mathcal Y}\tilde{\mathbf 1}\big[S_f(X_i,y)\le q\big]\)</td>
+        <td>\(\widehat{\mathcal L}_{\rm size}(\theta,q)=\frac1n\sum_{i=1}^n\class{df}{\sum_{t=1}^{T_i}}\tilde{\mathbf 1}\big[S_\theta(x_i,t)\le q\big]\)</td></tr>
+      <tr><th>Quantile loss (lower level)</th>
+        <td>\(\widehat{\mathcal L}^{\rm QR}(\theta,q)=\frac1n\sum_{i=1}^n\rho_\alpha\big(q,\,S_f(X_i,Y_i)\big)\)</td>
+        <td>\(\widehat{\mathcal L}^{\rm QR}(\theta,q)=\frac1n\sum_{i=1}^n\rho_\alpha\big(q,\,\class{df}{S^{\min}_\theta(x_i,Y_i)}\big)\)</td></tr>
+      <tr><th>Training data</th>
+        <td>\(\mathcal D_{\rm tr}\), \(n\) labelled inputs, split once at random into halves \(\mathcal D_1,\mathcal D_2\) of size \(n/2\)</td>
+        <td>\(\mathcal D_{\rm tr}\), \(n\) labelled trajectories, split once <span class="df">by task</span> into \(\mathcal D_1,\mathcal D_2\)</td></tr>
+      <tr><th>After training</th>
+        <td>\(q\) is discarded; split conformal prediction on \(\mathcal D_{\rm cal}\) with the scores \(S_f(X_i,Y_i)\) gives \(\mathcal C_f(X)=\{y: S_f(X,y)\le\widehat Q_f(\alpha)\}\), which covers when \(Y\in\mathcal C_f(X)\)</td>
+        <td>\(q\) is discarded; split conformal prediction on \(\mathcal D_{\rm cal}\) with the scores \(\class{df}{S^{\min}_\theta(x_i,Y_i)}\) gives \(\mathcal C_\theta(x)=\{t\in[T]: S_\theta(x,t)\le\widehat Q(\alpha)\}\), which covers when \(\class{df}{\mathcal C_\theta(x)\cap Y\neq\varnothing}\)</td></tr>
+      <tr class="shared"><th>The same in both</th>
+        <td colspan="2">\[ \rho_\alpha(q,S)=\begin{cases}(1-\alpha)(S-q), & S\ge q\\ \alpha\,(q-S), & \text{otherwise}\end{cases}\qquad \frac{\partial}{\partial q}\,\frac{1}{|\mathcal B|}\sum_{i\in\mathcal B}\rho_\alpha(q,S_i)=\alpha-\frac{\#\{i: S_i\ge q\}}{|\mathcal B|} \]
+        \[ \tilde{\mathbf 1}\big[S\le q\big]=\frac{1}{1+\exp\!\big(-(q-S)/\tau_{\rm Sigmoid}\big)}\qquad\text{(soft membership, temperature }\tau_{\rm Sigmoid}\text{)} \]</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ======================= 2. Original ======================= -->
+<section class="paper dm" id="original">
+  <div class="paper-head">
+    <span class="eyebrow">Shi et al. · ICML 2025 · Sec. 4, Alg. 1</span>
+    <h2>Data and gradient flow in one iteration (original work)</h2>
+    <p>One gradient step on \(\theta\) and one pinball step on \(q\) per iteration.</p>
+  </div>
+  <div class="stage">
+    <div class="figwrap"><svg class="chart" id="dm-dg" viewBox="0 0 1000 526" role="img" aria-label="DPSM iteration: the training set is split once into two halves; a batch from the first half feeds cross-entropy and the pinball loss, a batch from the second half feeds the soft set size at the current q; theta is updated from cross-entropy and soft size, q only from the pinball loss, and q is carried to the next iteration. Below: inside the model, every parameter of the network is trained.">
+<defs><marker id="fwo" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10z" fill="var(--muted)"/></marker><marker id="gdo" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10z" fill="var(--dm)"/></marker></defs>
+<rect x="10" y="160" width="100" height="62" rx="7" fill="var(--surface)" stroke="var(--line)" stroke-width="1.4"/>
+<text x="60" y="181" text-anchor="middle" class="fg" style="font-size:12px">training set</text>
+<text x="60" y="209" text-anchor="middle" style="fill:var(--fg)" data-tex="\mathcal D_{\rm tr}" data-size="11" data-color="var(--fg)"> D tr</text>
+<rect x="140" y="48" width="100" height="62" rx="7" fill="var(--surface)" stroke="var(--line)" stroke-width="1.4"/>
+<text x="190" y="69" text-anchor="middle" class="fg" style="font-size:12px">fixed half</text>
+<text x="190" y="97" text-anchor="middle" style="fill:var(--fg)" data-tex="\mathcal D_1\ (n/2)" data-size="11" data-color="var(--fg)"> D1 (n/2)</text>
+<rect x="140" y="272" width="100" height="62" rx="7" fill="var(--surface)" stroke="var(--line)" stroke-width="1.4"/>
+<text x="190" y="293" text-anchor="middle" class="fg" style="font-size:12px">fixed half</text>
+<text x="190" y="321" text-anchor="middle" style="fill:var(--fg)" data-tex="\mathcal D_2\ (n/2)" data-size="11" data-color="var(--fg)"> D2 (n/2)</text>
+<rect x="270" y="48" width="88" height="62" rx="7" fill="var(--surface)" stroke="var(--line)" stroke-width="1.4"/>
+<text x="314" y="69" text-anchor="middle" class="fg" style="font-size:12px">batch</text>
+<text x="314" y="97" text-anchor="middle" style="fill:var(--fg)" data-tex="\mathcal B^1_t" data-size="11" data-color="var(--fg)"> B1t</text>
+<rect x="270" y="272" width="88" height="62" rx="7" fill="var(--surface)" stroke="var(--line)" stroke-width="1.4"/>
+<text x="314" y="293" text-anchor="middle" class="fg" style="font-size:12px">batch</text>
+<text x="314" y="321" text-anchor="middle" style="fill:var(--fg)" data-tex="\mathcal B^2_t" data-size="11" data-color="var(--fg)"> B2t</text>
+<rect x="388" y="48" width="172" height="62" rx="7" fill="var(--surface)" stroke="var(--line)" stroke-width="1.4"/>
+<text x="474" y="69" text-anchor="middle" class="fg" style="font-size:12px">model, true label</text>
+<text x="474" y="97" text-anchor="middle" style="fill:var(--fg)" data-tex="S_f(X_i,Y_i),\ f_\theta(X_i)_{Y_i}" data-size="10.5" data-color="var(--fg)">Sf(Xi,Yi), f(Xi)Yi</text>
+<rect x="388" y="272" width="172" height="62" rx="7" fill="var(--surface)" stroke="var(--line)" stroke-width="1.4"/>
+<text x="474" y="293" text-anchor="middle" class="fg" style="font-size:12px">model, all labels</text>
+<text x="474" y="321" text-anchor="middle" style="fill:var(--fg)" data-tex="S_f(X_i,y),\ y\in\mathcal Y" data-size="10.5" data-color="var(--fg)">Sf(Xi,y), y Y</text>
+<rect x="598" y="12" width="168" height="58" rx="7" fill="var(--surface)" stroke="var(--dm)" stroke-width="1.4"/>
+<text x="682" y="33" text-anchor="middle" class="fg" style="font-size:12px">cross-entropy</text>
+<text x="682" y="57" text-anchor="middle" style="fill:var(--fg)" data-tex="\widehat{\mathcal L}_{\rm cls}(\theta)" data-size="11" data-color="var(--fg)"> L cls()</text>
+<rect x="598" y="92" width="168" height="58" rx="7" fill="var(--surface)" stroke="var(--dm)" stroke-width="1.4"/>
+<text x="682" y="113" text-anchor="middle" class="fg" style="font-size:12px">pinball loss</text>
+<text x="682" y="137" text-anchor="middle" style="fill:var(--fg)" data-tex="\widehat{\mathcal L}^{\rm QR}(\theta,q_t)" data-size="11" data-color="var(--fg)"> L QR(,qt)</text>
+<circle cx="682" cy="210" r="26" fill="var(--surface)" stroke="var(--dm)" stroke-width="3"/>
+<text x="682" y="215" text-anchor="middle" style="fill:var(--fg)" data-tex="q_t" data-size="16" data-color="var(--fg)">qt</text>
+<text x="560" y="206" text-anchor="end" class="fg">a parameter,</text><text x="560" y="221" text-anchor="end">kept between iterations</text>
+<rect x="598" y="276" width="168" height="58" rx="7" fill="var(--surface)" stroke="var(--dm)" stroke-width="1.4"/>
+<text x="682" y="297" text-anchor="middle" class="fg" style="font-size:12px">soft set size</text>
+<text x="682" y="321" text-anchor="middle" style="fill:var(--fg)" data-tex="\widehat{\mathcal L}^{\rm DM}_c(\theta,q_t)" data-size="11" data-color="var(--fg)"> L DMc(,qt)</text>
+<rect x="806" y="12" width="180" height="58" rx="7" fill="var(--surface)" stroke="var(--dm)" stroke-width="1.8"/>
+<text x="896" y="33" text-anchor="middle" class="fg" style="font-size:12px">update θ</text>
+<text x="896" y="57" text-anchor="middle" style="fill:var(--fg)" data-tex="\theta_t-\eta\big(\nabla_\theta\widehat{\mathcal L}_{\rm cls}+\lambda\nabla_\theta\widehat{\mathcal L}^{\rm DM}_c\big)" data-size="9.5" data-color="var(--fg)">t-( L cls+ L DMc)</text>
+<rect x="806" y="92" width="180" height="58" rx="7" fill="var(--surface)" stroke="var(--dm)" stroke-width="1.8"/>
+<text x="896" y="113" text-anchor="middle" class="fg" style="font-size:12px">update q</text>
+<text x="896" y="137" text-anchor="middle" style="fill:var(--fg)" data-tex="q_t-\gamma\,\nabla_q\widehat{\mathcal L}^{\rm QR}" data-size="10.5" data-color="var(--fg)">qt-,q L QR</text>
+<path d="M110 191 H125 V79 H139" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#fwo)" />
+<path d="M110 191 H125 V303 H139" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#fwo)" />
+<text x="128" y="186" style="font-size:10px">once</text>
+<path d="M240 79 H269" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#fwo)" />
+<path d="M240 303 H269" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#fwo)" />
+<path d="M358 79 H387" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#fwo)" />
+<path d="M358 303 H387" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#fwo)" />
+<path d="M560 79 H578 V41 H597" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#fwo)" />
+<path d="M560 79 H578 V121 H597" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#fwo)" />
+<path d="M560 303 H597" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#fwo)" />
+<path d="M682 184 V151" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#fwo)" />
+<path d="M682 236 V275" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#fwo)" />
+<circle cx="682" cy="256" r="7" fill="var(--surface)" stroke="var(--no)" stroke-width="1.5"/><path d="M677 261 L687 251" stroke="var(--no)" stroke-width="1.5"/>
+<text x="696" y="252" style="fill:var(--no);font-size:10px">used as a constant:</text><text x="696" y="265" style="fill:var(--no);font-size:10px">no gradient to q</text>
+<path d="M766 41 H805" fill="none" stroke="var(--dm)" stroke-width="1.5" marker-end="url(#gdo)" stroke-dasharray="6 4"/>
+<path d="M766 121 H805" fill="none" stroke="var(--dm)" stroke-width="1.5" marker-end="url(#gdo)" stroke-dasharray="6 4"/>
+<path d="M766 305 H994 V41 H987" fill="none" stroke="var(--dm)" stroke-width="1.5" marker-end="url(#gdo)" stroke-dasharray="6 4"/>
+<text x="988" y="238" text-anchor="end" style="fill:var(--dm)" data-tex="\lambda\nabla_\theta" data-size="12" data-color="var(--dm)"></text>
+<text x="676" y="170" text-anchor="end" style="font-size:10px">pinball: θ-gradient unused</text>
+<path d="M896 150 V210 H710" fill="none" stroke="var(--dm)" stroke-width="3" marker-end="url(#gdo)"/>
+<text x="800" y="203" text-anchor="middle" style="fill:var(--dm)" data-tex="q_{t+1}" data-size="11.5" data-color="var(--dm)">qt+1</text>
+<text x="500" y="368" text-anchor="middle" style="fill:var(--fg)" data-tex="\text{no sorting}\ \cdot\ \text{no hyper-gradient }\partial q^*/\partial\theta\ \cdot\ \text{the labels of }\mathcal D_2\text{ are never used}" data-size="12" data-color="var(--fg)">no sorting, no hyper-gradient, labels of D2 never used</text>
+<line x1="10" y1="384" x2="990" y2="384" stroke="var(--line)"/>
+<text x="10" y="401" class="fg">inside each model box, for one input</text>
+<rect x="122" y="406" width="716" height="78" rx="10" fill="color-mix(in srgb, var(--dm) 5%, transparent)" stroke="var(--dm)" stroke-width="1"/>
+<text x="830" y="401" text-anchor="end" style="fill:var(--dm)" data-tex="\text{trained: every parameter of }\theta" data-size="11" data-color="var(--dm)">trained: every parameter of θ</text>
+<rect x="10" y="414" width="100" height="62" rx="7" fill="var(--surface)" stroke="var(--line)" stroke-width="1.4"/>
+<text x="60" y="435" text-anchor="middle" class="fg" style="font-size:12px">input</text>
+<text x="60" y="463" text-anchor="middle" style="fill:var(--fg)" data-tex="X_i" data-size="11" data-color="var(--fg)">Xi</text>
+<rect x="130" y="414" width="700" height="62" rx="7" fill="var(--surface)" stroke="var(--line)" stroke-width="1.4"/>
+<text x="480" y="435" text-anchor="middle" class="fg" style="font-size:12px">network</text>
+<text x="480" y="463" text-anchor="middle" style="fill:var(--fg)" data-tex="f_\theta" data-size="12" data-color="var(--fg)">f</text>
+<rect x="850" y="414" width="130" height="62" rx="7" fill="var(--surface)" stroke="var(--line)" stroke-width="1.4"/>
+<text x="915" y="435" text-anchor="middle" class="fg" style="font-size:12px">softmax</text>
+<text x="915" y="463" text-anchor="middle" style="fill:var(--fg)" data-tex="f_\theta(X_i)_y,\ y\in\mathcal Y" data-size="10.5" data-color="var(--fg)">f(Xi)y, y Y</text>
+<path d="M110 445 H129" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#fwo)" />
+<path d="M830 445 H849" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#fwo)" />
+<path d="M915 476 V498 H480 V477" fill="none" stroke="var(--dm)" stroke-width="1.5" marker-end="url(#gdo)" stroke-dasharray="6 4"/>
+<text x="640" y="516" text-anchor="middle" style="fill:var(--dm)" data-tex="\nabla_\theta\text{ from the losses reaches every parameter of the network}" data-size="11" data-color="var(--dm)">gradient from the losses reaches every parameter of the network</text>
+    </svg></div>
+    <div class="legend"><span><i class="ln-sw"></i>values, forward pass</span><span><i class="ln-sw" style="border-top:2px dashed var(--dm)"></i>gradients</span><span><i class="ln-sw" style="border-top:3px solid var(--dm)"></i>state kept between iterations</span></div>
+    <div class="grid2">
+      <div class="algo">
+        <div class="hd">DPSM, Algorithm 1, in this page's notation</div>
+        <div><span class="ln">1:</span><b>Input:</b> \(\mathcal D_{\rm tr}\), \(\lambda\), learning rates \(\eta,\gamma>0\), miscoverage \(\alpha\)</div>
+        <div><span class="ln">2:</span>randomly initialise \(\theta_0\) and \(q_0\in\mathbb R\)</div>
+        <div class="hl"><span class="ln">3:</span>randomly split \(\mathcal D_{\rm tr}\) into disjoint \(\mathcal D_1,\mathcal D_2\), \(|\mathcal D_1|=|\mathcal D_2|=\tfrac n2\)</div>
+        <div><span class="ln">4:</span><b>for</b> \(t\leftarrow0:T-1\) <b>do</b></div>
+        <div class="i1"><span class="ln">5:</span>sample batches \(\mathcal B^1_t\subset\mathcal D_1,\ \mathcal B^2_t\subset\mathcal D_2\)</div>
+        <div class="i1"><span class="ln">6:</span>\(\widehat\nabla_{\theta,t}\leftarrow\widehat\nabla_\theta\widehat{\mathcal L}_{\rm cls}(\theta_t)\) on \(\mathcal B^1_t\)</div>
+        <div class="i1 hl"><span class="ln">7:</span>\(\widehat\nabla^{\rm QR}_{q,t}\leftarrow\widehat\nabla_q\widehat{\mathcal L}^{\rm QR}(\theta_t,q_t)\) on \(\mathcal B^1_t\)</div>
+        <div class="i1"><span class="ln">8:</span>\(\widehat\nabla^{\rm DM}_{\theta,t}\leftarrow\widehat\nabla_\theta\widehat{\mathcal L}^{\rm DM}_c(\theta_t,q_t)\) on \(\mathcal B^2_t\)</div>
+        <div class="i1"><span class="ln">9:</span>\(\theta_{t+1}\leftarrow\theta_t-\eta\big(\widehat\nabla_{\theta,t}+\lambda\,\widehat\nabla^{\rm DM}_{\theta,t}\big)\)</div>
+        <div class="i1 hl"><span class="ln">10:</span>\(q_{t+1}\leftarrow q_t-\gamma\,\widehat\nabla^{\rm QR}_{q,t}\)</div>
+        <div><span class="ln">11:</span><b>end for</b></div>
+        <div><span class="ln">12:</span><b>Output:</b> the trained model \(f_{\theta_T}\)</div>
+      </div>
+      <ul class="notes">
+        <li><b>Gradients.</b> Line 8 is the partial derivative in \(\theta\) with \(q\) held fixed: no hyper-gradient \(\partial q^*/\partial\theta\). The \(\theta\)-gradient of the pinball loss is not used, and the size loss sends no gradient to \(q\).</li>
+        <li><b>Data.</b> The split is done once (line 3). \(\mathcal D_1\) feeds cross-entropy and the pinball loss; \(\mathcal D_2\) feeds only the size loss, which sums over all labels, so the labels of \(\mathcal D_2\) are never used.</li>
+        <li><b>Indices.</b> All three gradients are read at the current iterate \((\theta_t,q_t)\); the paper prints \(f_{t-1},q_{t-1}\) in lines 6–8.</li>
+        <li><b>Output</b> is \(f_{\theta_T}\) alone: \(q_T\) is discarded and split conformal prediction is run on \(\mathcal D_{\rm cal}\).</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= 3. Encoder ======================= -->
+<section class="paper dm" id="encoder">
+  <div class="paper-head">
+    <span class="eyebrow">Proposal · Sec. 3.1 and Family 2 · Algorithm 1 adapted</span>
+    <h2>Data and gradient flow in one iteration (encoder on frozen step vectors setting)</h2>
+    <p>The same iteration, with the steps of a trajectory as the candidates.</p>
+  </div>
+  <div class="stage">
+    <div class="figwrap"><svg class="chart" id="enc-dg" viewBox="0 0 1000 526" role="img" aria-label="DPSM iteration for the encoder: step vectors are computed once by a frozen LLM and cached; the training set is split once by task into two parts; a batch from the first part feeds cross-entropy on the error set and the pinball loss on the smallest error-step score, a batch from the second part feeds the soft set size over all steps at the current q; theta is updated from cross-entropy and soft size, q only from the pinball loss, and q is carried to the next iteration. Below: inside the encoder, the gradient reaches the projection, the embeddings, the transformer and the head, and stops at the frozen LLM.">
+<defs><marker id="fwe" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10z" fill="var(--muted)"/></marker><marker id="gde" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10z" fill="var(--dm)"/></marker></defs>
+<rect x="10" y="160" width="100" height="62" rx="7" fill="var(--surface)" stroke="var(--line)" stroke-width="1.4"/>
+<text x="60" y="181" text-anchor="middle" class="fg" style="font-size:12px">training set</text>
+<text x="60" y="209" text-anchor="middle" style="fill:var(--fg)" data-tex="\mathcal D_{\rm tr}" data-size="11" data-color="var(--fg)"> D tr</text>
+<text x="60" y="242" text-anchor="middle" style="fill:var(--df)" data-tex="h_t\ \text{cached}" data-size="10.5" data-color="var(--df)">h_t cached</text>
+<text x="60" y="260" text-anchor="middle" style="fill:var(--df)" data-tex="Y_i\subseteq[T_i]" data-size="10.5" data-color="var(--df)">Y_i ⊆ [T_i]</text>
+<rect x="140" y="48" width="100" height="62" rx="7" fill="var(--surface)" stroke="var(--line)" stroke-width="1.4"/>
+<text x="190" y="69" text-anchor="middle" class="fg" style="font-size:12px">fixed half</text>
+<text x="190" y="97" text-anchor="middle" style="fill:var(--fg)" data-tex="\mathcal D_1" data-size="11" data-color="var(--fg)"> D1</text>
+<rect x="140" y="272" width="100" height="62" rx="7" fill="var(--surface)" stroke="var(--line)" stroke-width="1.4"/>
+<text x="190" y="293" text-anchor="middle" class="fg" style="font-size:12px">fixed half</text>
+<text x="190" y="321" text-anchor="middle" style="fill:var(--fg)" data-tex="\mathcal D_2" data-size="11" data-color="var(--fg)"> D2</text>
+<rect x="270" y="48" width="88" height="62" rx="7" fill="var(--surface)" stroke="var(--line)" stroke-width="1.4"/>
+<text x="314" y="69" text-anchor="middle" class="fg" style="font-size:12px">batch</text>
+<text x="314" y="97" text-anchor="middle" style="fill:var(--fg)" data-tex="\mathcal B^1_k" data-size="11" data-color="var(--fg)"> B1k</text>
+<rect x="270" y="272" width="88" height="62" rx="7" fill="var(--surface)" stroke="var(--line)" stroke-width="1.4"/>
+<text x="314" y="293" text-anchor="middle" class="fg" style="font-size:12px">batch</text>
+<text x="314" y="321" text-anchor="middle" style="fill:var(--fg)" data-tex="\mathcal B^2_k" data-size="11" data-color="var(--fg)"> B2k</text>
+<rect x="388" y="48" width="172" height="62" rx="7" fill="var(--surface)" stroke="var(--df)" stroke-width="1.4"/>
+<text x="474" y="69" text-anchor="middle" class="fg" style="font-size:12px">encoder, error set</text>
+<text x="474" y="97" text-anchor="middle" style="fill:var(--fg)" data-tex="S^{\min}_\theta(x_i,Y_i),\ \textstyle\sum_{t\in Y_i}\pi_t(x_i)" data-size="10.5" data-color="var(--fg)">S(xi,Yi), t Yit(xi)</text>
+<rect x="504" y="40.5" width="54" height="15" rx="3" fill="color-mix(in srgb, var(--df) 16%, var(--surface))" stroke="var(--df)" stroke-width=".8"/><text x="531" y="51.6" text-anchor="middle" style="fill:var(--df);font-size:9px;letter-spacing:.06em">DIFFERS</text>
+<rect x="388" y="272" width="172" height="62" rx="7" fill="var(--surface)" stroke="var(--df)" stroke-width="1.4"/>
+<text x="474" y="293" text-anchor="middle" class="fg" style="font-size:12px">encoder, all steps</text>
+<text x="474" y="321" text-anchor="middle" style="fill:var(--fg)" data-tex="S_\theta(x_i,t),\ t\in[T_i]" data-size="10.5" data-color="var(--fg)">S(xi,t), t[Ti]</text>
+<rect x="504" y="264.5" width="54" height="15" rx="3" fill="color-mix(in srgb, var(--df) 16%, var(--surface))" stroke="var(--df)" stroke-width=".8"/><text x="531" y="275.6" text-anchor="middle" style="fill:var(--df);font-size:9px;letter-spacing:.06em">DIFFERS</text>
+<rect x="598" y="12" width="168" height="58" rx="7" fill="var(--surface)" stroke="var(--dm)" stroke-width="1.4"/>
+<text x="682" y="33" text-anchor="middle" class="fg" style="font-size:12px">cross-entropy</text>
+<text x="682" y="57" text-anchor="middle" style="fill:var(--fg)" data-tex="\widehat{\mathcal L}_{\rm cls}(\theta)" data-size="11" data-color="var(--fg)"> L cls()</text>
+<rect x="598" y="92" width="168" height="58" rx="7" fill="var(--surface)" stroke="var(--dm)" stroke-width="1.4"/>
+<text x="682" y="113" text-anchor="middle" class="fg" style="font-size:12px">pinball loss</text>
+<text x="682" y="137" text-anchor="middle" style="fill:var(--fg)" data-tex="\widehat{\mathcal L}^{\rm QR}(\theta,q_k)" data-size="11" data-color="var(--fg)"> L QR(,qk)</text>
+<circle cx="682" cy="210" r="26" fill="var(--surface)" stroke="var(--dm)" stroke-width="3"/>
+<text x="682" y="215" text-anchor="middle" style="fill:var(--fg)" data-tex="q_k" data-size="16" data-color="var(--fg)">qk</text>
+<text x="560" y="206" text-anchor="end" class="fg">a parameter,</text><text x="560" y="221" text-anchor="end">kept between iterations</text>
+<rect x="598" y="276" width="168" height="58" rx="7" fill="var(--surface)" stroke="var(--dm)" stroke-width="1.4"/>
+<text x="682" y="297" text-anchor="middle" class="fg" style="font-size:12px">soft set size</text>
+<text x="682" y="321" text-anchor="middle" style="fill:var(--fg)" data-tex="\widehat{\mathcal L}_{\rm size}(\theta,q_k)" data-size="11" data-color="var(--fg)"> L size(,qk)</text>
+<rect x="806" y="12" width="180" height="58" rx="7" fill="var(--surface)" stroke="var(--dm)" stroke-width="1.8"/>
+<text x="896" y="33" text-anchor="middle" class="fg" style="font-size:12px">update θ</text>
+<text x="896" y="57" text-anchor="middle" style="fill:var(--fg)" data-tex="\theta_k-\eta\big(\nabla_\theta\widehat{\mathcal L}_{\rm cls}+\lambda\nabla_\theta\widehat{\mathcal L}_{\rm size}\big)" data-size="9.5" data-color="var(--fg)">k-( L cls+ L size)</text>
+<rect x="806" y="92" width="180" height="58" rx="7" fill="var(--surface)" stroke="var(--dm)" stroke-width="1.8"/>
+<text x="896" y="113" text-anchor="middle" class="fg" style="font-size:12px">update q</text>
+<text x="896" y="137" text-anchor="middle" style="fill:var(--fg)" data-tex="q_k-\gamma\,\nabla_q\widehat{\mathcal L}^{\rm QR}" data-size="10.5" data-color="var(--fg)">qk-,q L QR</text>
+<path d="M110 191 H125 V79 H139" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#fwe)" />
+<path d="M110 191 H125 V303 H139" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#fwe)" />
+<text x="128" y="186" style="font-size:10px">once, <tspan style="fill:var(--df)">by task</tspan></text>
+<path d="M240 79 H269" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#fwe)" />
+<path d="M240 303 H269" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#fwe)" />
+<path d="M358 79 H387" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#fwe)" />
+<path d="M358 303 H387" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#fwe)" />
+<path d="M560 79 H578 V41 H597" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#fwe)" />
+<path d="M560 79 H578 V121 H597" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#fwe)" />
+<path d="M560 303 H597" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#fwe)" />
+<path d="M682 184 V151" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#fwe)" />
+<path d="M682 236 V275" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#fwe)" />
+<circle cx="682" cy="256" r="7" fill="var(--surface)" stroke="var(--no)" stroke-width="1.5"/><path d="M677 261 L687 251" stroke="var(--no)" stroke-width="1.5"/>
+<text x="696" y="252" style="fill:var(--no);font-size:10px">used as a constant:</text><text x="696" y="265" style="fill:var(--no);font-size:10px">no gradient to q</text>
+<path d="M766 41 H805" fill="none" stroke="var(--dm)" stroke-width="1.5" marker-end="url(#gde)" stroke-dasharray="6 4"/>
+<path d="M766 121 H805" fill="none" stroke="var(--dm)" stroke-width="1.5" marker-end="url(#gde)" stroke-dasharray="6 4"/>
+<path d="M766 305 H994 V41 H987" fill="none" stroke="var(--dm)" stroke-width="1.5" marker-end="url(#gde)" stroke-dasharray="6 4"/>
+<text x="988" y="238" text-anchor="end" style="fill:var(--dm)" data-tex="\lambda\nabla_\theta" data-size="12" data-color="var(--dm)"></text>
+<text x="676" y="170" text-anchor="end" style="font-size:10px">pinball: θ-gradient unused</text>
+<path d="M896 150 V210 H710" fill="none" stroke="var(--dm)" stroke-width="3" marker-end="url(#gde)"/>
+<text x="800" y="203" text-anchor="middle" style="fill:var(--dm)" data-tex="q_{k+1}" data-size="11.5" data-color="var(--dm)">qk+1</text>
+<text x="500" y="368" text-anchor="middle" style="fill:var(--fg)" data-tex="\text{no sorting}\ \cdot\ \text{no hyper-gradient }\partial q^*/\partial\theta\ \cdot\ \text{the labels of }\mathcal D_2\text{ are never used}" data-size="12" data-color="var(--fg)">no sorting, no hyper-gradient, labels of D2 never used</text>
+<line x1="10" y1="384" x2="990" y2="384" stroke="var(--line)"/>
+<text x="10" y="401" class="fg">inside each encoder box, for one trajectory</text>
+<rect x="346" y="406" width="492" height="78" rx="10" fill="color-mix(in srgb, var(--dm) 5%, transparent)" stroke="var(--dm)" stroke-width="1"/>
+<text x="830" y="401" text-anchor="end" style="fill:var(--dm)" data-tex="\text{trained: }\theta=(W,e^{\rm agent},e^{\rm pos},\phi,w)" data-size="11" data-color="var(--dm)">trained: θ = (W, e_agent, e_pos, φ, w)</text>
+<rect x="10" y="414" width="100" height="62" rx="7" fill="var(--surface)" stroke="var(--line)" stroke-width="1.4"/>
+<text x="60" y="435" text-anchor="middle" class="fg" style="font-size:12px">trajectory</text>
+<text x="60" y="463" text-anchor="middle" style="fill:var(--fg)" data-tex="x_i=(s_1,\dots,s_{T_i})" data-size="10" data-color="var(--fg)">xi=(s1,,sTi)</text>
+<rect x="130" y="414" width="160" height="62" rx="7" fill="var(--surface)" stroke="var(--muted)" stroke-width="1.4" stroke-dasharray="5 3"/>
+<text x="210" y="435" text-anchor="middle" class="fg" style="font-size:12px">frozen LLM, once</text>
+<text x="210" y="463" text-anchor="middle" style="fill:var(--fg)" data-tex="h_t=\tfrac{1}{|I_t|}\textstyle\sum_{j\in I_t}H_j" data-size="10.5" data-color="var(--fg)">ht=1|It|j ItHj</text>
+<rect x="234" y="406.5" width="54" height="15" rx="3" fill="color-mix(in srgb, var(--df) 16%, var(--surface))" stroke="var(--df)" stroke-width=".8"/><text x="261" y="417.6" text-anchor="middle" style="fill:var(--df);font-size:9px;letter-spacing:.06em">DIFFERS</text>
+<rect x="354" y="414" width="176" height="62" rx="7" fill="var(--surface)" stroke="var(--line)" stroke-width="1.4"/>
+<text x="442" y="435" text-anchor="middle" class="fg" style="font-size:12px">encoder input</text>
+<text x="442" y="463" text-anchor="middle" style="fill:var(--fg)" data-tex="u_t=Wh_t+e^{\rm agent}_{a(t)}+e^{\rm pos}_t" data-size="10.5" data-color="var(--fg)">ut=Wht+e agenta(t)+e post</text>
+<rect x="546" y="414" width="172" height="62" rx="7" fill="var(--surface)" stroke="var(--line)" stroke-width="1.4"/>
+<text x="632" y="435" text-anchor="middle" class="fg" style="font-size:12px">two-layer transformer</text>
+<text x="632" y="463" text-anchor="middle" style="fill:var(--fg)" data-tex="(v_1,\dots,v_{T_i})=\mathrm{Enc}_\phi(u_1,\dots,u_{T_i})" data-size="9.5" data-color="var(--fg)">(v1,,vTi)=Enc(u1,,uTi)</text>
+<rect x="734" y="414" width="96" height="62" rx="7" fill="var(--surface)" stroke="var(--line)" stroke-width="1.4"/>
+<text x="782" y="435" text-anchor="middle" class="fg" style="font-size:12px">linear head</text>
+<text x="782" y="463" text-anchor="middle" style="fill:var(--fg)" data-tex="w^\top v_t" data-size="11" data-color="var(--fg)">w vt</text>
+<rect x="850" y="414" width="130" height="62" rx="7" fill="var(--surface)" stroke="var(--df)" stroke-width="1.4"/>
+<text x="915" y="435" text-anchor="middle" class="fg" style="font-size:12px">softmax</text>
+<text x="915" y="463" text-anchor="middle" style="fill:var(--fg)" data-tex="\pi_t(x_i),\ t\in[T_i]" data-size="10.5" data-color="var(--fg)">t(xi), t[Ti]</text>
+<rect x="924" y="406.5" width="54" height="15" rx="3" fill="color-mix(in srgb, var(--df) 16%, var(--surface))" stroke="var(--df)" stroke-width=".8"/><text x="951" y="417.6" text-anchor="middle" style="fill:var(--df);font-size:9px;letter-spacing:.06em">DIFFERS</text>
+<path d="M110 445 H129" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#fwe)" />
+<path d="M290 445 H353" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#fwe)" />
+<path d="M530 445 H545" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#fwe)" />
+<path d="M718 445 H733" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#fwe)" />
+<path d="M830 445 H849" fill="none" stroke="var(--muted)" stroke-width="1.5" marker-end="url(#fwe)" />
+<text x="322" y="432" text-anchor="middle" style="fill:var(--muted)" data-tex="\text{cached }h_t" data-size="10" data-color="var(--muted)">cached h_t</text>
+<circle cx="322" cy="445" r="7" fill="var(--surface)" stroke="var(--no)" stroke-width="1.5"/><path d="M317 450 L327 440" stroke="var(--no)" stroke-width="1.5"/>
+<path d="M915 476 V498 H322 V455" fill="none" stroke="var(--dm)" stroke-width="1.5" marker-end="url(#gde)" stroke-dasharray="6 4"/>
+<text x="640" y="516" text-anchor="middle" style="fill:var(--dm)" data-tex="\nabla_\theta\text{ from the losses flows back through }w,\ \phi,\ W,\ e^{\rm agent},\ e^{\rm pos}" data-size="11" data-color="var(--dm)">gradient from the losses flows back through w, φ, W and the embeddings</text>
+<text x="312" y="516" text-anchor="end" style="fill:var(--no);font-size:10px">stops here: the LLM is frozen</text>
+    </svg></div>
+    <div class="legend"><span><i class="ln-sw"></i>values, forward pass</span><span><i class="ln-sw" style="border-top:2px dashed var(--dm)"></i>gradients</span><span><i class="ln-sw" style="border-top:3px solid var(--dm)"></i>state kept between iterations</span><span><i class="sw" style="background:var(--df)"></i>differs from the original</span><span><i class="sw" style="border:1.5px dashed var(--muted);box-sizing:border-box"></i>frozen, no gradient</span></div>
+    <div class="grid2">
+      <div class="algo">
+        <div class="hd">Algorithm 1 for the encoder on frozen step vectors</div>
+        <div class="dl"><span class="ln">1:</span><b>Input:</b> \(\mathcal D_{\rm tr}=\{(x_i,Y_i)\}\), <span class="df">error sets \(Y_i\subseteq[T_i]\), step vectors \(h_t\) cached from one pass of the frozen LLM</span>, \(\lambda\), learning rates \(\eta,\gamma>0\), miscoverage \(\alpha\)</div>
+        <div><span class="ln">2:</span>randomly initialise \(\theta_0=(W,e^{\rm agent},e^{\rm pos},\phi,w)\) and \(q_0\in\mathbb R\)</div>
+        <div class="hl dl"><span class="ln">3:</span>split \(\mathcal D_{\rm tr}\) once, <span class="df">by task</span>, into disjoint \(\mathcal D_1,\mathcal D_2\)</div>
+        <div><span class="ln">4:</span><b>for</b> \(k\leftarrow0:N-1\) <b>do</b></div>
+        <div class="i1"><span class="ln">5:</span>sample batches \(\mathcal B^1_k\subset\mathcal D_1,\ \mathcal B^2_k\subset\mathcal D_2\)</div>
+        <div class="i1 dl"><span class="ln">6:</span>\(\widehat\nabla_{\theta,k}\leftarrow\widehat\nabla_\theta\widehat{\mathcal L}_{\rm cls}(\theta_k)\) on \(\mathcal B^1_k\) <span class="cm df">▷ \(-\log\sum_{t\in Y_i}\pi_t(x_i)\)</span></div>
+        <div class="i1 hl dl"><span class="ln">7:</span>\(\widehat\nabla^{\rm QR}_{q,k}\leftarrow\widehat\nabla_q\widehat{\mathcal L}^{\rm QR}(\theta_k,q_k)\) on \(\mathcal B^1_k\) <span class="cm df">▷ scores \(S^{\min}_\theta(x_i,Y_i)\)</span></div>
+        <div class="i1 dl"><span class="ln">8:</span>\(\widehat\nabla^{\rm size}_{\theta,k}\leftarrow\widehat\nabla_\theta\widehat{\mathcal L}_{\rm size}(\theta_k,q_k)\) on \(\mathcal B^2_k\) <span class="cm df">▷ \(T_i\) terms per trajectory</span></div>
+        <div class="i1"><span class="ln">9:</span>\(\theta_{k+1}\leftarrow\theta_k-\eta\big(\widehat\nabla_{\theta,k}+\lambda\,\widehat\nabla^{\rm size}_{\theta,k}\big)\)</div>
+        <div class="i1 hl"><span class="ln">10:</span>\(q_{k+1}\leftarrow q_k-\gamma\,\widehat\nabla^{\rm QR}_{q,k}\)</div>
+        <div><span class="ln">11:</span><b>end for</b></div>
+        <div><span class="ln">12:</span><b>Output:</b> the trained encoder \(f_{\theta_N}\)</div>
+      </div>
+      <ul class="notes">
+        <li><b>Unchanged.</b> One plain gradient step on \(\theta\) and one pinball step on \(q\) per iteration, \(q\) held fixed in the size loss, no hyper-gradient, and the labels of \(\mathcal D_2\) never used.</li>
+        <li><b class="df">Frozen features.</b> The LLM runs once per trajectory before training; its step vectors \(h_t\) are constants, so the gradient ends at \(W\), \(e^{\rm agent}\) and \(e^{\rm pos}\) and never reaches the LLM.</li>
+        <li><b class="df">Set-valued label.</b> Cross-entropy is the negative log of the mass on \(Y_i\); the pinball loss sees \(S^{\min}_\theta(x_i,Y_i)\), the score of the error step that a set reaches first.</li>
+        <li><b class="df">Variable length.</b> The softmax and the soft size run over the \(T_i\) steps of each trajectory, so a long trajectory adds more terms to \(\widehat{\mathcal L}_{\rm size}\).</li>
+        <li><b class="df">Split by task.</b> No task appears in both \(\mathcal D_1\) and \(\mathcal D_2\).</li>
+        <li><b>Notation.</b> The iteration index is \(k\) and the number of iterations \(N\), because \(t\) and \(T\) now denote a step and the trajectory length.</li>
+        <li><b>Output</b> is \(f_{\theta_N}\) alone: \(q_N\) is discarded and split conformal prediction is run on \(\mathcal D_{\rm cal}\) with the scores \(S^{\min}_\theta\).</li>
+      </ul>
+    </div>
+  </div>
+</section>
+</div>
+</body>
+</html>

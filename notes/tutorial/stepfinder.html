@@ -1,0 +1,609 @@
+<title>StepFinder Pipeline</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Space+Grotesk:wght@500;600&display=swap">
+<script>
+window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},svg:{fontCache:'none'},
+  startup:{pageReady(){return MathJax.startup.defaultPageReady().then(()=>{window.MJ=true;if(window.renderAll)window.renderAll();});}}};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg.js" async></script>
+<style>
+/* Layout: one reading column; the pipeline diagram first, then one card per stage (formula left, toy figure right), then training. */
+:root{
+  --bg:#f5f7fa; --surface:#ffffff; --fg:#18202c; --muted:#5b6678; --line:#d8dee7; --bar:#c3cbd7;
+  --acc:#0d766f; --trn:#3a4db3; --err:#c4342a; --ok:#2c7a37; --no:#b0352a;
+  --ag1:#7d4bb3; --ag2:#b5651d; --ag3:#5f7d1e;
+  --display:"Space Grotesk",system-ui,sans-serif; --body:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#11151c; --surface:#181e27; --fg:#e4e8ef; --muted:#9aa5b6; --line:#2b3341; --bar:#475163;
+  --acc:#3dbdb1; --trn:#8d9cff; --err:#ff6a5c; --ok:#6cc47a; --no:#ff7b6e;
+  --ag1:#b993ea; --ag2:#e99a52; --ag3:#a9c55e; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11151c; --surface:#181e27; --fg:#e4e8ef; --muted:#9aa5b6; --line:#2b3341; --bar:#475163;
+  --acc:#3dbdb1; --trn:#8d9cff; --err:#ff6a5c; --ok:#6cc47a; --no:#ff7b6e;
+  --ag1:#b993ea; --ag2:#e99a52; --ag3:#a9c55e; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.55}
+.wrap{max-width:1040px;margin:0 auto;padding-block:32px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:36px}
+h1,h2,h3,h4{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.25}
+h1{font-size:2rem;font-weight:600} h2{font-size:1.45rem;font-weight:600} h3{font-size:1.05rem;font-weight:600} h4{font-size:.95rem;font-weight:600}
+p{margin:0}
+.lede{color:var(--muted)} .lede b{color:var(--fg)}
+.eyebrow{font-family:var(--mono);font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;color:var(--acc,var(--muted))}
+section.paper{display:grid;gap:18px}
+section.paper.trn{--acc:var(--trn)}
+.paper-head{display:grid;gap:6px;border-left:4px solid var(--acc);padding-left:14px}
+.paper-head p{color:var(--muted)}
+.stage{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;display:grid;gap:16px;min-width:0;scroll-margin-top:16px}
+.stage-title{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.tag{font-family:var(--mono);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;background:color-mix(in srgb,var(--acc) 14%,transparent);color:var(--acc);padding:2px 8px;border-radius:4px}
+.cpstep{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.25fr);gap:18px;padding-top:14px;border-top:1px solid var(--line);align-items:start}
+.cpstep.first{border-top:0;padding-top:0}
+.cpstep .txt{display:grid;gap:8px;min-width:0;align-content:start}
+.cpstep .fig{display:grid;gap:6px;min-width:0}
+.num{display:inline-grid;place-items:center;width:1.5em;height:1.5em;border-radius:50%;background:var(--acc);color:var(--surface);font-family:var(--mono);font-size:.8rem;margin-right:8px;vertical-align:1px}
+.cap{font-size:.85rem;color:var(--muted)}
+.eq{background:var(--bg);border:1px solid var(--line);border-left:3px solid var(--acc);border-radius:6px;padding:8px 12px;overflow-x:auto;font-size:.95rem}
+.eq.work{border-left-color:var(--fg)}
+svg.chart{width:100%;height:auto;display:block}
+mjx-container svg{display:inline-block}
+mjx-container[display="true"]{margin:.3em 0!important}
+svg text{font-family:var(--mono);font-size:11px;fill:var(--muted)}
+svg .fg{fill:var(--fg)} svg .acc{fill:var(--acc)} svg .err{fill:var(--err)} svg .trnc{fill:var(--trn)}
+svg .hd{fill:var(--fg);font-family:var(--display);font-size:13px;font-weight:600}
+mjx-container{color:inherit}
+.controls{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center;padding:10px 12px;border:1px dashed var(--line);border-radius:8px}
+.controls label,.controls .grp{display:flex;align-items:center;gap:8px;font-size:.9rem}
+input[type=range]{accent-color:var(--acc);width:150px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{font:inherit;font-size:.85rem;border:0;background:transparent;color:var(--fg);padding:4px 10px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed=true]{background:var(--acc);color:var(--surface)}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.val{font-family:var(--mono);font-variant-numeric:tabular-nums;min-width:3.2em}
+.readout{font-size:.9rem;display:flex;flex-wrap:wrap;gap:4px 18px}
+.stat{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:1.05rem;font-weight:500}
+.chip{font-family:var(--mono);font-size:.8rem;padding:0 6px;border-radius:4px;border:1px solid var(--line)}
+.chip.on{background:var(--acc);border-color:var(--acc);color:var(--surface)}
+.chip.e{border-color:var(--err);color:var(--err)}
+.pipe{display:grid;gap:6px;justify-items:center;font-size:.82rem;text-align:center}
+.pipe .n{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:4px 8px;max-width:100%}
+.pipe .n.k{border-color:var(--acc);color:var(--acc);font-weight:500}
+.pipe .ar{color:var(--muted);line-height:1}
+.pipe .ens{display:grid;grid-template-columns:1fr 1fr;gap:4px;width:100%}
+.simtab{border-collapse:collapse;font-size:.86rem}
+.simtab td,.simtab th{text-align:left;padding:5px 10px;border-bottom:1px solid var(--line);font-family:var(--mono);font-variant-numeric:tabular-nums;vertical-align:top}
+.simtab th{font-family:var(--display);font-weight:600}
+.simtab tr:last-child td{border-bottom:0}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.8rem;color:var(--muted)}
+.sw{display:inline-block;width:11px;height:11px;border-radius:2px;vertical-align:-1px;margin-right:5px}
+.note{font-size:.82rem;color:var(--muted)}
+/* pipeline figure: wide SVG that scrolls sideways on narrow screens instead of shrinking */
+.figwrap{overflow-x:auto} .figwrap svg.chart{min-width:720px} #pipe{min-width:860px}
+#pipe a{cursor:pointer} #pipe a .box{transition:stroke-width .12s} #pipe a:hover .box,#pipe a:focus .box{stroke-width:2.4}
+.narrow-only{display:none}
+/* "from code": a detail taken from the official repository, not stated in the paper */
+.fc{font-family:var(--mono);font-size:.66rem;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);border:1px dashed var(--muted);border-radius:4px;padding:0 4px;margin-left:3px;white-space:nowrap;vertical-align:1px}
+.agent{font-family:var(--mono);font-size:.8rem;font-weight:500}
+.a1{color:var(--ag1)} .a2{color:var(--ag2)} .a3{color:var(--ag3)}
+.hp{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:780px){.cpstep,.hp{grid-template-columns:minmax(0,1fr)} .narrow-only{display:block}}
+</style>
+
+<div class="wrap">
+<header style="display:grid;gap:10px">
+  <span class="eyebrow">Zhu, Wu, Jin, Li &amp; Huang · KDD 2026 · StepFinder (arXiv:2606.03467)</span>
+  <h1>How StepFinder turns a failed trajectory into one root-cause step</h1>
+  <p class="lede">StepFinder does not ask an LLM to read the log and reason about it. An embedding model turns every step into two vectors, one for <b>what was said</b> and one for <b>which agent said it</b>. A small trained network (a BiLSTM and one attention layer, about 0.28M parameters<span class="fc" title="Counted from the layer sizes in model.py; the paper gives no count">from code</span>) then gives every step a score, and two terms with no weights of their own adjust it: a bonus for a <b>sudden jump</b> in the step representation and a penalty that grows with <b>lateness</b>. The predicted decisive step is the arg-max \(\hat t\). Only the step is predicted, not the agent.</p>
+  <p class="note">Names, sentences and numbers in the figures are a toy example (six steps, three agents), computed live from the paper's formulas; only values called "paper" come from the paper. A <span class="fc">from code</span> tag marks a detail taken from the official repository (github.com/taiyu-zhu/StepFinder, commit 48d71c7) that the paper does not state; the few places where the code differs from an equation are said so in the note.</p>
+</header>
+
+<!-- ======================= Pipeline ======================= -->
+<section class="paper" id="overview">
+  <div class="paper-head">
+    <span class="eyebrow">Overview</span>
+    <h2>The pipeline</h2>
+    <p>Stages (a) to (d) run at test time. The dashed band runs only during training. Click a stage to jump to its explanation.</p>
+  </div>
+  <div class="stage">
+    <div class="controls">
+      <span class="grp">Show
+        <span class="seg" id="p-view"><button type="button" data-v="inf" aria-pressed="false">inference only</button><button type="button" data-v="all" aria-pressed="true">inference + training</button></span></span>
+    </div>
+    <div class="figwrap"><svg class="chart" id="pipe" viewBox="0 0 1000 540" role="img" aria-label="StepFinder pipeline: a failed trajectory is encoded, passed through a BiLSTM and an agent-aware attention layer, scored per step, and the arg-max step is predicted; a training band adds a cross-entropy loss and a temporal consistency loss"></svg></div>
+    <p class="cap narrow-only">The diagram scrolls sideways.</p>
+    <div class="legend"><span><i class="sw" style="background:var(--acc)"></i>content path and scores</span><span><i class="sw" style="background:var(--ag1)"></i><i class="sw" style="background:var(--ag2)"></i><i class="sw" style="background:var(--ag3)"></i>agent identity (three toy agents)</span><span><i class="sw" style="border:2px dashed var(--trn)"></i>training only</span></div>
+  </div>
+</section>
+
+<!-- ======================= Inference stages ======================= -->
+<section class="paper" id="infer">
+  <div class="paper-head">
+    <span class="eyebrow">Test time · stages (a)–(d)</span>
+    <h2>From steps to a score per step</h2>
+    <p>One trajectory of \(T\) steps goes in. Every stage keeps one row per step, so the output is \(T\) scores, and the prediction is the largest.</p>
+  </div>
+
+  <div class="stage" id="st-a">
+    <div class="stage-title"><span class="tag">Stage a</span><h3>Trajectory encoding: two vectors per step</h3></div>
+    <div class="cpstep first">
+      <div class="txt">
+        <p>Each step is a pair \(x_t=(c_t,r_t)\): the content the agent produced at step \(t\), and the agent's identity. Both strings go through <b>Qwen3-Embedding-0.6B</b>. Content becomes a 128-d vector, identity a 32-d vector.</p>
+        <div class="eq">\[ \mathbf c_t=\mathrm{Enc}(c_t)\in\mathbb R^{128},\qquad \mathbf r_t=\mathrm{Enc}(r_t)\in\mathbb R^{32} \]
+          \[ \mathbf C\in\mathbb R^{T\times128},\qquad \mathbf R\in\mathbb R^{T\times32} \]</div>
+        <p>This is the only place a language model is used, and it generates no text. \(\mathbf C\) is the main signal and goes into stage (b). \(\mathbf R\) skips stage (b) and enters at stage (c).</p>
+        <p class="note"><span class="fc">from code</span> The encoder is frozen and run once, offline; the trained model reads cached vectors. Each step is embedded on its own: only that step's content string, with no task question, no ground truth and no neighbouring steps. Pooling is the last token. The 128-d and 32-d vectors are the <b>first 128 and 32 coordinates</b> of the 1024-d embedding (Matryoshka-style truncation), not a learned projection. \(r_t\) is the agent's <b>name</b> string (e.g. "WebSurfer"), so all steps of one agent share the same \(\mathbf r_t\).</p>
+      </div>
+      <div class="fig">
+        <svg class="chart" id="f-enc" viewBox="0 0 520 236"></svg>
+        <p class="cap">Toy trajectory. The decisive error is step 3 (the wrong year's report), but the model is not told that. Same agent, same name string, so rows of \(\mathbf R\) repeat exactly; rows of \(\mathbf C\) all differ.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="stage" id="st-b">
+    <div class="stage-title"><span class="tag">Stage b</span><h3>Temporal feature extraction: a BiLSTM over the content</h3></div>
+    <div class="cpstep first">
+      <div class="txt">
+        <p>LayerNorm, then a 2-layer bidirectional LSTM (hidden size 64 per direction, dropout 0.5), then LayerNorm again. Each step's state is the forward and backward halves stacked, so \(\mathbf h_t\in\mathbb R^{128}\).</p>
+        <div class="eq">\[ \hat{\mathbf C}=\mathrm{LN}(\mathbf C) \]
+          \[ \mathbf h_t=\big[\overrightarrow{\mathrm{LSTM}}(\hat{\mathbf c}_t);\ \overleftarrow{\mathrm{LSTM}}(\hat{\mathbf c}_t)\big] \]
+          \[ \mathbf H_{out}=\mathrm{LN}(\mathbf H),\quad \mathbf H=\{\mathbf h_t\}_{t=1}^{T} \]</div>
+        <p>The forward half summarises steps \(1..t\), the backward half steps \(t..T\). A step that looks fine on its own but leads to the failure later can be judged with what came after it.</p>
+        <p class="note"><span class="fc">from code</span> Only the content sequence enters the BiLSTM; agent vectors are not concatenated to it. Sequences are packed, so padding is skipped.</p>
+      </div>
+      <div class="fig">
+        <svg class="chart" id="f-lstm" viewBox="0 0 520 206"></svg>
+        <p class="cap">Unrolled over the six toy steps (one layer shown). Highlighted: everything that reaches \(\mathbf h_3\). The forward chain brings steps 1–3, the backward chain steps 6–3.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="stage" id="st-c">
+    <div class="stage-title"><span class="tag">Stage c</span><h3>Agent-aware step interaction: attention plus agent identity</h3></div>
+    <div class="cpstep first">
+      <div class="txt">
+        <h4><span class="num">1</span>Self-attention with an agent bias</h4>
+        <p>Multi-head self-attention over all steps (2 heads, 32 dims per head), so any step can draw on any other, not only its neighbours. Before the softmax, the cosine similarity of the two steps' agent vectors is added, scaled by \(\alpha\). Padded steps are masked out.</p>
+        <div class="eq">\[ \mathbf Q,\mathbf K,\mathbf V=\mathbf H_{out}W_Q,\ \mathbf H_{out}W_K,\ \mathbf H_{out}W_V \]
+          \[ \mathbf E=\frac{\mathbf Q\mathbf K^{\top}}{\sqrt{d_k}},\qquad B_{ij}=\cos(\mathbf r_i,\mathbf r_j) \]
+          \[ \mathbf{Attn}=\mathrm{softmax}(\mathbf E+\alpha\,\mathbf B) \]
+          \[ \mathbf H_{attn}=\mathbf H_{out}+\mathbf{Attn}\,\mathbf V \]</div>
+        <p class="note"><span class="fc">from code</span> A single attention layer, with no feed-forward block and no LayerNorm after it. \(W_Q,W_K,W_V\) map 128 to 64 dims (2 × 32, no bias), and an output projection \(W_O\) (64 to 128) brings the result back, so the residual is \(\mathbf H_{out}+W_O(\mathbf{Attn}\,\mathbf V)\). Both heads get the same \(\alpha\mathbf B\). Padded keys are set to \(-10^9\) before the softmax.</p>
+      </div>
+      <div class="fig">
+        <svg class="chart" id="f-bias" viewBox="0 0 520 236"></svg>
+        <p class="cap">The bias matrix \(\mathbf B\) for the toy trajectory. A pair of steps by the same agent always gets 1, the largest possible cosine. Values between different agents are toy. With paper settings \(\alpha=0.1\) (Alg) or \(0.3\) (HC), the bias moves a logit by at most \(\alpha\).</p>
+      </div>
+    </div>
+    <div class="cpstep">
+      <div class="txt">
+        <h4><span class="num">2</span>Agent gate</h4>
+        <p>The mean agent vector \(\bar{\mathbf r}\) summarises which team ran. A sigmoid layer maps it to \(\mathbf g\in(0,1)^{128}\), which scales the features, with the same \(\alpha\) as in the bias.</p>
+        <div class="eq">\[ \bar{\mathbf r}=\frac1T\sum_{t=1}^{T}\mathbf r_t,\qquad \mathbf g=\sigma(W_g\bar{\mathbf r}+b_g) \]
+          \[ \mathbf H_{final}=\mathbf H_{attn}\odot(1+\alpha\,\mathbf g) \]</div>
+        <p>\(\bar{\mathbf r}\) is one vector per trajectory, so every step gets the same \(\mathbf g\). The gate rescales feature channels, by a factor between 1 and \(1+\alpha\); it does not single out any step.</p>
+        <p class="note"><span class="fc">from code</span> \(\bar{\mathbf r}\) is the mean over valid (unpadded) steps; \(W_g\) maps 32 to 128 dims. \(\alpha\), like \(\beta\) and \(\gamma\) below, is a fixed hyperparameter, not learned.</p>
+      </div>
+      <div class="fig">
+        <svg class="chart" id="f-gate" viewBox="0 0 520 200"></svg>
+        <p class="cap">Toy gate. Each column of \(\mathbf H_{attn}\) is multiplied by the same factor \(1+\alpha g_k\) in every row. Drawn with \(\alpha=1\) so the effect is visible; with the paper's \(\alpha\) it is at most 10% (Alg) or 30% (HC).</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="stage" id="st-d">
+    <div class="stage-title"><span class="tag">Stage d</span><h3>Step-level error scoring: learned score, jump bonus, early-step prior</h3></div>
+    <div class="cpstep first">
+      <div class="txt">
+        <h4><span class="num">1</span>Learned score \(\ell_t\)</h4>
+        <p>A two-layer MLP with GELU maps each row of \(\mathbf H_{final}\) to one number.<span class="fc" title="Linear(128→64), GELU, Linear(64→1) in model.py">from code</span> 128 → 64 → 1.</p>
+        <div class="eq">\[ \boldsymbol\ell=W_2\,\mathrm{GELU}\big(W_1\mathbf H_{final}+b_1\big)+b_2\ \in\mathbb R^{T} \]</div>
+        <h4 style="margin-top:6px"><span class="num">2</span>Jump score \(\Delta_t\): multi-scale differencing</h4>
+        <p>For each scale \(s\) in \(\mathcal S=\{1,2\}\), measure how far the step representation moves, divide by its mean over the trajectory, and average over scales. No parameters are learned here.</p>
+        <div class="eq">\[ D^{(s)}_t=\big\|\mathbf h_t-s\,\mathbf h_{t-1}+(s-1)\,\mathbf h_{t-s}\big\|_2 \]
+          \[ \tilde D^{(s)}_t=\frac{D^{(s)}_t}{\frac1T\sum_{t=1}^{T}D^{(s)}_t+\epsilon},\qquad \Delta_t=\frac{1}{|\mathcal S|}\sum_{s\in\mathcal S}\tilde D^{(s)}_t \]</div>
+        <p>With \(s=1\) this is the step length \(\|\mathbf h_t-\mathbf h_{t-1}\|\). With \(s=2\) it is \(\|\mathbf h_t-(2\mathbf h_{t-1}-\mathbf h_{t-2})\|\), the distance from where the last move would have landed if continued.</p>
+        <p class="note"><span class="fc">from code</span> The paper writes \(\mathbf h_t\); the code differences the rows of \(\mathbf H_{final}\), after attention and gate (the paper's Figure 2 draws it there too). The first \(s\) steps, which have no \(\mathbf h_{t-s}\), get \(D^{(s)}_t=0\), and the mean is over the trajectory's valid steps.</p>
+      </div>
+      <div class="fig">
+        <svg class="chart" id="f-diff" viewBox="0 0 520 250"></svg>
+        <p class="cap" id="f-diff-cap">A 2-d stand-in for the 128-d rows \(\mathbf h_t\) of \(\mathbf H_{final}\). At step 3 the path jumps and turns. The solid red segment is \(D^{(1)}_3\); the dashed red segment, from the straight-line guess \(2\mathbf h_2-\mathbf h_1\) to \(\mathbf h_3\), is \(D^{(2)}_3\).</p>
+      </div>
+    </div>
+    <div class="cpstep">
+      <div class="txt">
+        <h4><span class="num">3</span>Position bias and the final arg-max</h4>
+        <p>A fixed linear prior that favours earlier steps: 0 at the first step, \(-1\) at the last. Then the three terms are added and the largest wins.</p>
+        <div class="eq">\[ b_t=-\frac{t-1}{T-1},\qquad t=1,\dots,T \]
+          \[ \ell^{\rm final}_t=\ell_t+\beta\,\Delta_t+\gamma\,b_t,\qquad \hat t=\arg\max_t\ \ell^{\rm final}_t \]</div>
+        <p>The paper's reason for \(b_t\): later anomalies are often consequences of an earlier mistake, and a model trained on step features alone tends to blame late steps.</p>
+        <p class="note"><span class="fc">from code</span> Differs from Eq. 9: the code divides by \(T_{\max}-1\), where \(T_{\max}\) is the padded length of the batch (its longest trajectory). For a trajectory shorter than that, \(b_t\) stops above \(-1\) at its last step. For the toy trajectory scored on its own, as here, the two agree.</p>
+        <div class="readout" id="d-read"></div>
+      </div>
+      <div class="fig">
+        <div class="controls">
+          <span class="grp">Settings
+            <span class="seg" id="d-preset"><button type="button" data-v="alg" aria-pressed="true">Alg</button><button type="button" data-v="hc" aria-pressed="false">HC</button><button type="button" data-v="off" aria-pressed="false">\(\beta=\gamma=0\)</button></span></span>
+          <label for="d-beta">\(\beta\) <input id="d-beta" type="range" min="0" max="1.5" step="0.05" value="0.9"><span class="val" id="d-beta-v">0.90</span></label>
+          <label for="d-gamma">\(\gamma\) <input id="d-gamma" type="range" min="0" max="1.5" step="0.05" value="0.4"><span class="val" id="d-gamma-v">0.40</span></label>
+        </div>
+        <svg class="chart" id="f-score" viewBox="0 0 520 270"></svg>
+        <p class="cap">Bars are \(\ell^{\rm final}_t\); the dashed line on each bar marks \(\ell_t\) alone. \(\ell_t\) is a toy output of the learned head; \(\Delta_t\) comes from the path above and \(b_t\) from the formula. Alg and HC load the paper's Table 1 values (\(\beta=0.9,\gamma=0.4\) and \(\beta=0.1,\gamma=0.75\)). The pipeline figure follows these settings.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= Training ======================= -->
+<section class="paper trn" id="train">
+  <div class="paper-head">
+    <span class="eyebrow">Training only</span>
+    <h2>How the scores are learned</h2>
+    <p>Supervised: every training trajectory carries the index of its root-cause step. One auxiliary head adds a self-supervised loss and is dropped at test time.</p>
+  </div>
+
+  <div class="stage" id="st-t">
+    <div class="stage-title"><span class="tag">Training</span><h3>Synthetic failures, a softmax over steps, and a next-state loss</h3></div>
+    <div class="cpstep first">
+      <div class="txt">
+        <h4><span class="num">1</span>Training data: regenerated failures</h4>
+        <p>The test sets are the official Who&amp;When subsets: <b>126</b> Algorithm-Generated (Alg) and <b>58</b> Hand-Crafted (HC) trajectories. Training data are synthetic. The multi-agent system is run on separate training tasks; then an LLM rewrites each failed run with the same question, ground-truth answer and agent team, but a <b>different reasoning path and a different root-cause error</b>. It writes down the root-cause step and agent as it generates, which gives the label.</p>
+        <p class="note">The paper states that training and test tasks are disjoint. Hyperparameters differ per subset (Table 1 below).</p>
+        <p class="note"><span class="fc">from code</span> In the released data the split is not fully disjoint: 15 of the 126 Alg test questions and 2 of the 58 HC test questions also appear in the training set, with the same ground truth (270 and 36 training runs).</p>
+        <p class="note"><span class="fc">from code</span> The regenerated runs are written, not executed: the LLM writes every turn, including the other agents' and the tool or terminal output. Each has exactly one labelled mistake step. One model is trained per subset. The question and ground truth are stored with each run but never given to the model.</p>
+      </div>
+      <div class="fig">
+        <div class="pipe">
+          <span class="n">training tasks: <b>92</b> (Alg) · <b>186</b> (HC)</span><span class="ar">↓ run the multi-agent system</span>
+          <span class="n">initial failed trajectories</span><span class="ar">↓ prompt an LLM</span>
+          <span class="n k">same question, answer and agents · new reasoning path · new root-cause error · label \(t^*\) written with it</span><span class="ar">↓</span>
+          <div class="ens"><span class="n">Alg: 17 per task → <b>1,564</b></span><span class="n">HC: 14 per task → <b>2,604</b></span></div><span class="ar">↓ one model per subset</span>
+          <span class="n k">train one epoch on the synthetic runs</span><span class="ar">↓ ↑ repeat, up to 50 epochs</span>
+          <span class="n">evaluate on Who&amp;When: 126 (Alg) · 58 (HC); keep the best epoch<span class="fc">from code</span></span>
+        </div>
+      </div>
+    </div>
+    <div class="cpstep">
+      <div class="txt">
+        <h4><span class="num">2</span>Classification loss: softmax over the valid steps</h4>
+        <p>The final scores of one trajectory are treated as logits of a \(T\)-way classification, and the target is the labelled step \(y_i\). Padding added to batch trajectories of different lengths is excluded from the softmax. \(B\) is the batch size.</p>
+        <div class="eq">\[ \mathcal L_{\rm CE}=-\frac1B\sum_{i=1}^{B}\log\frac{\exp\big(\ell^{\rm final}_{i,y_i}\big)}{\sum_{j\in\mathcal T_i}\exp\big(\ell^{\rm final}_{i,j}\big)} \]</div>
+        <p class="note">The loss is taken on \(\ell^{\rm final}\), so \(\beta\Delta_t+\gamma b_t\) is already in place while \(\ell_t\) is learned. At test time the same scores are used and \(\hat t\) is the arg-max over valid steps.</p>
+        <p class="note"><span class="fc">from code</span> Padded logits are set to \(-10^9\), then a standard cross-entropy against the index of the mistake step.</p>
+        <div class="readout" id="t-read"></div>
+      </div>
+      <div class="fig">
+        <svg class="chart" id="f-ce" viewBox="0 0 520 210"></svg>
+        <p class="cap">The toy trajectory in a batch padded to 8 steps, with the current \(\beta,\gamma\) and the scores of stage (d) (paper's \(b_t\) with \(T=6\); the code would use \(T_{\max}=8\) here). Bars are softmax probabilities over the 6 valid steps; the label is \(y=3\).</p>
+      </div>
+    </div>
+    <div class="cpstep">
+      <div class="txt">
+        <h4><span class="num">3</span>Temporal consistency loss and the total</h4>
+        <p>A small head \(f_\theta\) predicts each step's state from the previous one. Its error, averaged over steps 2 to \(T\), is added with weight \(\lambda\).</p>
+        <div class="eq">\[ \hat{\mathbf h}_{t+1}=f_\theta(\mathbf h_t) \]
+          \[ \mathcal L_{\rm temporal}=\frac{1}{T-1}\sum_{t=2}^{T}\big\|\hat{\mathbf h}_t-\mathbf h_t\big\|_2^2 \]
+          \[ \mathcal L_{\rm total}=\mathcal L_{\rm CE}+\lambda\,\mathcal L_{\rm temporal} \]</div>
+        <p>The head only shapes \(\mathbf h_t\) during training. At test time it is removed, and its prediction error is not part of the score.</p>
+        <p class="note"><span class="fc">from code</span> As in stage (d), \(\mathbf h_t\) is a row of \(\mathbf H_{final}\). \(f_\theta\) is Linear(128→128), GELU, Linear(128→128), and the target \(\mathbf h_t\) is detached (no gradient through it). Differs from Eq. 12: the squared error is summed over the 128 dims and divided by the number of valid step positions in the whole batch, rather than averaged per trajectory over its \(T-1\) steps.</p>
+      </div>
+      <div class="fig">
+        <svg class="chart" id="f-tc" viewBox="0 0 520 170"></svg>
+        <p class="cap">Each \(\mathbf h_{t-1}\) predicts \(\hat{\mathbf h}_t\), which is compared with the actual \(\mathbf h_t\). Step 1 has no prediction, hence \(T-1\) terms.</p>
+      </div>
+    </div>
+    <div class="hp">
+      <div style="display:grid;gap:8px;min-width:0">
+        <h4>Paper settings (Table 1)</h4>
+        <div style="overflow-x:auto"><table class="simtab">
+          <tr><th></th><th>Alg</th><th>HC</th><th>enters at</th></tr>
+          <tr><td>lr</td><td>1e-3</td><td>1e-5</td><td>optimiser</td></tr>
+          <tr><td>\(\alpha\)</td><td>0.1</td><td>0.3</td><td>agent bias and gate (c)</td></tr>
+          <tr><td>\(\beta\)</td><td>0.9</td><td>0.1</td><td>jump score (d)</td></tr>
+          <tr><td>\(\gamma\)</td><td>0.4</td><td>0.75</td><td>position bias (d)</td></tr>
+          <tr><td>\(\lambda\)</td><td>0.9</td><td>0.02</td><td>\(\mathcal L_{\rm temporal}\) weight</td></tr>
+          <tr><td>\(\mathcal S\)</td><td>{1, 2}</td><td>{1, 2}</td><td>differencing scales (d)</td></tr>
+        </table></div>
+      </div>
+      <div style="display:grid;gap:8px;min-width:0">
+        <h4>Optimisation (paper, Section 5.4)</h4>
+        <p class="note" style="font-size:.9rem">AdamW, weight decay 1e-5, batch size 16, up to 50 epochs, gradient clipping at 1.0, early stopping with patience 10. All hyperparameters chosen by grid search. One RTX 3080 Ti.</p>
+        <p class="note"><span class="fc">from code</span> Seed 42. There is no separate validation split: after every epoch the model is evaluated on the Who&amp;When test set, and both the kept checkpoint (best accuracy) and early stopping use that accuracy.</p>
+      </div>
+    </div>
+  </div>
+</section>
+</div>
+
+<script>
+// ---------- helpers (same as the CP pipelines page) ----------
+function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+const $=id=>document.getElementById(id);
+// LaTeX inside SVG: MathJax SVG placed at baseline (x,y); falls back to plain text before MathJax loads.
+function tex(t,x,y,o={}){const size=o.size||12,anchor=o.anchor||'start',color=o.color||'var(--muted)';
+  if(!window.MJ)return `<text x="${x}" y="${y}" text-anchor="${anchor}" style="fill:${color}">${o.alt||t.replace(/[\\{}^_]/g,'')}</text>`;
+  const s=MathJax.tex2svg(t,{display:false}).querySelector('svg');const vb=s.getAttribute('viewBox').split(/\s+/).map(Number);
+  const w=vb[2]/1000*size,h=vb[3]/1000*size;let x0=anchor==='end'?x-w:anchor==='middle'?x-w/2:x;
+  s.setAttribute('x',x0);s.setAttribute('y',y+vb[1]/1000*size);s.setAttribute('width',w);s.setAttribute('height',h);
+  s.removeAttribute('style');s.setAttribute('style',`color:${color};overflow:visible`);return s.outerHTML;}
+function setTex(el,html){if(window.MJ&&MathJax.typesetClear)MathJax.typesetClear([el]);el.innerHTML=html;if(window.MJ)MathJax.typeset([el]);}
+const mix=(c,p,b='var(--surface)')=>`color-mix(in srgb, ${c} ${Math.round(p)}%, ${b})`;
+const f2=x=>x.toFixed(2);
+const sgn=x=>(x<0?'−':'')+Math.abs(x).toFixed(2);
+const FC=(x,y)=>`<g><rect x="${x}" y="${y-9}" width="58" height="12" rx="3" fill="none" stroke="var(--muted)" stroke-dasharray="2 2"/><text x="${x+29}" y="${y}" text-anchor="middle" style="font-size:8.5px;letter-spacing:.05em">FROM CODE</text></g>`;
+
+// ---------- implementation details the paper leaves open (filled from the official code) ----------
+// The differencing (Δ_t) and the TC head read the rows of H_final (model.py, scoring forward pass);
+// D_t^(s) is 0 for the first s steps and the mean runs over valid steps (_compute_multi_scale_diff).
+
+// ---------- toy example ----------
+const AG={O:{name:'Orchestrator',c:'var(--ag1)',cls:'a1'},W:{name:'WebSurfer',c:'var(--ag2)',cls:'a2'},C:{name:'Coder',c:'var(--ag3)',cls:'a3'}};
+const STEPS=[['O','plan: find 2019 report, …'],['W','search: 2019 report found'],['W','opened the 2018 PDF instead'],['O','ask Coder for growth rate'],['C','growth = (b−a)/a = 4.1%'],['O','final answer: 4.1%']];
+const T=STEPS.length, TSTAR=2; // 0-based index of the labelled decisive step (step 3)
+const COS={OW:0.46,OC:0.38,WC:0.29}; // toy cosines between different agents
+const cosAg=(a,b)=>a===b?1:COS[[a,b].sort((x,y)=>'OWC'.indexOf(x)-'OWC'.indexOf(y)).join('')];
+const H2=[[0,0],[1,0.2],[1.6,1.9],[2.4,2.2],[3.3,2.4],[4.0,2.9]]; // 2-d stand-in for h_t
+const ELL=[0.20,0.50,1.10,0.40,1.30,0.60]; // toy output of the learned head
+const PRESET={alg:{beta:0.9,gamma:0.4},hc:{beta:0.1,gamma:0.75},off:{beta:0,gamma:0}};
+const ST={beta:0.9,gamma:0.4,view:'all'};
+const nrm=v=>Math.hypot(...v);
+function diffs(){ // D^(s)_t for s=1,2 and Δ_t, per the paper's Eq. 7–8
+  const D={1:[],2:[]};
+  for(const s of [1,2])for(let t=0;t<T;t++){
+    if(t-s<0){D[s].push(0);continue;}
+    const v=H2[t].map((x,k)=>x-s*H2[t-1][k]+(s-1)*H2[t-s][k]);D[s].push(nrm(v));}
+  const eps=1e-6, Dt={};
+  for(const s of [1,2]){const m=D[s].reduce((a,b)=>a+b,0)/T;Dt[s]=D[s].map(v=>v/(m+eps));}
+  const Delta=Dt[1].map((v,t)=>(v+Dt[2][t])/2);
+  return {D,Dt,Delta};}
+const posBias=()=>Array.from({length:T},(_,t)=>-(t)/(T-1)); // b_t = -(t-1)/(T-1), t 1-based
+function scores(){const {Delta}=diffs(), b=posBias();
+  const fin=ELL.map((l,t)=>l+ST.beta*Delta[t]+ST.gamma*b[t]);
+  const am=fin.indexOf(Math.max(...fin)), am0=ELL.indexOf(Math.max(...ELL));
+  return {Delta,b,fin,am,am0};}
+// deterministic toy feature matrices
+const cellsC=(()=>{const r=rng(7);return STEPS.map(()=>Array.from({length:16},()=>12+r()*70));})();
+const agPat=(()=>{const r=rng(3),o={};for(const k of 'OWC')o[k]=Array.from({length:4},()=>25+r()*65);return o;})();
+
+// ---------- pipeline figure ----------
+const PY=i=>72+i*34; // top of row i (height 26)
+function arrow(x1,y1,x2,y2,c='var(--muted)',dash=''){return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${c}" stroke-width="1.4" ${dash?`stroke-dasharray="${dash}"`:''} marker-end="url(#${c.includes('trn')?'aht':'ah'})"/>`;}
+function poly(pts,c='var(--muted)',dash=''){return `<polyline points="${pts.map(p=>p.join(',')).join(' ')}" fill="none" stroke="${c}" stroke-width="1.4" ${dash?`stroke-dasharray="${dash}"`:''} marker-end="url(#${c.includes('trn')?'aht':'ah'})"/>`;}
+function stageBox(id,x,w,title,sub,inner){return `<a href="#${id}" aria-label="${title}"><rect class="box" x="${x}" y="26" width="${w}" height="256" rx="8" fill="${mix('var(--acc)',4,'var(--surface)')}" stroke="var(--acc)" stroke-width="1.2"/>
+  <text x="${x+10}" y="44" class="hd">${title}</text>${sub}${inner}</a>`;}
+function pipeline(){
+  const {fin,am}=scores(); let s=`<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--muted)"/></marker><marker id="aht" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--trn)"/></marker></defs>`;
+  // input
+  s+=`<text x="0" y="44" class="hd">Failed trajectory</text>`+tex('x_t=(c_t,r_t)',0,60,{alt:'x_t = (c_t, r_t)'});
+  STEPS.forEach(([a],i)=>{const y=PY(i);s+=`<rect x="0" y="${y}" width="136" height="26" rx="4" fill="var(--surface)" stroke="var(--line)"/><rect x="0" y="${y}" width="5" height="26" rx="2" fill="${AG[a].c}"/>`;
+    s+=`<text x="12" y="${y+17}" class="fg">${i+1}</text><text x="28" y="${y+17}" style="fill:${AG[a].c};font-size:10.5px">${AG[a].name}</text>`;});
+  s+=arrow(138,170,157,170);
+  // (a)
+  let ia='';
+  STEPS.forEach(([a],i)=>{const y=PY(i)+3;cellsC[i].forEach((p,k)=>ia+=`<rect x="${170+k*5.5}" y="${y}" width="5" height="20" fill="${mix('var(--acc)',p)}"/>`);
+    agPat[a].forEach((p,k)=>ia+=`<rect x="${276+k*5.5}" y="${y}" width="5" height="20" fill="${mix(AG[a].c,p)}"/>`);});
+  ia+=tex('\\mathbf C',170,278,{color:'var(--fg)'})+`<text x="182" y="278" style="font-size:10px">T×128</text>`+tex('\\mathbf R',276,278,{color:'var(--fg)'})+`<text x="292" y="278" style="font-size:10px">T×32</text>`;
+  s+=stageBox('st-a',160,166,'(a) Encode',`<text x="170" y="60" style="font-size:10.5px">Qwen3-Embedding-0.6B</text>`,ia);
+  s+=arrow(328,170,345,170);
+  // R path skipping (b)
+  s+=poly([[287,268],[287,302],[566,302],[566,286]],'var(--ag2)');
+  s+=`<text x="300" y="316" style="font-size:10px;fill:var(--ag2)">agent vectors r_t skip (b)</text>`;
+  // (b)
+  let ib='';
+  for(let i=0;i<T;i++){const y=PY(i)+3;ib+=`<rect x="392" y="${y}" width="30" height="20" fill="${mix('var(--acc)',55)}"/><rect x="422" y="${y}" width="30" height="20" fill="${mix('var(--acc)',28)}"/>`;
+    if(i<T-1){ib+=`<line x1="378" y1="${y+21}" x2="378" y2="${y+33}" stroke="var(--acc)" stroke-width="1.3" marker-end="url(#ah)"/><line x1="466" y1="${y+33}" x2="466" y2="${y+21}" stroke="var(--acc)" stroke-width="1.3" marker-end="url(#ah)"/>`;}}
+  ib+=`<text x="372" y="${PY(0)+16}" text-anchor="end" style="font-size:9.5px">fwd</text><text x="472" y="${PY(0)+16}" style="font-size:9.5px">bwd</text>`;
+  ib+=tex('\\mathbf H_{out}',392,278,{color:'var(--fg)'})+`<text x="424" y="278" style="font-size:10px">T×128</text>`;
+  s+=stageBox('st-b',346,150,'(b) BiLSTM',`<text x="356" y="60" style="font-size:10.5px">LN → BiLSTM ×2 → LN</text>`,ib);
+  s+=arrow(498,170,515,170);
+  // (c)
+  let ic='';const cs=13;
+  for(let i=0;i<T;i++)for(let j=0;j<T;j++){const v=cosAg(STEPS[i][0],STEPS[j][0]);ic+=`<rect x="${528+j*cs}" y="${74+i*cs}" width="${cs-1}" height="${cs-1}" fill="${mix('var(--acc)',v*80)}"/>`;}
+  ic+=tex('\\mathrm{softmax}(\\mathbf E+\\alpha\\mathbf B)',528,172,{size:11,color:'var(--fg)',alt:'softmax(E + αB)'});
+  ic+=`<text x="528" y="190" style="font-size:10px">+ residual H_out</text>`;
+  ic+=tex('\\odot\\,(1+\\alpha\\,\\mathbf g)',528,214,{size:11,color:'var(--fg)',alt:'⊙ (1 + αg)'});
+  ic+=tex('\\mathbf g=\\sigma(W_g\\bar{\\mathbf r}+b_g)',528,234,{size:10.5,alt:'g = σ(W_g r̄ + b_g)'});
+  ic+=`<text x="528" y="252" style="font-size:10px">mean of r_t → gate</text>`;
+  for(let i=0;i<T;i++)ic+=`<rect x="642" y="${PY(i)+3}" width="52" height="20" fill="${mix('var(--acc)',40+8*(i%3))}"/>`;
+  ic+=tex('\\mathbf H_{final}',642,278,{color:'var(--fg)'});
+  s+=stageBox('st-c',516,190,'(c) Agent-aware attention',`<text x="526" y="60" style="font-size:10.5px">matrix shown: B (toy)</text>`,ic);
+  s+=arrow(708,170,723,170);
+  // Δ path: differencing reads the rows of H_final (from code; the paper writes h_t)
+  s+=poly([[668,26],[668,12],[780,12],[780,24]],'var(--acc)');
+  s+=`<text x="790" y="15" style="font-size:10px;fill:var(--acc)">Δ_t from H_final</text>`+FC(900,15);
+  // (d)
+  let id='';const mx=Math.max(...fin,0.01),mn=Math.min(...fin,0),x0=mn<0?792:780,k=Math.min(130/mx,mn<0?40/(-mn):1e9);
+  fin.forEach((v,i)=>{const y=PY(i)+5,w=v*k,on=i===am;
+    id+=`<text x="736" y="${y+12}" class="fg">${i+1}</text>`;
+    id+=`<rect x="${w>=0?x0:x0+w}" y="${y}" width="${Math.max(Math.abs(w),1)}" height="16" rx="2" fill="${on?'var(--acc)':'var(--bar)'}"/>`;
+    id+=`<text x="${x0+Math.max(w,0)+5}" y="${y+12}" style="font-size:10px" class="${on?'acc':''}">${sgn(v)}${on?'  ← t̂':''}</text>`;});
+  id+=`<line x1="${x0}" y1="${PY(0)}" x2="${x0}" y2="${PY(T-1)+26}" stroke="var(--muted)"/>`;
+  id+=tex('\\ell^{\\rm final}_t=\\ell_t+\\beta\\Delta_t+\\gamma b_t',734,278,{size:11,color:'var(--fg)',alt:'ℓ_final = ℓ + βΔ + γb'});
+  s+=stageBox('st-d',724,274,'(d) Score each step',`<text x="734" y="60" style="font-size:10.5px">MLP → ℓ_t, add βΔ_t + γb_t, arg-max</text>`,id);
+  // training band
+  if(ST.view==='all'){
+    const tc='var(--trn)';
+    s+=`<rect x="1" y="326" width="997" height="210" rx="8" fill="${mix(tc,4,'var(--surface)')}" stroke="${tc}" stroke-dasharray="6 4"/>`;
+    s+=`<text x="12" y="344" class="trnc" style="font-size:10.5px;letter-spacing:.08em">TRAINING ONLY</text>`;
+    // data
+    s+=`<a href="#st-t"><rect class="box" x="12" y="352" width="290" height="104" rx="6" fill="var(--surface)" stroke="${tc}"/>`;
+    s+=`<text x="22" y="372" class="hd" style="font-size:12px">Synthetic training trajectories</text>`;
+    ['an LLM rewrites each failed run with','a new path and a new root-cause error,','writing the label t* as it goes','1,564 (Alg) · 2,604 (HC) trajectories'].forEach((l,i)=>s+=`<text x="22" y="${392+i*15}" style="font-size:10.5px" ${i===3?'class="fg"':''}>${l}</text>`);
+    s+=`</a>`+poly([[68,352],[68,274]],tc,'5 3');
+    // TC head: reads rows of H_final (from code)
+    s+=`<a href="#st-t"><rect class="box" x="350" y="352" width="310" height="104" rx="6" fill="var(--surface)" stroke="${tc}"/>`;
+    s+=`<text x="360" y="372" class="hd" style="font-size:12px">Temporal consistency head</text>`;
+    s+=tex('\\hat{\\mathbf h}_{t+1}=f_\\theta(\\mathbf h_t)',360,396,{size:11.5,color:'var(--fg)',alt:'ĥ_{t+1} = f_θ(h_t)'});
+    s+=tex('\\mathcal L_{\\rm temporal}=\\tfrac{1}{T-1}\\textstyle\\sum_{t=2}^{T}\\|\\hat{\\mathbf h}_t-\\mathbf h_t\\|_2^2',360,428,{size:11.5,color:'var(--fg)',alt:'L_temporal = mean ||ĥ_t − h_t||²'});
+    s+=`<text x="360" y="448" style="font-size:10px">h_t = rows of H_final</text>`+FC(492,448)+`</a>`;
+    s+=poly([[655,284],[655,350]],tc,'5 3');
+    // CE
+    s+=`<a href="#st-t"><rect class="box" x="690" y="352" width="298" height="104" rx="6" fill="var(--surface)" stroke="${tc}"/>`;
+    s+=`<text x="700" y="372" class="hd" style="font-size:12px">Cross-entropy over steps</text>`;
+    s+=`<text x="700" y="392" style="font-size:10.5px">softmax of ℓ^final over valid steps</text>`;
+    s+=tex('\\mathcal L_{\\rm CE}=-\\log\\mathrm{softmax}(\\boldsymbol\\ell^{\\rm final})_{t^*}',700,420,{size:11.5,color:'var(--fg)',alt:'L_CE = −log softmax(ℓ_final)_{t*}'});
+    s+=`<text x="700" y="446" style="font-size:10px">t* = label of the synthetic run</text></a>`;
+    s+=poly([[860,284],[860,350]],tc,'5 3');
+    // total
+    s+=`<rect x="420" y="482" width="380" height="40" rx="6" fill="var(--surface)" stroke="${tc}" stroke-width="1.6"/>`;
+    s+=tex('\\mathcal L_{\\rm total}=\\mathcal L_{\\rm CE}+\\lambda\\,\\mathcal L_{\\rm temporal}',610,507,{anchor:'middle',size:13,color:'var(--trn)',alt:'L_total = L_CE + λ L_temporal'});
+    s+=poly([[505,456],[540,480]],tc)+poly([[840,456],[740,480]],tc);
+  }
+  $('pipe').setAttribute('viewBox',`0 0 1000 ${ST.view==='all'?540:322}`);
+  $('pipe').innerHTML=s;}
+
+// ---------- stage (a): toy trajectory and its two matrices ----------
+function encFig(){let s='';
+  s+=`<text x="0" y="14" class="fg">t</text><text x="18" y="14" class="fg">agent r_t</text><text x="114" y="14" class="fg">content c_t</text>`;
+  s+=tex('\\mathbf c_t',372,14,{color:'var(--fg)',anchor:'middle'})+tex('\\mathbf r_t',474,14,{color:'var(--fg)',anchor:'middle'});
+  STEPS.forEach(([a,txt],i)=>{const y=26+i*32;
+    s+=`<text x="0" y="${y+15}" class="${i===TSTAR?'err':'fg'}">${i+1}</text>`;
+    s+=`<text x="18" y="${y+15}" style="fill:${AG[a].c}">${AG[a].name}</text>`;
+    s+=`<text x="114" y="${y+15}" class="fg" style="font-size:10.5px">${txt}</text>`;
+    cellsC[i].forEach((p,k)=>s+=`<rect x="${322+k*6.3}" y="${y+3}" width="5.6" height="18" fill="${mix('var(--acc)',p)}"/>`);
+    agPat[a].forEach((p,k)=>s+=`<rect x="${462+k*6.3}" y="${y+3}" width="5.6" height="18" fill="${mix(AG[a].c,p)}"/>`);});
+  s+=`<rect x="110" y="${26+TSTAR*32}" width="204" height="24" rx="4" fill="none" stroke="var(--err)" stroke-dasharray="3 2"/>`;
+  s+=`<text x="372" y="230" text-anchor="middle">128 dims (16 shown)</text><text x="474" y="230" text-anchor="middle">32 (4 shown)</text>`;
+  $('f-enc').innerHTML=s;}
+
+// ---------- stage (b): unrolled BiLSTM ----------
+function lstmFig(){let s='';const x0=78,dx=72,cw=46;
+  const rowsY={h:14,b:62,f:110,c:158};
+  s+=tex('\\mathbf h_t',0,rowsY.h+17,{color:'var(--fg)'})+`<text x="0" y="${rowsY.b+17}">bwd</text><text x="0" y="${rowsY.f+17}">fwd</text>`+tex('\\hat{\\mathbf c}_t',0,rowsY.c+17,{color:'var(--fg)'});
+  s+=`<defs><marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--muted)"/></marker><marker id="ah3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--acc)"/></marker></defs>`;
+  const L=(x1,y1,x2,y2,on)=>`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${on?'var(--acc)':'var(--bar)'}" stroke-width="${on?1.8:1.2}" marker-end="url(#${on?'ah3':'ah2'})"/>`;
+  // lines first, boxes on top, so arrows that pass a box are drawn behind it
+  let lines='',boxes='';
+  for(let t=0;t<T;t++){const x=x0+t*dx, onF=t<=TSTAR, onB=t>=TSTAR, onH=t===TSTAR;
+    boxes+=`<rect x="${x}" y="${rowsY.c}" width="${cw}" height="24" rx="4" fill="${mix('var(--acc)',(onF||onB)?30:12)}" stroke="var(--line)"/><text x="${x+cw/2}" y="${rowsY.c+16}" text-anchor="middle" class="fg">${t+1}</text>`;
+    boxes+=`<rect x="${x}" y="${rowsY.f}" width="${cw}" height="24" rx="4" fill="var(--surface)" stroke="${onF?'var(--acc)':'var(--line)'}" stroke-width="${onF?1.6:1}"/><text x="${x+cw/2}" y="${rowsY.f+16}" text-anchor="middle">→</text>`;
+    boxes+=`<rect x="${x}" y="${rowsY.b}" width="${cw}" height="24" rx="4" fill="var(--surface)" stroke="${onB?'var(--acc)':'var(--line)'}" stroke-width="${onB?1.6:1}"/><text x="${x+cw/2}" y="${rowsY.b+16}" text-anchor="middle">←</text>`;
+    boxes+=`<rect x="${x}" y="${rowsY.h}" width="${cw/2}" height="24" fill="${mix('var(--acc)',onH?70:25)}"/><rect x="${x+cw/2}" y="${rowsY.h}" width="${cw/2}" height="24" fill="${mix('var(--acc)',onH?45:14)}"/>`;
+    lines+=L(x+cw/2-8,rowsY.c,x+cw/2-8,rowsY.f+25,onF)+L(x+cw/2+8,rowsY.c,x+cw/2+8,rowsY.b+25,onB);
+    lines+=L(x+cw/2-8,rowsY.f,x+cw/2-8,rowsY.h+25,onF&&onH)+L(x+cw/2+8,rowsY.b,x+cw/2+8,rowsY.h+25,onB&&onH);
+    if(t<T-1)lines+=L(x+cw,rowsY.f+12,x+dx,rowsY.f+12,t<TSTAR);
+    if(t>0)lines+=L(x,rowsY.b+12,x-dx+cw,rowsY.b+12,t>TSTAR);}
+  // keep highlighted lines above grey ones
+  s+=lines.split('<line').filter(Boolean).map(l=>'<line'+l).sort((a,b)=>a.includes('--acc')-b.includes('--acc')).join('')+boxes;
+  s+=`<text x="${x0+T*dx-20}" y="${rowsY.h+16}" style="font-size:10px">64+64</text>`;
+  $('f-lstm').innerHTML=s;}
+
+// ---------- stage (c): agent bias matrix ----------
+function biasFig(){let s='';const x0=150,y0=40,c=28;
+  STEPS.forEach(([a],i)=>{s+=`<text x="${x0-8}" y="${y0+i*c+18}" text-anchor="end" style="fill:${AG[a].c}">${i+1} ${AG[a].name}</text>`;
+    s+=`<text x="${x0+i*c+c/2}" y="${y0-8}" text-anchor="middle" style="fill:${AG[a].c}">${i+1}${a}</text>`;
+    STEPS.forEach(([b],j)=>{const v=cosAg(a,b);s+=`<rect x="${x0+j*c}" y="${y0+i*c}" width="${c-2}" height="${c-2}" rx="2" fill="${mix('var(--acc)',v*85)}"/><text x="${x0+j*c+c/2-1}" y="${y0+i*c+17}" text-anchor="middle" style="font-size:9.5px;fill:${v>0.6?'var(--surface)':'var(--fg)'}">${v===1?'1':String(v.toFixed(2)).replace(/^0/,'')}</text>`;});});
+  s+=tex('B_{ij}=\\cos(\\mathbf r_i,\\mathbf r_j)',x0,y0+T*c+22,{color:'var(--fg)'});
+  const xr=x0+T*c+24;
+  s+=`<text x="${xr}" y="${y0+14}" class="fg">row i = the step</text><text x="${xr}" y="${y0+30}" class="fg">that attends</text>`;
+  s+=`<text x="${xr}" y="${y0+58}">step 3 (WebSurfer)</text><text x="${xr}" y="${y0+74}">gets +α toward step 2,</text><text x="${xr}" y="${y0+90}">its own agent's other</text><text x="${xr}" y="${y0+106}">step, and less toward</text><text x="${xr}" y="${y0+122}">the Coder at step 5</text>`;
+  s+=`<rect x="${x0-1}" y="${y0+TSTAR*c-1}" width="${T*c}" height="${c}" rx="3" fill="none" stroke="var(--fg)" stroke-width="1.2"/>`;
+  $('f-bias').innerHTML=s;}
+
+// ---------- stage (c): agent gate ----------
+function gateFig(){let s='';const r=rng(21),K=12,cw=17,x0=210,y0=48,rh=20;
+  const g=Array.from({length:K},()=>0.1+0.85*r()); const Ha=STEPS.map(()=>Array.from({length:K},()=>15+55*r()));
+  // agent rows → mean
+  STEPS.forEach(([a],i)=>agPat[a].forEach((p,k)=>s+=`<rect x="${k*9}" y="${y0+i*rh+2}" width="8" height="${rh-4}" fill="${mix(AG[a].c,p)}"/>`));
+  s+=tex('\\mathbf R',10,y0-10,{color:'var(--fg)'});
+  s+=`<line x1="42" y1="${y0+60}" x2="64" y2="${y0+60}" stroke="var(--muted)" marker-end="url(#ahg)"/>`;
+  s+=`<defs><marker id="ahg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--muted)"/></marker></defs>`;
+  s+=tex('\\bar{\\mathbf r}',72,y0+64,{color:'var(--fg)'});
+  s+=`<text x="88" y="${y0+64}" style="font-size:10px">→ σ(W_g · + b_g)</text>`;
+  s+=`<text x="88" y="${y0+80}" style="font-size:10px">→ g, one vector</text><text x="88" y="${y0+94}" style="font-size:10px">for the whole run</text>`;
+  // g row
+  g.forEach((v,k)=>{const h=v*26;s+=`<rect x="${x0+k*cw+2}" y="${30-h}" width="${cw-4}" height="${h}" rx="1" fill="var(--acc)"/>`;});
+  s+=tex('g_k',x0-6,24,{anchor:'end',color:'var(--fg)'});
+  // H_attn rows scaled → shown as H_final with column factor (alpha=1 for display)
+  STEPS.forEach((_,i)=>Ha[i].forEach((p,k)=>s+=`<rect x="${x0+k*cw}" y="${y0+i*rh}" width="${cw-1}" height="${rh-1}" fill="${mix('var(--acc)',Math.min(95,p*(1+g[k])))}"/>`));
+  s+=`<text x="${x0+K*cw+8}" y="${y0+14}" class="fg">every row ×</text><text x="${x0+K*cw+8}" y="${y0+30}" class="fg">(1 + α g_k)</text>`;
+  s+=`<text x="${x0+K*cw+8}" y="${y0+56}">= H_final</text><text x="${x0+K*cw+8}" y="${y0+72}">(columns change,</text><text x="${x0+K*cw+8}" y="${y0+88}">rows keep their</text><text x="${x0+K*cw+8}" y="${y0+104}">relative pattern)</text>`;
+  $('f-gate').innerHTML=s;}
+
+// ---------- stage (d): multi-scale differencing ----------
+function diffFig(){const {D,Delta}=diffs();let s='';
+  const X=v=>22+v*64, Y=v=>222-v*66;
+  s+=`<line x1="10" y1="${Y(0)}" x2="300" y2="${Y(0)}" stroke="var(--line)"/><line x1="${X(0)}" y1="12" x2="${X(0)}" y2="234" stroke="var(--line)"/>`;
+  for(let t=1;t<T;t++)s+=`<line x1="${X(H2[t-1][0])}" y1="${Y(H2[t-1][1])}" x2="${X(H2[t][0])}" y2="${Y(H2[t][1])}" stroke="${t===TSTAR?'var(--err)':'var(--bar)'}" stroke-width="${t===TSTAR?2.6:1.6}"/>`;
+  const p=[2*H2[1][0]-H2[0][0],2*H2[1][1]-H2[0][1]];
+  s+=`<line x1="${X(H2[1][0])}" y1="${Y(H2[1][1])}" x2="${X(p[0])}" y2="${Y(p[1])}" stroke="var(--muted)" stroke-dasharray="3 3"/>`;
+  s+=`<circle cx="${X(p[0])}" cy="${Y(p[1])}" r="4.5" fill="var(--surface)" stroke="var(--muted)" stroke-width="1.4"/>`;
+  s+=`<line x1="${X(p[0])}" y1="${Y(p[1])}" x2="${X(H2[2][0])}" y2="${Y(H2[2][1])}" stroke="var(--err)" stroke-width="1.6" stroke-dasharray="4 3"/>`;
+  s+=tex('2\\mathbf h_2-\\mathbf h_1',X(p[0])+8,Y(p[1])+16,{size:10.5,alt:'2h₂ − h₁'});
+  H2.forEach((h,t)=>{s+=`<circle cx="${X(h[0])}" cy="${Y(h[1])}" r="5" fill="${t===TSTAR?'var(--err)':'var(--fg)'}"/>`;
+    const lx=t===TSTAR?-24:t===1?6:-6, ly=t===1?16:-9;
+    s+=tex(`\\mathbf h_${t+1}`,X(h[0])+lx,Y(h[1])+ly,{size:11,color:t===TSTAR?'var(--err)':'var(--fg)'});});
+  // table
+  const tx=330;s+=`<text x="${tx}" y="20" class="fg">t</text>`+tex('D^{(1)}_t',tx+22,20,{size:11,color:'var(--fg)'})+tex('D^{(2)}_t',tx+76,20,{size:11,color:'var(--fg)'})+tex('\\Delta_t',tx+136,20,{size:11,color:'var(--fg)'});
+  for(let t=0;t<T;t++){const y=44+t*24,on=t===TSTAR;
+    if(on)s+=`<rect x="${tx-6}" y="${y-15}" width="190" height="21" rx="3" fill="${mix('var(--err)',12,'transparent')}"/>`;
+    s+=`<text x="${tx}" y="${y}" class="${on?'err':'fg'}">${t+1}</text><text x="${tx+22}" y="${y}">${t<1?'0 ¹':f2(D[1][t])}</text><text x="${tx+76}" y="${y}">${t<2?'0 ¹':f2(D[2][t])}</text><text x="${tx+136}" y="${y}" class="${on?'err':'fg'}" style="font-weight:600">${f2(Delta[t])}</text>`;}
+  s+=`<text x="${tx}" y="${44+T*24+4}" style="font-size:9.5px">¹ no step t−s: set to 0</text>`+FC(tx+2,44+T*24+24);
+  $('f-diff').innerHTML=s;}
+
+// ---------- stage (d): final score ----------
+function scoreFig(){const {Delta,b,fin,am,am0}=scores();let s='';
+  const x0=70,cw=72,base=118,top=14;
+  const all=[...fin,...ELL],mx=Math.max(...all),mn=Math.min(0,...all),k=(base-top)/(mx-mn||1), Yb=v=>base-(v)*k;
+  const zero=Yb(0);
+  s+=`<line x1="${x0-8}" y1="${zero}" x2="${x0+T*cw}" y2="${zero}" stroke="var(--muted)"/>`;
+  fin.forEach((v,t)=>{const x=x0+t*cw,on=t===am,y=Math.min(Yb(v),zero),h=Math.max(Math.abs(Yb(v)-zero),1);
+    s+=`<rect x="${x+14}" y="${y}" width="${cw-28}" height="${h}" rx="2" fill="${on?'var(--acc)':'var(--bar)'}"/>`;
+    s+=`<line x1="${x+8}" y1="${Yb(ELL[t])}" x2="${x+cw-8}" y2="${Yb(ELL[t])}" stroke="var(--fg)" stroke-width="1.6" stroke-dasharray="3 2"/>`;
+    s+=`<text x="${x+cw/2}" y="${base+14}" text-anchor="middle" class="${t===TSTAR?'err':'fg'}">${t+1}</text>`;});
+  s+=`<path d="M${x0+TSTAR*cw+cw/2-5} ${base+26} l5 -6 l5 6z" fill="var(--err)"/>`;
+  const rows=[['\\ell_t',ELL],['\\beta\\Delta_t',Delta.map(v=>ST.beta*v)],['\\gamma b_t',b.map(v=>ST.gamma*v)],['\\ell^{\\rm final}_t',fin]];
+  rows.forEach(([lab,arr],ri)=>{const y=base+52+ri*22;s+=tex(lab,0,y,{size:11.5,color:'var(--fg)'});
+    arr.forEach((v,t)=>s+=`<text x="${x0+t*cw+cw/2}" y="${y}" text-anchor="middle" style="font-size:10.5px;${ri===3&&t===am?'font-weight:600;fill:var(--acc)':ri===3?'fill:var(--fg)':''}">${sgn(v)}</text>`);});
+  s+=`<line x1="0" y1="${base+52+2*22+7}" x2="520" y2="${base+52+2*22+7}" stroke="var(--line)"/>`;
+  $('f-score').innerHTML=s;
+  const ok=am===TSTAR;
+  $('d-read').innerHTML=`<span>Prediction: <span class="chip on">t̂ = ${am+1}</span></span><span>Labelled decisive step: <span class="chip e">3</span> <b style="color:${ok?'var(--ok)':'var(--no)'}">${ok?'hit':'miss'}</b></span><span class="note">Learned score alone would pick step ${am0+1}.</span>`;}
+
+// ---------- training: CE over valid steps ----------
+function ceFig(){const {fin}=scores();let s='';const P=8,x0=40,cw=58,base=150,top=20;
+  const m=Math.max(...fin),ex=fin.map(v=>Math.exp(v-m)),Z=ex.reduce((a,b)=>a+b,0),p=ex.map(v=>v/Z);
+  const Y=v=>base-v*(base-top);
+  s+=`<line x1="${x0-6}" y1="${base}" x2="${x0+P*cw}" y2="${base}" stroke="var(--muted)"/>`;
+  [0,0.5,1].forEach(v=>s+=`<text x="${x0-10}" y="${Y(v)+4}" text-anchor="end">${v}</text><line x1="${x0-4}" y1="${Y(v)}" x2="${x0+P*cw}" y2="${Y(v)}" stroke="var(--line)" stroke-width="0.6"/>`);
+  for(let t=0;t<P;t++){const x=x0+t*cw;
+    if(t<T){const on=t===TSTAR;s+=`<rect x="${x+12}" y="${Y(p[t])}" width="${cw-24}" height="${base-Y(p[t])}" rx="2" fill="${on?'var(--trn)':'var(--bar)'}"/>`;
+      s+=`<text x="${x+cw/2}" y="${Y(p[t])-5}" text-anchor="middle" style="font-size:10px" class="${on?'trnc':''}">${f2(p[t])}</text>`;
+      s+=`<text x="${x+cw/2}" y="${base+16}" text-anchor="middle" class="${on?'err':'fg'}">${t+1}</text>`;}
+    else{s+=`<rect x="${x+12}" y="${base-40}" width="${cw-24}" height="40" rx="2" fill="none" stroke="var(--bar)" stroke-dasharray="3 3"/><text x="${x+cw/2}" y="${base-16}" text-anchor="middle" style="font-size:9.5px">pad</text><text x="${x+cw/2}" y="${base+16}" text-anchor="middle">${t+1}</text>`;}}
+  s+=`<path d="M${x0+TSTAR*cw+cw/2-5} ${base+30} l5 -6 l5 6z" fill="var(--err)"/>`;
+  s+=`<text x="${x0+P*cw}" y="${base+34}" text-anchor="end" style="font-size:10px">7–8 masked: not in the softmax</text>`;
+  s+=tex('p_t',0,14,{color:'var(--fg)'});
+  $('f-ce').innerHTML=s;
+  $('t-read').innerHTML=`<span>\\(p_3\\) = <span class="stat">${f2(p[TSTAR])}</span></span><span>loss for this trajectory \\(-\\log p_3\\) = <span class="stat">${(-Math.log(p[TSTAR])).toFixed(3)}</span></span>`;
+  if(window.MJ)MathJax.typeset([$('t-read')]);}
+
+// ---------- training: temporal consistency head ----------
+function tcFig(){let s='';const x0=40,dx=78,cw=44;
+  s+=`<defs><marker id="aht2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--trn)"/></marker></defs>`;
+  s+=tex('\\mathbf h_t',0,40,{color:'var(--fg)'})+tex('\\hat{\\mathbf h}_t',0,122,{color:'var(--trn)'});
+  for(let t=0;t<T;t++){const x=x0+t*dx;
+    s+=`<rect x="${x}" y="22" width="${cw}" height="26" rx="4" fill="${mix('var(--acc)',35)}"/><text x="${x+cw/2}" y="40" text-anchor="middle" class="fg">${t+1}</text>`;
+    if(t>0){s+=`<rect x="${x}" y="104" width="${cw}" height="26" rx="4" fill="var(--surface)" stroke="var(--trn)" stroke-dasharray="4 3"/><text x="${x+cw/2}" y="122" text-anchor="middle" class="trnc">${t+1}</text>`;
+      s+=`<line x1="${x-dx+cw-4}" y1="48" x2="${x+8}" y2="103" stroke="var(--trn)" stroke-width="1.3" marker-end="url(#aht2)"/>`;
+      s+=`<text x="${x+cw/2}" y="${152}" text-anchor="middle" style="font-size:9.5px" class="trnc">‖·‖²</text>`;
+      s+=`<line x1="${x+cw-6}" y1="104" x2="${x+cw-6}" y2="50" stroke="var(--trn)" stroke-width="1" stroke-dasharray="2 2"/>`;}}
+  s+=tex('f_\\theta',x0+cw+18,72,{size:11,color:'var(--trn)',alt:'f_θ'});
+  s+=`<text x="${x0+cw/2}" y="122" text-anchor="middle" style="font-size:10px">none</text>`;
+  $('f-tc').innerHTML=s;}
+
+// ---------- controls ----------
+function setPreset(v){Object.assign(ST,PRESET[v]);$('d-beta').value=ST.beta;$('d-gamma').value=ST.gamma;}
+function syncVals(){$('d-beta-v').textContent=ST.beta.toFixed(2);$('d-gamma-v').textContent=ST.gamma.toFixed(2);
+  const m=Object.entries(PRESET).find(([,p])=>Math.abs(p.beta-ST.beta)<1e-9&&Math.abs(p.gamma-ST.gamma)<1e-9);
+  $('d-preset').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',m&&b.dataset.v===m[0]?'true':'false'));}
+function scoreRender(){syncVals();pipeline();scoreFig();ceFig();}
+$('d-preset').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;setPreset(b.dataset.v);scoreRender();});
+$('d-beta').addEventListener('input',e=>{ST.beta=+e.target.value;scoreRender();});
+$('d-gamma').addEventListener('input',e=>{ST.gamma=+e.target.value;scoreRender();});
+$('p-view').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;ST.view=b.dataset.v;
+  $('p-view').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));pipeline();});
+window.renderAll=()=>{pipeline();encFig();lstmFig();biasFig();gateFig();diffFig();scoreRender();tcFig();};
+window.renderAll();
+</script>

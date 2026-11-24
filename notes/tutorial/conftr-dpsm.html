@@ -1,0 +1,868 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ConfTr and DPSM</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Space+Grotesk:wght@500;600&display=swap">
+<script>
+window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},svg:{fontCache:'none'},
+  startup:{pageReady(){return MathJax.startup.defaultPageReady().then(()=>{window.MJ=true;if(window.renderAll)window.renderAll();});}}};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg.js" async></script>
+<style>
+/* Layout: one reading column. Primer, notation, the shared soft set, then ConfTr and DPSM (each: diagram + algorithm, then a toy step on the same batch), then the post-training step and the comparison. Tokens as in cp-pipelines.html; --ct for ConfTr, --dm for DPSM, --cp for plain CP. */
+:root{
+  --bg:#f5f7fa; --surface:#ffffff; --fg:#18202c; --muted:#5b6678; --line:#d8dee7; --bar:#c3cbd7;
+  --cp:#0d766f; --ct:#3a4db3; --dm:#a85500; --err:#c4342a; --ok:#2c7a37; --no:#b0352a;
+  --display:"Space Grotesk",system-ui,sans-serif; --body:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#11151c; --surface:#181e27; --fg:#e4e8ef; --muted:#9aa5b6; --line:#2b3341; --bar:#475163;
+  --cp:#3dbdb1; --ct:#8d9cff; --dm:#d98b3a; --err:#ff6a5c; --ok:#6cc47a; --no:#ff7b6e; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11151c; --surface:#181e27; --fg:#e4e8ef; --muted:#9aa5b6; --line:#2b3341; --bar:#475163;
+  --cp:#3dbdb1; --ct:#8d9cff; --dm:#d98b3a; --err:#ff6a5c; --ok:#6cc47a; --no:#ff7b6e; color-scheme:dark}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.55}
+.wrap{max-width:1040px;margin:0 auto;padding-block:32px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:36px}
+.wrap>*{min-width:0}
+h1,h2,h3,h4{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.25}
+h1{font-size:2rem;font-weight:600} h2{font-size:1.45rem;font-weight:600} h3{font-size:1.05rem;font-weight:600} h4{font-size:.95rem;font-weight:600}
+p{margin:0}
+dfn{font-style:normal;font-weight:600}
+.lede{color:var(--muted)} .lede b{color:var(--fg)}
+.eyebrow{font-family:var(--mono);font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;color:var(--acc,var(--muted))}
+.toc{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.85rem}
+.toc a{color:var(--muted);text-decoration:none;border-bottom:1px dotted var(--muted)}
+section.paper{--acc:var(--cp);display:grid;gap:18px;min-width:0}
+section.paper.ct{--acc:var(--ct)} section.paper.dm{--acc:var(--dm)}
+.paper-head{display:grid;gap:6px;border-left:4px solid var(--acc);padding-left:14px}
+.paper-head p{color:var(--muted)}
+.stage{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;display:grid;gap:16px;min-width:0}
+.stage-title{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.tag{font-family:var(--mono);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;background:color-mix(in srgb,var(--acc) 14%,transparent);color:var(--acc);padding:2px 8px;border-radius:4px}
+.cpstep{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:18px;padding-top:14px;border-top:1px solid var(--line);align-items:start}
+.cpstep .txt{display:grid;gap:8px;min-width:0;align-content:start}
+.cpstep .fig{display:grid;gap:6px;min-width:0}
+.num{display:inline-grid;place-items:center;width:1.5em;height:1.5em;border-radius:50%;background:var(--acc);color:var(--surface);font-family:var(--mono);font-size:.8rem;margin-right:8px;vertical-align:1px}
+.cap{font-size:.85rem;color:var(--muted)}
+.eq{background:var(--bg);border:1px solid var(--line);border-left:3px solid var(--acc);border-radius:6px;padding:8px 12px;overflow-x:auto;font-size:.95rem;min-width:0}
+.eq.work{border-left-color:var(--fg)}
+svg.chart{width:100%;height:auto;display:block}
+.figwrap{overflow-x:auto;min-width:0} .figwrap svg.chart{min-width:640px}
+mjx-container svg{display:inline-block}
+mjx-container[display="true"]{margin:.3em 0!important}
+mjx-container{color:inherit}
+svg text{font-family:var(--mono);font-size:11px;fill:var(--muted)}
+svg .fg{fill:var(--fg)} svg .acc{fill:var(--acc)}
+.controls{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center;padding:10px 12px;border:1px dashed var(--line);border-radius:8px}
+.controls label,.controls .grp{display:flex;align-items:center;gap:8px;font-size:.9rem}
+input[type=range]{accent-color:var(--acc);width:140px}
+input[type=checkbox]{accent-color:var(--acc)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{font:inherit;font-size:.85rem;border:0;background:transparent;color:var(--fg);padding:4px 10px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed=true]{background:var(--acc);color:var(--surface)}
+button.plain{font:inherit;font-size:.85rem;border:1px solid var(--line);background:transparent;color:var(--fg);padding:4px 10px;border-radius:6px;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.val{font-family:var(--mono);font-variant-numeric:tabular-nums;min-width:3.2em}
+.box{border-radius:8px;padding:12px 14px;display:grid;gap:6px;font-size:.92rem;align-content:start;min-width:0}
+.box .h{font-family:var(--mono);font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;font-weight:500;color:var(--acc)}
+.box.n{background:var(--bg);border:1px solid var(--line)}
+.box.a{background:color-mix(in srgb,var(--acc) 7%,transparent);border:1px solid color-mix(in srgb,var(--acc) 40%,transparent)}
+.readout{font-size:.9rem;display:flex;flex-wrap:wrap;gap:4px 18px}
+.chips{display:inline-flex;flex-wrap:wrap;gap:4px;vertical-align:middle}
+.chip{white-space:nowrap;font-family:var(--mono);font-size:.8rem;padding:0 6px;border-radius:4px;border:1px solid var(--line)}
+.chip.on{background:var(--acc);border-color:var(--acc);color:var(--surface)}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface);min-width:0}
+table{border-collapse:collapse;width:100%;font-size:.9rem;min-width:680px}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+thead th{font-family:var(--display);font-weight:600}
+tbody th{font-weight:500;color:var(--muted);width:18%}
+tr:last-child td,tr:last-child th{border-bottom:0}
+th.c{color:var(--ct)} th.d{color:var(--dm)}
+table.nt td:first-child{white-space:nowrap}
+table.nt td:nth-child(3),table.nt td:nth-child(4){font-size:.86rem}
+.batch{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+.batch .tablewrap table{min-width:0;font-family:var(--mono);font-size:.8rem;font-variant-numeric:tabular-nums}
+.batch th,.batch td{padding:4px 8px;text-align:right}
+.batch caption{caption-side:top;text-align:left;padding:8px 10px 2px;font-size:.82rem;color:var(--muted);font-family:var(--body)}
+.batch td.t{font-weight:600;color:var(--fg);background:color-mix(in srgb,var(--cp) 12%,transparent)}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.8rem;color:var(--muted)}
+.sw{display:inline-block;width:11px;height:11px;border-radius:2px;vertical-align:-1px;margin-right:5px}
+.ln-sw{display:inline-block;width:22px;height:0;vertical-align:3px;margin-right:5px;border-top:2px solid var(--muted)}
+.note{font-size:.82rem;color:var(--muted)}
+.grid2{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:16px;align-items:start}
+.algo{font-family:var(--mono);font-size:.8rem;line-height:1.75;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;overflow-x:auto;display:grid;gap:2px;align-content:start;min-width:0}
+.algo .ln{color:var(--muted);display:inline-block;width:2.2em;text-align:right;margin-right:6px}
+.algo .i1{padding-left:1.4em}
+.algo .cm{color:var(--muted);font-style:italic}
+.algo .hd{font-family:var(--display);font-weight:600;font-size:.85rem;margin-bottom:4px}
+.algo .hl{background:color-mix(in srgb,var(--acc) 11%,transparent);border-radius:4px}
+ol.conv,ul.notes{margin:0;padding-left:1.25em;display:grid;gap:9px}
+ul.notes{font-size:.88rem;color:var(--muted);gap:6px}
+ul.notes b{color:var(--fg);font-weight:500}
+.cmp td{font-size:.88rem}
+.live td,.live th{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:.85rem}
+@media (max-width:780px){.cpstep,.grid2,.batch{grid-template-columns:minmax(0,1fr)} h1{font-size:1.6rem}}
+.figscroll{overflow-x:auto;min-width:0}
+@media (max-width:540px){.figscroll svg.chart{min-width:470px}}
+/* collapsible sections and stage cards */
+.tgl{font:inherit;font-family:var(--mono);font-size:.72rem;font-weight:400;letter-spacing:.04em;border:1px solid var(--line);background:transparent;color:var(--muted);padding:2px 8px;border-radius:5px;cursor:pointer;margin-left:10px;vertical-align:middle;white-space:nowrap}
+.tgl:hover{color:var(--fg);border-color:var(--muted)}
+.stage-title .tgl{margin-left:auto}
+section.collapsed>:not(.paper-head):not(h2){display:none}
+section.collapsed>.paper-head>p{display:none}
+.stage.collapsed>:not(.stage-title){display:none}
+</style>
+</head>
+<body>
+<script type="application/json" id="toy-data">
+{"K":4,
+ "batch":[
+  {"y":1,"p":[0.92,0.04,0.03,0.01]},
+  {"y":2,"p":[0.10,0.78,0.07,0.05]},
+  {"y":3,"p":[0.06,0.12,0.65,0.17]},
+  {"y":4,"p":[0.03,0.05,0.05,0.87]},
+  {"y":2,"p":[0.38,0.47,0.10,0.05]},
+  {"y":1,"p":[0.30,0.52,0.12,0.06]},
+  {"y":3,"p":[0.07,0.04,0.84,0.05]},
+  {"y":4,"p":[0.15,0.20,0.24,0.41]},
+  {"y":1,"p":[0.85,0.08,0.04,0.03]},
+  {"y":2,"p":[0.20,0.62,0.10,0.08]},
+  {"y":3,"p":[0.05,0.40,0.45,0.10]},
+  {"y":4,"p":[0.25,0.25,0.20,0.30]},
+  {"y":1,"p":[0.55,0.05,0.35,0.05]},
+  {"y":2,"p":[0.04,0.90,0.03,0.03]},
+  {"y":3,"p":[0.30,0.10,0.20,0.40]},
+  {"y":4,"p":[0.06,0.04,0.12,0.78]}],
+ "cal":[0.03,0.05,0.07,0.09,0.12,0.14,0.17,0.20,0.24,0.27,0.31,0.36,0.41,0.46,0.52,0.58,0.66,0.74,0.83],
+ "test":[0.48,0.31,0.15,0.06]}
+</script>
+<div class="wrap">
+<header style="display:grid;gap:10px">
+  <span class="eyebrow">Learnable conformal prediction · ConfTr (Stutz et al., ICLR 2022) · DPSM (Shi et al., ICML 2025)</span>
+  <h1>Training a classifier for small conformal sets: ConfTr and DPSM in one notation</h1>
+  <p class="lede">Both methods train the network to produce small prediction sets, and both finish with ordinary split conformal prediction, so the coverage guarantee comes from that final step, not from training. They differ in the threshold they use while training. <b>ConfTr</b> runs a smoothed conformal prediction on every mini-batch: half the batch sets the threshold through a smooth sort, the other half is scored against it, and the gradient flows back through both halves. <b>DPSM</b> makes the threshold a separate scalar parameter \(q\), learned by quantile regression on one half of the training data, while the set size is measured on the other half with \(q\) held fixed. Both sections below run on the same toy mini-batch, and every number in them is computed in your browser from the formulas shown.</p>
+  <nav class="toc" aria-label="Sections"><a href="#primer">Primer</a><a href="#notation">Notation</a><a href="#soft">Soft set</a><a href="#conftr">ConfTr</a><a href="#dpsm">DPSM</a><a href="#after">After training</a><a href="#compare">Side by side</a></nav>
+</header>
+
+<!-- ======================= Primer ======================= -->
+<section class="paper" id="primer">
+  <div class="paper-head">
+    <span class="eyebrow">Background, used by both</span>
+    <h2>Split conformal prediction in three sentences</h2>
+    <p>Both algorithms end with this step, unchanged. Training only decides which model goes into it.</p>
+  </div>
+  <div class="stage">
+    <p>(1) A <dfn>non-conformity score</dfn> \(S_f(X,y)\) measures how badly a candidate label \(y\) fits the input \(X\) under the trained model; this page uses \(S_f(X,y)=1-f_\theta(X)_y\), one minus the softmax probability (DPSM's HPS score). (2) On a held-out <dfn>calibration set</dfn> \(\mathcal D_{\rm cal}\) of \(m\) labelled examples, compute each true-label score \(S_i=S_f(X_i,Y_i)\) and set the threshold \(\widehat Q_f(\alpha)\) to their \(\lceil(1-\alpha)(m+1)\rceil\)-th smallest value, a slightly conservative <dfn>\((1-\alpha)\)-quantile</dfn> (the value below which a fraction \(1-\alpha\) of the scores lie). (3) The <dfn>prediction set</dfn> of a new input is every label whose score is at most \(\widehat Q_f(\alpha)\), and if calibration and test examples are exchangeable it contains the true label with probability at least \(1-\alpha\) for any model; that probability is the <dfn>coverage</dfn>, and \(\alpha\) is the <dfn>miscoverage level</dfn>.</p>
+    <div class="eq">\[ \widehat Q_f(\alpha)=S_{(k)},\ \ k=\big\lceil(1-\alpha)(m+1)\big\rceil;\qquad \mathcal C_f(X)=\{y\in\mathcal Y:\ S_f(X,y)\le\widehat Q_f(\alpha)\};\qquad \mathbb P\{Y\in\mathcal C_f(X)\}\ge1-\alpha \]</div>
+    <p>Because the guarantee holds for any model, training cannot break it. What a better-trained model buys is a smaller <dfn>set size</dfn> \(|\mathcal C_f(X)|\), the number of labels in the set; its average over test inputs is what ConfTr calls <dfn>inefficiency</dfn>. Both algorithms below train \(f_\theta\) so that this number is small.</p>
+    <div class="controls">
+      <label>\(\alpha\) <input type="range" data-k="alpha" min="0.05" max="0.4" step="0.01" value="0.2" aria-label="alpha"><span class="val" data-v="alpha">0.20</span></label>
+    </div>
+    <div class="cpstep" style="border-top:0;padding-top:0">
+      <div class="txt">
+        <h4><span class="num">✓</span>Toy calibration, \(m=19\)</h4>
+        <div class="eq work" id="cp-work"></div>
+        <p class="cap">Raise \(\alpha\) and the threshold drops, so sets shrink and can even be empty; lower it and they grow. This is the post-training step of both methods.</p>
+      </div>
+      <div class="fig">
+        <div class="figscroll"><svg class="chart" id="cp-fig" viewBox="0 0 520 205" role="img" aria-label="Nineteen calibration scores on a line with the conformal threshold, and the four label scores of a new input with those under the threshold in the set"></svg></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= Notation ======================= -->
+<section style="display:grid;gap:14px" id="notation">
+  <h2>One notation for both papers</h2>
+  <p>Symbols follow DPSM wherever DPSM defines one, and ConfTr's equations are rewritten in them. Where ConfTr needs a symbol that DPSM lacks, the page keeps ConfTr's own letter when it clashes with nothing in DPSM (\(\Omega,\ \kappa,\ \mathcal B_{\rm cal},\ \mathcal B_{\rm pred}\)) and renames it otherwise (\(\varepsilon_{\rm sort},\ \mathcal L_{\rm set}\)). The last column tells you where to find each quantity in ConfTr.</p>
+  <div class="tablewrap"><table class="nt">
+    <thead><tr><th>This page</th><th>Meaning</th><th class="d">DPSM</th><th class="c">ConfTr (original)</th></tr></thead>
+    <tbody>
+      <tr><td>\(X,\ Y\)</td><td>an input and its true label</td><td>\(X,\ Y\)</td><td>\(x,\ y\)</td></tr>
+      <tr><td>\(\mathcal Y=\{1,\dots,K\}\)</td><td>the \(K\) classes</td><td>same</td><td>\([K]\)</td></tr>
+      <tr><td>\(y\)</td><td>a candidate label, tested for membership in the set</td><td>\(y\)</td><td>\(k\)</td></tr>
+      <tr><td>\(\theta,\ f_\theta\)</td><td>network parameters; the network</td><td>\(f\) (\(f_\theta\) in App. A)</td><td>\(\theta,\ \pi_\theta\)</td></tr>
+      <tr><td>\(f_\theta(X)_y\)</td><td>softmax probability of class \(y\)</td><td>\(f(X)_y\)</td><td>\(\pi_{\theta,k}(x)\)</td></tr>
+      <tr><td>\(S_f(X,y)\)</td><td><dfn>non-conformity score</dfn>, large when \(y\) fits \(X\) badly; here \(1-f_\theta(X)_y\)</td><td>\(S_f(X,y)\); this choice is HPS, Eq. 11</td><td><dfn>conformity score</dfn> \(E_\theta(x,k)\), opposite direction: \(S=1-E\) for THR, \(S=-E\) for THR LP</td></tr>
+      <tr><td>\(S_i,\ S_{(j)}\)</td><td>the true-label score \(S_f(X_i,Y_i)\); the \(j\)-th smallest value of a list</td><td>same</td><td>\(E_\theta(x_i,y_i)\); —</td></tr>
+      <tr><td>\(\alpha\)</td><td>miscoverage level; target coverage is \(1-\alpha\)</td><td>\(\alpha\)</td><td>\(\alpha\)</td></tr>
+      <tr><td>\(\mathcal C_f(X)\)</td><td>prediction set, the labels whose score is at most the threshold</td><td>\(\mathcal C_f(X)\)</td><td>\(C_\theta(x;\tau)=\{k: E_\theta(x,k)\ge\tau\}\), "confidence set"</td></tr>
+      <tr><td>\(\mathbf 1[\cdot]\)</td><td>indicator: 1 if the statement holds, else 0</td><td>double-struck 1</td><td>\(\delta[\cdot]\)</td></tr>
+      <tr><td>\(\tilde{\mathcal C}_{f,y}(X;q)\)</td><td>soft membership \(\tilde{\mathbf 1}[S_f(X,y)\le q]\in(0,1)\), a sigmoid of \(q-S_f(X,y)\)</td><td>\(\tilde{\mathbf 1}[S_f(X,y)\le q]\) (no name for the soft set)</td><td>\(C_{\theta,k}(x;\tau)=\sigma\big((E_\theta(x,k)-\tau)/T\big)\)</td></tr>
+      <tr><td>\(\tau_{\rm Sigmoid}\)</td><td><dfn>temperature</dfn> of the soft membership</td><td>\(\tau_{\rm Sigmoid}\)</td><td>\(T\)</td></tr>
+      <tr><td>\(\mathcal D_{\rm tr},\ n\)</td><td>training set; its size</td><td>same</td><td>no symbol (ConfTr's \(n\) is a calibration size)</td></tr>
+      <tr><td>\(\mathcal D_{\rm cal},\ m\)</td><td>held-out calibration set; its size</td><td>same</td><td>\(I_{\rm cal}\); \(|I_{\rm cal}|\), written \(n\) in Alg. 1</td></tr>
+      <tr><td>\(\widehat Q_f(\alpha)\)</td><td>test-time threshold, the \(\lceil(1-\alpha)(m+1)\rceil\)-th smallest \(S_i\) on \(\mathcal D_{\rm cal}\)</td><td>\(\widehat Q_f(\alpha)\) (Eq. 2)</td><td>\(\tau\) from CALIBRATE, the \(\alpha(1+1/n)\)-quantile of \(E_\theta(x_i,y_i)\)</td></tr>
+      <tr><td>\(Q_f\)</td><td>the population \((1-\alpha)\)-quantile of \(S_f(X,Y)\)</td><td>\(Q_f(\alpha)\)</td><td>—</td></tr>
+      <tr><td>\(\mathcal B,\ s\)</td><td>a mini-batch; its size</td><td>\(\mathcal B,\ s\)</td><td>\(B,\ |B|\)</td></tr>
+      <tr><td>\(\mathcal B_{\rm cal},\ \mathcal B_{\rm pred}\)</td><td>ConfTr's two random halves of each mini-batch</td><td>—</td><td>\(B_{\rm cal},\ B_{\rm pred}\)</td></tr>
+      <tr><td>\(\hat q_f\)</td><td>ConfTr's training threshold: a smooth quantile of the true-label scores in \(\mathcal B_{\rm cal}\)</td><td>\(\hat q_f\), the "batch-level quantile"</td><td>\(\tau=\)SMOOTHCAL\((\dots)\); \(\hat q_f=1-\tau\) (THR) or \(-\tau\) (THR LP)</td></tr>
+      <tr><td>\(\mathrm{SmoothQuant}_{\varepsilon_{\rm sort}}(\cdot\,;p)\)</td><td>the \(p\)-quantile read off a smooth sort</td><td>—</td><td>SMOOTHQUANT</td></tr>
+      <tr><td>\(\varepsilon_{\rm sort}\)</td><td>dispersion of the smooth sort; \(\varepsilon_{\rm sort}\to0\) is hard sorting</td><td>— (its \(\epsilon\) is an unrelated tolerance)</td><td>\(\epsilon\)</td></tr>
+      <tr><td>\(\Omega\)</td><td>ConfTr's size loss on one soft set</td><td>—</td><td>\(\Omega\) (Eq. 3)</td></tr>
+      <tr><td>\(\kappa\)</td><td>target size: soft sizes up to \(\kappa\) cost nothing</td><td>—</td><td>\(\kappa\)</td></tr>
+      <tr><td>\(\mathcal L_{\rm set}\)</td><td>ConfTr's optional coverage loss on the soft set</td><td>—</td><td>\(\mathcal L_{\rm class}\) (Eq. 5), loss matrix \(L=I_K\)</td></tr>
+      <tr><td>\(\widehat{\mathcal L}_{\rm cls}(\theta)\)</td><td>cross-entropy averaged over a batch</td><td>\(\widehat{\mathcal L}_{\rm cls}(f)\)</td><td>not in ConfTr's objective</td></tr>
+      <tr><td>\(\lambda\)</td><td>weight of the set-size term</td><td>\(\lambda\)</td><td>\(\lambda\), "size weight"</td></tr>
+      <tr><td>\(q\)</td><td>DPSM's learned threshold, one scalar trained next to \(\theta\)</td><td>\(q\)</td><td>—</td></tr>
+      <tr><td>\(\rho_\alpha(q,S)\)</td><td><dfn>pinball loss</dfn></td><td>\(\rho_\alpha(q,S)\) (Eq. 6)</td><td>—</td></tr>
+      <tr><td>\(\widehat{\mathcal L}^{\rm QR}(\theta,q)\)</td><td>mean pinball loss of the true-label scores (lower level)</td><td>\(\widehat{\mathcal L}^{\rm QR}(f,q)\)</td><td>—</td></tr>
+      <tr><td>\(\mathcal U(\theta)\)</td><td>the set of minimisers of \(\widehat{\mathcal L}^{\rm QR}(\theta,\cdot)\)</td><td>\(\mathcal U(f)\)</td><td>—</td></tr>
+      <tr><td>\(\widehat{\mathcal L}^{\rm DM}_c(\theta,q)\)</td><td>mean soft set size at threshold \(q\) (upper level)</td><td>\(\widehat{\mathcal L}^{\rm DM}_c(f,q)\) (Eq. 9)</td><td>—</td></tr>
+      <tr><td>\(\mathcal D_1,\ \mathcal D_2\)</td><td>DPSM's two fixed halves of \(\mathcal D_{\rm tr}\)</td><td>same</td><td>—</td></tr>
+      <tr><td>\(\mathcal B^1_t,\ \mathcal B^2_t\)</td><td>DPSM's batches drawn from \(\mathcal D_1\) and \(\mathcal D_2\) at iteration \(t\)</td><td>same</td><td>—</td></tr>
+      <tr><td>\(\eta,\ \gamma\)</td><td>learning rates of \(\theta\) and of \(q\)</td><td>\(\eta,\ \gamma\)</td><td>"learning rate", no symbol; —</td></tr>
+      <tr><td>\(t,\ T\)</td><td>iteration index; number of iterations</td><td>\(t,\ T\)</td><td>— (ConfTr's \(T\) is the temperature)</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="box n">
+    <span class="h" style="color:var(--fg)">Where the two papers use opposite conventions, and what this page does</span>
+    <ol class="conv">
+      <li><b>Score direction.</b> ConfTr uses <dfn>conformity scores</dfn> \(E_\theta(x,k)\), high when the label fits (for its threshold predictor THR, the probability \(\pi_{\theta,k}(x)\) itself); its set is \(\{k: E_\theta(x,k)\ge\tau\}\), and \(\tau\) is a <em>low</em> quantile (level \(\alpha\)) of the calibration scores. DPSM uses non-conformity scores \(S_f(X,y)\), high when the label fits badly; its set is \(\{y: S_f(X,y)\le q\}\), and \(q\) is a <em>high</em> quantile (level \(1-\alpha\)). <b>This page uses DPSM's convention throughout.</b> To translate, use \(S=1-E\) and \(q=1-\tau\) for THR (this makes THR exactly DPSM's HPS score), or \(S=-E\) and \(q=-\tau\) for THR on log-probabilities (THR LP), the score ConfTr actually trains with. Either way \(E-\tau=q-S\), so ConfTr's \(\sigma\big((E-\tau)/T\big)\) is literally DPSM's \(\tilde{\mathbf 1}[S\le q]\) with \(\tau_{\rm Sigmoid}=T\).</li>
+      <li><b>Quantile level.</b> ConfTr calibrates at the \(\alpha(1+1/n)\)-quantile of conformity scores (\(n\) = calibration size); DPSM takes the \(\lceil(1-\alpha)(1+m)\rceil\)-th smallest non-conformity score. With the downward rounding natural for a low quantile, ConfTr's level selects the \(\lfloor\alpha(m+1)\rfloor\)-th smallest \(E\), which is exactly the \(\lceil(1-\alpha)(m+1)\rceil\)-th smallest \(S\): the same test-time threshold. For ConfTr's smooth training quantile the page mirrors the level to \(1-\alpha(1+1/|\mathcal B_{\rm cal}|)\) on \(S\). That is not \((1-\alpha)(1+1/|\mathcal B_{\rm cal}|)\), which exceeds 1 for small batches.</li>
+      <li><b>Letters that clash.</b> \(T\) is ConfTr's temperature and DPSM's number of iterations, so the temperature is written \(\tau_{\rm Sigmoid}\). \(\tau\) is ConfTr's threshold but a dummy variable and the temperature's letter in DPSM, so ConfTr's training threshold is \(\hat q_f\), the name DPSM itself gives it. ConfTr's Alg. 1 uses \(n\) for the calibration size; DPSM's \(n\) is the training-set size, so calibration size is \(m\). \(\sigma\) is ConfTr's sigmoid and DPSM's penalty weight (Eq. 10), so the page writes \(\tilde{\mathbf 1}[\cdot]\). \(\epsilon\) is ConfTr's sorting dispersion and a DPSM tolerance, so the page uses \(\varepsilon_{\rm sort}\). Both papers say "classification loss", but ConfTr's \(\mathcal L_{\rm class}\) is a loss on the soft set and DPSM's \(\mathcal L_{\rm cls}\) is cross-entropy, so ConfTr's is renamed \(\mathcal L_{\rm set}\).</li>
+      <li><b>Model or parameters.</b> DPSM writes its losses as functions of the model, \(\widehat{\mathcal L}(f,q)\), and its Algorithm 1 updates \(f\) directly. The page writes \(\widehat{\mathcal L}(\theta,q)\) for \(\widehat{\mathcal L}(f_\theta,q)\) and updates \(\theta\), as ConfTr does.</li>
+      <li><b>DPSM's summary of ConfTr.</b> DPSM's appendix restates ConfTr's objective (its Eq. 14) as a plain average soft set size, without ConfTr's \(\kappa\) and without the logarithm. The ConfTr section below uses ConfTr's own Eqs. 3–5.</li>
+    </ol>
+  </div>
+</section>
+
+<!-- ======================= Shared soft set ======================= -->
+<section class="paper" id="soft">
+  <div class="paper-head">
+    <span class="eyebrow">Shared by both</span>
+    <h2>The soft prediction set</h2>
+    <p>Both papers replace the 0/1 set membership by a sigmoid, so that set size has a gradient.</p>
+  </div>
+  <div class="stage">
+    <div class="cpstep" style="border-top:0;padding-top:0">
+      <div class="txt">
+        <p>The hard set size \(\sum_y\mathbf 1[S_f(X,y)\le q]\) is a staircase in the scores: nudging a score changes nothing until it crosses \(q\), so its gradient is zero almost everywhere. Both papers swap each step for a sigmoid:</p>
+        <div class="eq">\[ \begin{aligned}\tilde{\mathcal C}_{f,y}(X;q)&=\tilde{\mathbf 1}\big[S_f(X,y)\le q\big]\\ &=\frac{1}{1+\exp\!\big(-(q-S_f(X,y))/\tau_{\rm Sigmoid}\big)}\\ \text{soft size}&=\textstyle\sum_{y\in\mathcal Y}\tilde{\mathcal C}_{f,y}(X;q)\end{aligned} \]</div>
+        <p>The <dfn>temperature</dfn> \(\tau_{\rm Sigmoid}\) sets the width of the transition: a label whose score lies a few \(\tau_{\rm Sigmoid}\) below \(q\) counts as fully in, a few above as fully out, and \(\tau_{\rm Sigmoid}\to0\) gives back the hard set. ConfTr calls this step SMOOTHPRED (temperature \(T\)); DPSM writes \(\tilde{\mathbf 1}\) (Eq. 4). The two papers differ only in where \(q\) comes from.</p>
+        <div class="controls">
+          <label>\(\tau_{\rm Sigmoid}\) <input type="range" data-k="tau" min="0.01" max="0.3" step="0.01" value="0.1" aria-label="temperature"><span class="val" data-v="tau">0.10</span></label>
+          <label>\(q\) <input type="range" data-k="qdemo" min="0" max="1" step="0.01" value="0.58" aria-label="threshold for this demo"><span class="val" data-v="qdemo">0.58</span></label>
+        </div>
+        <div class="readout" id="sh-read"></div>
+      </div>
+      <div class="fig">
+        <div class="figscroll"><svg class="chart" id="sh-fig" viewBox="0 0 520 215" role="img" aria-label="Soft membership as a function of the score: a sigmoid centred at q, next to the hard step, with the four label scores of one input marked"></svg></div>
+        <p class="cap">Row 11 of the toy batch below: its four label scores sit on the curve. The soft size is the sum of the four heights.</p>
+      </div>
+    </div>
+    <div style="display:grid;gap:10px">
+      <h3>The toy mini-batch used by both sections</h3>
+      <p>Sixteen training examples, \(K=4\) classes; each row is the softmax output \(f_\theta(X_i)_y\) of one fixed model, with the true label's entry shaded. Rows 1–8 play ConfTr's calibration half \(\mathcal B_{\rm cal}\) and DPSM's batch \(\mathcal B^1_t\subset\mathcal D_1\); rows 9–16 play ConfTr's \(\mathcal B_{\rm pred}\) and DPSM's \(\mathcal B^2_t\subset\mathcal D_2\). The last column is the true-label score \(S_i=1-f_\theta(X_i)_{Y_i}\).</p>
+      <div class="batch" id="batch-tables"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= ConfTr ======================= -->
+<section class="paper ct" id="conftr">
+  <div class="paper-head">
+    <span class="eyebrow">Stutz et al. · ICLR 2022 · Sec. 2.2–3.2, Alg. 1</span>
+    <h2>ConfTr: a smoothed split conformal prediction on every mini-batch</h2>
+    <p>Each step calibrates on one half of the batch and predicts on the other. Both steps are made differentiable, so the loss on the predicted sets reaches the parameters through both halves.</p>
+  </div>
+
+  <div class="stage">
+    <div class="stage-title"><span class="tag">Pipeline</span><h3>Data and gradient flow in one training step</h3></div>
+    <div class="figwrap"><svg class="chart" id="ct-dg" viewBox="0 0 1000 370" role="img" aria-label="ConfTr step: the mini-batch goes through the model and is split in half; the calibration half's true-label scores are smoothly sorted into a threshold, the prediction half's scores are compared with it through a sigmoid, and the loss on those soft sets sends gradients back through both halves"></svg></div>
+    <div class="legend"><span><i class="ln-sw"></i>values, forward pass</span><span><i class="ln-sw" style="border-top:2px dashed var(--ct)"></i>gradients, backward pass</span></div>
+    <div class="grid2">
+      <div class="algo">
+        <div class="hd">ConfTr, Algorithm 1 (right), in this page's notation</div>
+        <div><span class="ln">1:</span><b>function</b> ConformalTraining(\(\alpha,\ \lambda=1\))</div>
+        <div><span class="ln">2:</span><b>for</b> mini-batch \(\mathcal B\) <b>do</b></div>
+        <div class="i1"><span class="ln">3:</span>randomly split \(\mathcal B=\mathcal B_{\rm cal}\uplus\mathcal B_{\rm pred}\)</div>
+        <div class="i1 cm"><span class="ln">4:</span>{"on-the-fly" calibration on \(\mathcal B_{\rm cal}\)}</div>
+        <div class="i1 hl"><span class="ln">5:</span>\(\hat q_f=\mathrm{SmoothQuant}_{\varepsilon_{\rm sort}}\big(\{S_f(X_i,Y_i)\}_{i\in\mathcal B_{\rm cal}};\ 1-\alpha(1+\tfrac{1}{|\mathcal B_{\rm cal}|})\big)\)</div>
+        <div class="i1 cm"><span class="ln">6:</span>{prediction only on \(i\in\mathcal B_{\rm pred}\)}</div>
+        <div class="i1"><span class="ln">7:</span>\(\tilde{\mathcal C}_{f,y}(X_i;\hat q_f)=\tilde{\mathbf 1}[S_f(X_i,y)\le\hat q_f]\), \(i\in\mathcal B_{\rm pred},\ y\in\mathcal Y\)</div>
+        <div class="i1 cm"><span class="ln">8:</span>{optional classification loss}</div>
+        <div class="i1"><span class="ln">9:</span>\(\mathcal L_{\mathcal B}=0\ \) or \(\ \sum_{i\in\mathcal B_{\rm pred}}\mathcal L_{\rm set}(X_i,Y_i)\)</div>
+        <div class="i1"><span class="ln">10:</span>\(\Omega_{\mathcal B}=\sum_{i\in\mathcal B_{\rm pred}}\Omega(X_i)\)</div>
+        <div class="i1 hl"><span class="ln">11:</span>\(\Delta=\nabla_\theta\,\tfrac{1}{|\mathcal B_{\rm pred}|}\big(\mathcal L_{\mathcal B}+\lambda\,\Omega_{\mathcal B}\big)\)</div>
+        <div class="i1"><span class="ln">12:</span>update parameters \(\theta\) using \(\Delta\)</div>
+      </div>
+      <ul class="notes">
+        <li><b>Line 11 and the logarithm.</b> Line 11 as printed has no log, but Eqs. 3–4 and the paper's own code (App. P, <code>jnp.log(classification_loss + size_loss + 1e-8)</code>) take the log of the batch average before differentiating. The page follows Eq. 4.</li>
+        <li><b>Line 5, the smooth quantile.</b> The paper allows "any smooth sorting approach" (it cites Blondel et al. 2020, Cuturi et al. 2019, Williamson 2020) and fixes the dispersion to \(\epsilon=0.1\) (Tab. B), but does not say which sorter or how the level is rounded or interpolated. The toy below uses Blondel et al.'s quadratic-regularised soft sort with linear interpolation; its \(\varepsilon_{\rm sort}\) scale is specific to that sorter.</li>
+        <li><b>Line 3.</b> "Randomly split"; Sec. 3.1 and the code take the first half of the (already shuffled) batch as \(\mathcal B_{\rm cal}\). Both are a random 50/50 split.</li>
+        <li><b>Hyperparameters</b> (Tab. B, App. F): temperature \(T\in\{0.01,0.1,0.5,1\}\), \(\lambda\) from \(10^{-4}\) to 10, \(\kappa\in\{0,1\}\) (default 1), the same \(\alpha=0.01\) in training and at test time. No cross-entropy term; on CIFAR the network starts from a cross-entropy-trained base and only its last layers are trained with ConfTr.</li>
+        <li><b>After the step</b> \(\hat q_f\) is not stored; the next mini-batch computes its own.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="stage-title"><span class="tag">Toy</span><h3>One ConfTr step on the toy batch</h3></div>
+    <div class="controls">
+      <label>\(\alpha\) <input type="range" data-k="alpha" min="0.05" max="0.4" step="0.01" value="0.2" aria-label="alpha"><span class="val" data-v="alpha">0.20</span></label>
+      <label>\(\tau_{\rm Sigmoid}\) <input type="range" data-k="tau" min="0.01" max="0.3" step="0.01" value="0.1" aria-label="temperature"><span class="val" data-v="tau">0.10</span></label>
+      <label>\(\varepsilon_{\rm sort}\) <input type="range" data-k="eps" data-log="1" min="-1" max="2.5" step="0.05" value="0.85" aria-label="sorting dispersion, log scale"><span class="val" data-v="eps">7.08</span></label>
+      <span class="grp">\(\kappa\) <span class="seg" id="ct-kappa"><button type="button" data-v="0" aria-pressed="false">0</button><button type="button" data-v="1" aria-pressed="true">1</button></span></span>
+      <label>\(\lambda\) <input type="range" data-k="lamC" data-log="1" min="-2" max="1" step="0.05" value="0" aria-label="size weight, log scale"><span class="val" data-v="lamC">1</span></label>
+      <label><input type="checkbox" id="ct-set"> add \(\mathcal L_{\rm set}\)</label>
+    </div>
+
+    <div class="cpstep">
+      <div class="txt">
+        <h4><span class="num">1</span>Calibrate on \(\mathcal B_{\rm cal}\), smoothly</h4>
+        <p>Take the true-label scores of rows 1–8 and read off a high quantile. A hard quantile is a sorted entry: it moves with one score only and jumps when two scores swap places. <dfn>Smooth sorting</dfn> replaces the sorted vector with a nearby one that changes continuously with every score; its dispersion \(\varepsilon_{\rm sort}\) controls how far it may depart from the hard sort (\(\varepsilon_{\rm sort}\to0\) is the hard sort). Reading the quantile off it makes \(\hat q_f\) a smooth function of \(\theta\).</p>
+        <div class="eq">\[ \begin{aligned}\hat q_f&=\mathrm{SmoothQuant}_{\varepsilon_{\rm sort}}\big(\{S_f(X_i,Y_i)\}_{i\in\mathcal B_{\rm cal}};\ p\big)\\ p&=1-\alpha\big(1+\tfrac{1}{|\mathcal B_{\rm cal}|}\big)\end{aligned} \]</div>
+        <div class="eq work" id="ct-q-work"></div>
+        <p class="note" id="ct-q-note"></p>
+      </div>
+      <div class="fig">
+        <div class="figscroll"><svg class="chart" id="ct-cal" viewBox="0 0 520 252" role="img" aria-label="The eight calibration scores, their smoothly sorted positions, the training threshold, and how much of the threshold's gradient each calibration example receives"></svg></div>
+        <p class="cap">Top: the eight scores (row numbers above). Middle: the smooth sort; shaded groups were pooled by the sorter and move together. Bars: \(\partial\hat q_f/\partial S_i\), the share of the threshold's gradient each calibration example receives (the shares sum to 1). Small \(\varepsilon_{\rm sort}\): only the two scores around the level are touched. Large: the share spreads and \(\hat q_f\) slides toward the mean score.</p>
+      </div>
+    </div>
+
+    <div class="cpstep">
+      <div class="txt">
+        <h4><span class="num">2</span>Predict soft sets on \(\mathcal B_{\rm pred}\)</h4>
+        <p>Every label of every row 9–16 gets a soft membership at the threshold just computed (line 7). Nothing is predicted on \(\mathcal B_{\rm cal}\): the half that set the threshold is not scored against it.</p>
+        <div class="eq">\[ \tilde{\mathcal C}_{f,y}(X_i;\hat q_f)=\tilde{\mathbf 1}\big[S_f(X_i,y)\le\hat q_f\big]\quad\big(i\in\mathcal B_{\rm pred},\ y\in\mathcal Y\big) \]</div>
+        <p class="note">Hard sets at the same threshold: <span id="ct-hard"></span></p>
+      </div>
+      <div class="fig">
+        <div class="figscroll"><svg class="chart" id="ct-pred" viewBox="0 0 520 290" role="img" aria-label="Grid of soft memberships for rows 9 to 16 and four labels, with soft size, size loss and coverage loss per row"></svg></div>
+        <p class="cap">Cell value and shade: soft membership. Outlined: the true label. The right columns are the per-row losses of step 3.</p>
+      </div>
+    </div>
+
+    <div class="cpstep">
+      <div class="txt">
+        <h4><span class="num">3</span>Loss on the soft sets</h4>
+        <p>The size loss charges each soft set for the size above \(\kappa\); with \(\kappa=1\), singletons are free. The optional coverage loss charges for leaving the true label out (ConfTr's \(\mathcal L_{\rm class}\) with the identity loss matrix; other loss matrices shape the sets and are not covered here).</p>
+        <div class="eq">\[ \begin{aligned}\Omega(X)&=\max\Big(0,\ \textstyle\sum_{y\in\mathcal Y}\tilde{\mathcal C}_{f,y}(X;\hat q_f)-\kappa\Big)\\ \mathcal L_{\rm set}(X,Y)&=1-\tilde{\mathcal C}_{f,Y}(X;\hat q_f)\\ \mathcal L(\theta)&=\log\Big(\tfrac{1}{|\mathcal B_{\rm pred}|}\textstyle\sum_{i\in\mathcal B_{\rm pred}}\big[\mathcal L_{\rm set}(X_i,Y_i)+\lambda\,\Omega(X_i)\big]\Big)\end{aligned} \]</div>
+        <p class="note">The last line is Eq. 4; without \(\mathcal L_{\rm set}\) it is Eq. 3 up to the constant \(\log\lambda\).</p>
+        <div class="eq work" id="ct-l-work"></div>
+        <p class="note">Without \(\mathcal L_{\rm set}\), \(\lambda\) multiplies everything inside the log and drops out of the gradient: move \(\lambda\) and step 4 does not change. The paper reports the same (App. H: \(\lambda\) "merely scales the learning rate").</p>
+      </div>
+      <div class="fig">
+        <div class="box a"><span class="h">Coverage is not a training target here</span>
+          <span>Without \(\mathcal L_{\rm set}\), the objective only shrinks sets. ConfTr relies on the calibration half for coverage: \(\hat q_f\) is recomputed from the current model on every batch, so a model that shrinks sets by lowering confidence on true labels also raises \(\hat q_f\). The paper: "in expectation across mini-batches and large enough \(|B_{\rm cal}|\), for \(T,\epsilon\to0\), CP guarantees coverage \(1-\alpha\) on \(B_{\rm pred}\)."</span></div>
+      </div>
+    </div>
+
+    <div class="cpstep">
+      <div class="txt">
+        <h4><span class="num">4</span>Backpropagate through both halves</h4>
+        <p>The loss depends on \(\theta\) through two routes: the scores of \(\mathcal B_{\rm pred}\) directly, and the threshold \(\hat q_f\), which is a function of the scores of \(\mathcal B_{\rm cal}\). Automatic differentiation follows both:</p>
+        <div class="eq">\[ \begin{aligned}\frac{\partial\mathcal L}{\partial S_f(X_j,Y_j)}&=\frac{\partial\mathcal L}{\partial\hat q_f}\cdot\frac{\partial\hat q_f}{\partial S_f(X_j,Y_j)}\qquad(j\in\mathcal B_{\rm cal})\\ \nabla_\theta\mathcal L&=\textstyle\sum_{\text{all scores }S}\frac{\partial\mathcal L}{\partial S}\,\nabla_\theta S,\qquad \theta\leftarrow\theta-\eta\,\nabla_\theta\mathcal L\end{aligned} \]</div>
+        <div class="readout" id="ct-g-read"></div>
+      </div>
+      <div class="fig">
+        <div class="figscroll"><svg class="chart" id="ct-grad" viewBox="0 0 520 312" role="img" aria-label="Gradient of the loss with respect to each score: one column for the calibration half, a grid for the prediction half"></svg></div>
+        <div class="legend"><span><i class="sw" style="background:var(--ok)"></i>positive: a descent step lowers this score, pulling the label into the set</span><span><i class="sw" style="background:var(--no)"></i>negative: a descent step raises it, pushing the label out</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= DPSM ======================= -->
+<section class="paper dm" id="dpsm">
+  <div class="paper-head">
+    <span class="eyebrow">Shi et al. · ICML 2025 · Sec. 4, Alg. 1</span>
+    <h2>DPSM: learn the threshold as a parameter, by quantile regression</h2>
+    <p>The threshold becomes a single scalar \(q\), trained alongside the network. A bilevel problem says what \(q\) must be, and Algorithm 1 takes one plain gradient step on \(\theta\) and one on \(q\) per iteration.</p>
+  </div>
+
+  <div class="stage">
+    <div class="stage-title"><span class="tag">Problem</span><h3>The bilevel formulation</h3></div>
+    <p>A <dfn>bilevel</dfn> problem is an optimisation problem whose constraint is itself an optimisation problem. In DPSM's upper level, the network (and \(q\)) are chosen to minimise classification loss plus \(\lambda\) times the soft set size at threshold \(q\). The lower level requires \(q\) to minimise the pinball loss of the true-label scores, which makes \(q\) their \((1-\alpha)\)-quantile under the current network (Eq. 8):</p>
+    <div class="eq">\[ \min_{\theta,\,q}\ \widehat{\mathcal L}_{\rm cls}(\theta)+\lambda\,\widehat{\mathcal L}^{\rm DM}_c(\theta,q)\qquad\text{s.t.}\qquad q\in\mathcal U(\theta)\triangleq\arg\min_{q'}\widehat{\mathcal L}^{\rm QR}(\theta,q') \]
+    \[ \widehat{\mathcal L}^{\rm DM}_c(\theta,q)=\frac1n\sum_{i=1}^n\sum_{y\in\mathcal Y}\tilde{\mathbf 1}\big[S_f(X_i,y)\le q\big]\ \ \text{(Eq. 9)},\qquad \widehat{\mathcal L}^{\rm QR}(\theta,q)=\frac1n\sum_{i=1}^n\rho_\alpha\big(q,\,S_f(X_i,Y_i)\big) \]</div>
+    <div class="grid2">
+      <div style="display:grid;gap:8px;min-width:0">
+        <p>The <dfn>pinball loss</dfn> is a tilted absolute error: a score above \(q\) costs \(1-\alpha\) per unit of distance, a score below costs \(\alpha\) per unit. Its average is smallest where a fraction \(\alpha\) of the scores lie above \(q\), that is, at their \((1-\alpha)\)-quantile (Eq. 7). Its slope in \(q\) is \(\alpha\) minus the fraction of scores at or above \(q\), so a gradient step needs no sorting.</p>
+        <div class="eq">\[ \rho_\alpha(q,S)=\begin{cases}(1-\alpha)(S-q), & S\ge q\\ \alpha\,(q-S), & \text{otherwise}\end{cases}\qquad \frac{\partial}{\partial q}\,\frac{1}{|\mathcal B|}\sum_{i\in\mathcal B}\rho_\alpha(q,S_i)=\alpha-\frac{\#\{i: S_i\ge q\}}{|\mathcal B|} \]</div>
+      </div>
+      <div style="display:grid;gap:8px;min-width:0">
+        <p>The size term is ConfTr's soft set size without \(\kappa\) and without the logarithm, and the classification term is ordinary cross-entropy.</p>
+        <p class="note"><b style="color:var(--fg);font-weight:500">Why learn \(q\) rather than sort the batch:</b> DPSM proves that the size loss evaluated at a quantile taken from a batch of \(s\) examples is off from its value at the true quantile \(Q_f\) by an error between order \(1/s\) and order \(1/\sqrt s\) (Thm. 3.5), while with \(q\) fit to all \(n\) training scores the error is of order \(1/\sqrt n\) (Thm. 4.1), and usually \(s\ll n\).</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="stage-title"><span class="tag">Pipeline</span><h3>Data and gradient flow in one iteration</h3></div>
+    <div class="figwrap"><svg class="chart" id="dm-dg" viewBox="0 0 1000 380" role="img" aria-label="DPSM iteration: the training set is split once into two halves; a batch from the first half feeds cross-entropy and the pinball loss, a batch from the second half feeds the soft set size at the current q; theta is updated from cross-entropy and soft size, q only from the pinball loss, and q is carried to the next iteration"></svg></div>
+    <div class="legend"><span><i class="ln-sw"></i>values, forward pass</span><span><i class="ln-sw" style="border-top:2px dashed var(--dm)"></i>gradients</span><span><i class="ln-sw" style="border-top:3px solid var(--dm)"></i>state kept between iterations</span></div>
+    <div class="grid2">
+      <div class="algo">
+        <div class="hd">DPSM, Algorithm 1, in this page's notation</div>
+        <div><span class="ln">1:</span><b>Input:</b> \(\mathcal D_{\rm tr}\), \(\lambda\), learning rates \(\eta,\gamma>0\), miscoverage \(\alpha\)</div>
+        <div><span class="ln">2:</span>randomly initialise \(\theta_0\) and \(q_0\in\mathbb R\)</div>
+        <div class="hl"><span class="ln">3:</span>randomly split \(\mathcal D_{\rm tr}\) into disjoint \(\mathcal D_1,\mathcal D_2\), \(|\mathcal D_1|=|\mathcal D_2|=\tfrac n2\)</div>
+        <div><span class="ln">4:</span><b>for</b> \(t\leftarrow0:T-1\) <b>do</b></div>
+        <div class="i1"><span class="ln">5:</span>sample batches \(\mathcal B^1_t\subset\mathcal D_1,\ \mathcal B^2_t\subset\mathcal D_2\)</div>
+        <div class="i1"><span class="ln">6:</span>\(\widehat\nabla_{\theta,t}\leftarrow\widehat\nabla_\theta\widehat{\mathcal L}_{\rm cls}(\theta_t)\) on \(\mathcal B^1_t\)</div>
+        <div class="i1 hl"><span class="ln">7:</span>\(\widehat\nabla^{\rm QR}_{q,t}\leftarrow\widehat\nabla_q\widehat{\mathcal L}^{\rm QR}(\theta_t,q_t)\) on \(\mathcal B^1_t\)</div>
+        <div class="i1"><span class="ln">8:</span>\(\widehat\nabla^{\rm DM}_{\theta,t}\leftarrow\widehat\nabla_\theta\widehat{\mathcal L}^{\rm DM}_c(\theta_t,q_t)\) on \(\mathcal B^2_t\)</div>
+        <div class="i1"><span class="ln">9:</span>\(\theta_{t+1}\leftarrow\theta_t-\eta\big(\widehat\nabla_{\theta,t}+\lambda\,\widehat\nabla^{\rm DM}_{\theta,t}\big)\)</div>
+        <div class="i1 hl"><span class="ln">10:</span>\(q_{t+1}\leftarrow q_t-\gamma\,\widehat\nabla^{\rm QR}_{q,t}\)</div>
+        <div><span class="ln">11:</span><b>end for</b></div>
+        <div><span class="ln">12:</span><b>Output:</b> the trained model \(f_{\theta_T}\)</div>
+      </div>
+      <ul class="notes">
+        <li><b>Indices.</b> The paper prints \(f_{t-1},q_{t-1}\) in lines 6–8 while lines 9–10 update \(f_t,q_t\), and the loop starts at \(t=0\). The page reads all three gradients at the current iterate \((\theta_t,q_t)\), which matches the text ("given the fixed model \(f_{t-1}\) and quantile variable \(q_{t-1}\), we compute three stochastic gradients", then update both "simultaneously").</li>
+        <li><b>What is differentiated.</b> Line 8 is the partial derivative in \(\theta\) with \(q\) held fixed: no hyper-gradient \(\partial q^*/\partial\theta\) and no penalty term (the penalty form, Eq. 10, is used only in the analysis). The pinball loss also depends on \(\theta\), but its \(\theta\)-gradient is not used, and the size loss sends no gradient to \(q\).</li>
+        <li><b>Data.</b> The split is done once (line 3). \(\mathcal D_1\) feeds cross-entropy and the pinball loss; \(\mathcal D_2\) feeds only the size loss, which sums over all labels, so the labels of \(\mathcal D_2\) are never used. The paper says this split "helps to prevent over-fitting", following Einbinder et al. (2022). Eqs. 8–9 average over all \(n\) training points; the algorithm estimates them from the two halves.</li>
+        <li><b>Hyperparameters</b> (Tab. 3): \(\gamma\) from \(10^{-3}\) to 0.1, \(\lambda\) from 0.01 to 1, \(\alpha=0.1\), HPS score in training. Not reported: \(q_0\), the value of \(\tau_{\rm Sigmoid}\), and whether \(\mathcal B^1_t\) and \(\mathcal B^2_t\) have the same size.</li>
+        <li><b>Output</b> is \(f_{\theta_T}\) alone; \(q_T\) is not returned.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="stage-title"><span class="tag">Toy</span><h3>One DPSM iteration on the same toy batch</h3></div>
+    <div class="controls">
+      <label>\(\alpha\) <input type="range" data-k="alpha" min="0.05" max="0.4" step="0.01" value="0.2" aria-label="alpha"><span class="val" data-v="alpha">0.20</span></label>
+      <label>\(\tau_{\rm Sigmoid}\) <input type="range" data-k="tau" min="0.01" max="0.3" step="0.01" value="0.1" aria-label="temperature"><span class="val" data-v="tau">0.10</span></label>
+      <label>\(q_t\) <input type="range" data-k="q" min="0" max="1" step="0.01" value="0.3" aria-label="current q"><span class="val" data-v="q">0.30</span></label>
+      <label>\(\gamma\) <input type="range" data-k="gamma" data-log="1" min="-2.5" max="-0.5" step="0.05" value="-1.3" aria-label="learning rate of q, log scale"><span class="val" data-v="gamma">0.0501</span></label>
+      <label>\(\lambda\) <input type="range" data-k="lamD" data-log="1" min="-2" max="0.7" step="0.05" value="-0.3" aria-label="size weight, log scale"><span class="val" data-v="lamD">0.501</span></label>
+    </div>
+
+    <div class="cpstep">
+      <div class="txt">
+        <h4><span class="num">1</span>Lower level on \(\mathcal B^1_t\): one pinball step for \(q\)</h4>
+        <p>\(q_t\) is whatever the previous iterations left; the slider sets it. Rows 1–8 are the batch from \(\mathcal D_1\). DPSM does not jump to this batch's quantile; it takes one small step toward it (lines 7 and 10).</p>
+        <div class="eq">\[ q_{t+1}=q_t-\gamma\Big(\alpha-\frac{\#\{i\in\mathcal B^1_t:\ S_i\ge q_t\}}{|\mathcal B^1_t|}\Big) \]</div>
+        <div class="eq work" id="dm-q-work"></div>
+      </div>
+      <div class="fig">
+        <div class="figscroll"><svg class="chart" id="dm-pb" viewBox="0 0 520 250" role="img" aria-label="Mean pinball loss of the eight batch scores as a function of q, with the current q, its slope, one gradient step, and the batch minimiser"></svg></div>
+        <p class="cap">Curve: mean pinball loss of rows 1–8 as a function of \(q\); ticks on the axis are the eight scores. The dot is \(q_t\), the short line its slope, the arrow one step of size \(\gamma\) times the slope. The shaded mark is this batch's minimiser, its empirical \((1-\alpha)\)-quantile.</p>
+      </div>
+    </div>
+
+    <div class="cpstep">
+      <div class="txt">
+        <h4><span class="num">2</span>Upper level: cross-entropy on \(\mathcal B^1_t\), soft size on \(\mathcal B^2_t\) at \(q_t\)</h4>
+        <p>The soft sets of rows 9–16 use \(q_t\), a number carried over from earlier iterations rather than computed from this batch (lines 6 and 8).</p>
+        <div class="eq">\[ \begin{aligned}\widehat{\mathcal L}_{\rm cls}(\theta)&=\tfrac{1}{|\mathcal B^1_t|}\textstyle\sum_{i\in\mathcal B^1_t}-\log f_\theta(X_i)_{Y_i}\\ \widehat{\mathcal L}^{\rm DM}_c(\theta,q_t)&=\tfrac{1}{|\mathcal B^2_t|}\textstyle\sum_{i\in\mathcal B^2_t}\sum_{y\in\mathcal Y}\tilde{\mathbf 1}\big[S_f(X_i,y)\le q_t\big]\end{aligned} \]</div>
+        <div class="eq work" id="dm-l-work"></div>
+        <p class="note">Hard sets at \(q_t\): <span id="dm-hard"></span></p>
+      </div>
+      <div class="fig">
+        <div class="figscroll"><svg class="chart" id="dm-pred" viewBox="0 0 520 290" role="img" aria-label="Grid of soft memberships for rows 9 to 16 at the current q, with soft size per row"></svg></div>
+        <p class="cap">Same rows and drawing as ConfTr's step 2, at threshold \(q_t\) instead of \(\hat q_f\).</p>
+      </div>
+    </div>
+
+    <div class="cpstep">
+      <div class="txt">
+        <h4><span class="num">3</span>Where the gradient goes</h4>
+        <p>\(\theta\) receives cross-entropy from rows 1–8 and \(\lambda\) times the size gradient from rows 9–16; \(q\) receives only the pinball slope. With \(q_t\) a constant in the size loss, rows 1–8 get no gradient from the set size at all, which is the main structural difference from ConfTr's step 4.</p>
+        <div class="eq">\[ \begin{aligned}\theta_{t+1}&=\theta_t-\eta\big(\widehat\nabla_\theta\widehat{\mathcal L}_{\rm cls}+\lambda\,\widehat\nabla_\theta\widehat{\mathcal L}^{\rm DM}_c\big)\big|_{(\theta_t,\,q_t)}\\ \frac{\partial\widehat{\mathcal L}^{\rm DM}_c}{\partial S_f(X_i,y)}&=-\frac{1}{|\mathcal B^2_t|}\,\frac{\tilde{\mathcal C}_{f,y}(1-\tilde{\mathcal C}_{f,y})}{\tau_{\rm Sigmoid}}\end{aligned} \]</div>
+        <div class="readout" id="dm-g-read"></div>
+      </div>
+      <div class="fig">
+        <div class="figscroll"><svg class="chart" id="dm-grad" viewBox="0 0 520 312" role="img" aria-label="Gradient with respect to each score: cross-entropy on the first half, weighted soft-size gradient on the second half, and the pinball slope for q"></svg></div>
+        <div class="legend"><span><i class="sw" style="background:var(--ok)"></i>positive: descent lowers this score (label pulled in)</span><span><i class="sw" style="background:var(--no)"></i>negative: descent raises it (label pushed out)</span></div>
+      </div>
+    </div>
+
+    <div class="cpstep">
+      <div class="txt">
+        <h4><span class="num">4</span>\(q\) is carried across iterations</h4>
+        <p>To isolate the threshold, freeze \(\theta\) and repeat only line 10 for 300 iterations, each on a fresh batch of 8 drawn from \(\mathcal D_1\) (here a pool of 400 true-label scores that includes rows 1–8). The learned \(q\) settles near the \((1-\alpha)\)-quantile of the whole pool, with jitter that grows with \(\gamma\), while the quantile of each single batch, the kind of threshold ConfTr computes, scatters widely. In real training \(\theta\) moves too, so \(q\) tracks a moving target.</p>
+        <div class="controls" style="padding:6px 10px"><button class="plain" id="sim-new" type="button">Draw new batches</button></div>
+        <div class="readout" id="sim-read"></div>
+      </div>
+      <div class="fig">
+        <div class="figscroll"><svg class="chart" id="sim-fig" viewBox="0 0 520 235" role="img" aria-label="Over 300 iterations: the learned q as a line converging to the pool quantile, and the per-batch quantiles as scattered dots"></svg></div>
+        <div class="legend"><span><i class="ln-sw" style="border-top:2px solid var(--dm)"></i>\(q_t\), starting at the slider's \(q_t\)</span><span><i class="sw" style="background:var(--bar);border-radius:50%"></i>quantile of each batch (ConfTr's level, hard sort)</span><span><i class="ln-sw" style="border-top:2px dashed var(--fg)"></i>\((1-\alpha)\)-quantile of the pool</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= After training ======================= -->
+<section class="paper" id="after">
+  <div class="paper-head">
+    <span class="eyebrow">Both, after training</span>
+    <h2>The training threshold is discarded and split CP is run as usual</h2>
+  </div>
+  <div class="stage">
+    <div class="eq">\[ \text{ConfTr and DPSM:}\qquad \widehat Q_f(\alpha)=S_{(\lceil(1-\alpha)(m+1)\rceil)}\ \text{ of }\ \{S_f(X_i,Y_i)\}_{i\in\mathcal D_{\rm cal}},\qquad \mathcal C_f(X)=\{y:\ S_f(X,y)\le\widehat Q_f(\alpha)\} \]</div>
+    <div class="grid2">
+      <p><b style="color:var(--ct)">ConfTr:</b> "the thresholds \(\tau\) obtained during training are not kept" (Sec. 3.1); any conformal method is then calibrated on held-out \(I_{\rm cal}\). The paper trains with THR LP and evaluates with THR and APS.</p>
+      <p><b style="color:var(--dm)">DPSM:</b> Algorithm 1 outputs \(f_{\theta_T}\) only; \(\widehat Q_f(\alpha)\) is computed on \(\mathcal D_{\rm cal}\) by Eq. 2. The paper trains with HPS and calibrates with HPS, APS or RAPS.</p>
+    </div>
+    <p>This is the procedure of the primer at the top of the page, so both trained models get coverage of at least \(1-\alpha\) on exchangeable test data. Neither training procedure carries a guarantee of its own; training changes only how large the sets are.</p>
+  </div>
+</section>
+
+<!-- ======================= Side by side ======================= -->
+<section style="display:grid;gap:14px" id="compare">
+  <h2>Side by side: exactly where they differ</h2>
+  <div class="tablewrap"><table class="cmp">
+    <thead><tr><th></th><th class="c">ConfTr</th><th class="d">DPSM</th></tr></thead>
+    <tbody>
+      <tr><th>Threshold used in training</th><td>\(\hat q_f\), a smooth quantile of the true-label scores of \(\mathcal B_{\rm cal}\): a function of \(\theta\)</td><td>\(q\), a free scalar parameter starting at \(q_0\)</td></tr>
+      <tr><th>How it is obtained</th><td>recomputed from scratch on every batch by smooth sorting</td><td>one pinball-gradient step per iteration on \(\mathcal B^1_t\): \(q\leftarrow q-\gamma\big(\alpha-\#\{S_i\ge q\}/|\mathcal B^1_t|\big)\)</td></tr>
+      <tr><th>Quantile level</th><td>\(1-\alpha(1+1/|\mathcal B_{\rm cal}|)\) (ConfTr's \(\alpha(1+1/|B_{\rm cal}|)\) on conformity scores)</td><td>\(1-\alpha\), no finite-sample correction</td></tr>
+      <tr><th>Lifetime</th><td>one batch</td><td>carried across all iterations</td></tr>
+      <tr><th>Gradient into \(\theta\) from the size term</th><td>through the soft memberships of \(\mathcal B_{\rm pred}\) <em>and</em>, via \(\hat q_f\) and the smooth sort, through the true-label scores of \(\mathcal B_{\rm cal}\)</td><td>through the soft memberships of \(\mathcal B^2_t\) only, with \(q\) held fixed</td></tr>
+      <tr><th>Gradient into the threshold</th><td>none: \(\hat q_f\) is not a parameter</td><td>only from the pinball loss; the size loss sends none to \(q\)</td></tr>
+      <tr><th>Left undifferentiated</th><td>nothing in the chain; hard sorting and thresholding are replaced by smooth versions</td><td>the pinball loss with respect to \(\theta\); the dependence of the optimal \(q\) on \(\theta\) (no hyper-gradient)</td></tr>
+      <tr><th>Data split</th><td>each mini-batch split 50/50 afresh</td><td>\(\mathcal D_{\rm tr}\) split once into disjoint halves \(\mathcal D_1,\mathcal D_2\)</td></tr>
+      <tr><th>Labels used</th><td>\(\mathcal B_{\rm cal}\): to pick the true-label score; \(\mathcal B_{\rm pred}\): only by the optional \(\mathcal L_{\rm set}\)</td><td>\(\mathcal D_1\): cross-entropy and pinball; \(\mathcal D_2\): not used (the size sums over all labels)</td></tr>
+      <tr><th>Objective per step</th><td>\(\log\Big(\frac{1}{|\mathcal B_{\rm pred}|}\sum_i\big[\mathcal L_{\rm set}+\lambda\,\Omega\big]\Big)\), \(\Omega=\max\big(0,\sum_y\tilde{\mathcal C}_{f,y}-\kappa\big)\)</td><td>\(\widehat{\mathcal L}_{\rm cls}+\lambda\,\widehat{\mathcal L}^{\rm DM}_c\), with \(\widehat{\mathcal L}^{\rm DM}_c=\) mean of \(\sum_y\tilde{\mathcal C}_{f,y}\); plus the separate pinball step for \(q\)</td></tr>
+      <tr><th>Cross-entropy</th><td>not in the objective</td><td>always, on \(\mathcal D_1\)</td></tr>
+      <tr><th>Hyperparameters it adds</th><td>\(\tau_{\rm Sigmoid}\) (its \(T\)), \(\varepsilon_{\rm sort}\) (fixed at 0.1), \(\kappa\), \(\lambda\), the training \(\alpha\)</td><td>\(\tau_{\rm Sigmoid}\), \(\lambda\), \(\gamma\), \(q_0\), the training \(\alpha\)</td></tr>
+      <tr><th>Extra work per step</th><td>a smooth sort of \(|\mathcal B_{\rm cal}|\) scores</td><td>a count of the scores at or above \(q\); no sorting</td></tr>
+      <tr><th>Training score in the paper</th><td>THR LP: \(S=-\log f_\theta(X)_y\)</td><td>HPS: \(S=1-f_\theta(X)_y\)</td></tr>
+      <tr><th>After training</th><td>discard \(\hat q_f\); split CP on held-out data</td><td>discard \(q_T\); split CP on held-out data</td></tr>
+    </tbody>
+  </table></div>
+  <div class="box n">
+    <span class="h" style="color:var(--fg)">The toy batch at the current slider settings</span>
+    <div class="tablewrap" style="border:0;background:transparent"><table class="live" id="cmp-live" style="min-width:520px"></table></div>
+  </div>
+  <p class="note">Sources: ConfTr, Stutz et al., "Learning Optimal Conformal Classifiers", ICLR 2022 (Sec. 2–3, Alg. 1, Eqs. 3–5, App. F, H, P). DPSM, Shi et al., "Direct Prediction Set Minimization via Bilevel Conformal Classifier Training", ICML 2025 (Sec. 3–4, Eqs. 1–9, Alg. 1, App. A, E). The toy data are invented; nothing here reproduces either paper's experiments.</p>
+</section>
+</div>
+
+<script>
+// ---------- helpers ----------
+function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function normal(r){let u=0;while(u===0)u=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*r());}
+const $=id=>document.getElementById(id);
+const sig=z=>1/(1+Math.exp(-z));
+const sum=a=>a.reduce((x,y)=>x+y,0);
+const fx=(v,d=3)=>isFinite(v)?v.toFixed(d):'\\infty';
+// LaTeX inside SVG: MathJax SVG placed at baseline (x,y); plain text before MathJax loads.
+function tex(t,x,y,o={}){const size=o.size||12,anchor=o.anchor||'start',color=o.color||'var(--muted)';
+  if(!window.MJ)return `<text x="${x}" y="${y}" text-anchor="${anchor}" style="fill:${color}">${o.alt||t.replace(/\\[a-zA-Z]+/g,'').replace(/[{}^_]/g,'')}</text>`;
+  const s=MathJax.tex2svg(t,{display:false}).querySelector('svg');const vb=s.getAttribute('viewBox').split(/\s+/).map(Number);
+  const w=vb[2]/1000*size,h=vb[3]/1000*size;let x0=anchor==='end'?x-w:anchor==='middle'?x-w/2:x;
+  s.setAttribute('x',x0);s.setAttribute('y',y+vb[1]/1000*size);s.setAttribute('width',w);s.setAttribute('height',h);
+  s.removeAttribute('style');s.setAttribute('style',`color:${color};overflow:visible`);return s.outerHTML;}
+function setTex(el,html){if(window.MJ&&MathJax.typesetClear)MathJax.typesetClear([el]);el.innerHTML=html;if(window.MJ)MathJax.typeset([el]);}
+function axisX(x0,x1,y,X,ticks,dec){let s=`<line x1="${x0}" y1="${y}" x2="${x1}" y2="${y}" stroke="var(--muted)"/>`;
+  ticks.forEach(v=>{const x=X(v);s+=`<line x1="${x}" y1="${y}" x2="${x}" y2="${y+4}" stroke="var(--muted)"/><text x="${x}" y="${y+15}" text-anchor="middle">${v.toFixed(dec)}</text>`;});return s;}
+const T01=[0,.2,.4,.6,.8,1];
+const setList=a=>a.length?'\\{'+a.map(y=>y+1).join(',')+'\\}':'\\varnothing';
+const fmtG=g=>{const a=Math.abs(g);if(a<5e-4)return '0';const t=a>=10?a.toFixed(1):a>=1?a.toFixed(2):a.toFixed(3);return (g>0?'+':'−')+t;};
+
+// ---------- data and state ----------
+const DATA=JSON.parse($('toy-data').textContent);
+// scores rounded to 10 decimals so that 1-0.78 is exactly 0.22 and ties with the 0.01-step sliders behave as written
+const sc=v=>+(1-v).toFixed(10);
+const K=DATA.K, ROWS=DATA.batch.map(r=>({y:r.y-1,p:r.p,S:r.p.map(sc)}));
+const H1=ROWS.slice(0,8), H2=ROWS.slice(8);
+const sig3=v=>+v.toPrecision(3);
+const ST={alpha:.2,tau:.1,qdemo:.58,eps:sig3(Math.pow(10,0.85)),kappa:1,lamC:1,useSet:false,lamD:sig3(Math.pow(10,-0.3)),q:.3,gamma:sig3(Math.pow(10,-1.3)),seed:3};
+
+// ---------- quantiles ----------
+const cpRank=(n,a)=>Math.ceil((n+1)*(1-a)-1e-9);
+function hardInterp(v,level){const s=[...v].sort((a,b)=>a-b),n=s.length,h=Math.min(n-1,Math.max(0,level*(n-1))),lo=Math.floor(h),hi=Math.min(n-1,lo+1),fr=h-lo;return (1-fr)*s[lo]+fr*s[hi];}
+// Blondel et al. (2020) soft sort with quadratic regularisation: the projection of rho/eps, rho=(n,...,1),
+// onto the permutahedron of v, computed by pool-adjacent-violators on (rho/eps - sort_desc(v)). Returned in ascending order,
+// with, for each sorted position, the original indices in its pooled block (each has derivative 1/|block|).
+function softSortAsc(v,eps){const n=v.length,ord=v.map((_,i)=>i).sort((a,b)=>v[b]-v[a]),w=ord.map(i=>v[i]),z=w.map((_,j)=>(n-j)/eps),bl=[];
+  for(let j=0;j<n;j++){bl.push({s:z[j]-w[j],c:1,st:j});
+    while(bl.length>1){const b=bl[bl.length-1],a=bl[bl.length-2];if(a.s/a.c<b.s/b.c){a.s+=b.s;a.c+=b.c;bl.pop();}else break;}}
+  const desc=new Array(n),memb=new Array(n);
+  bl.forEach(b=>{const m=b.s/b.c,mem=ord.slice(b.st,b.st+b.c);for(let j=b.st;j<b.st+b.c;j++){desc[j]=z[j]-m;memb[j]=mem;}});
+  return {asc:desc.reverse(),memb:memb.reverse()};}
+function smoothQuantile(v,eps,level){const n=v.length,ss=softSortAsc(v,eps),h=Math.min(n-1,Math.max(0,level*(n-1))),lo=Math.floor(h),hi=Math.min(n-1,lo+1),fr=h-lo;
+  const q=(1-fr)*ss.asc[lo]+fr*ss.asc[hi],w=new Array(n).fill(0);
+  ss.memb[lo].forEach(i=>w[i]+=(1-fr)/ss.memb[lo].length);if(fr>0)ss.memb[hi].forEach(i=>w[i]+=fr/ss.memb[hi].length);
+  return {q,w,asc:ss.asc,memb:ss.memb,h};}
+
+// ---------- computations ----------
+function conftrCompute(){
+  const a=ST.alpha,nC=H1.length,level=1-a*(1+1/nC),Scal=H1.map(r=>r.S[r.y]);
+  const sq=smoothQuantile(Scal,ST.eps,level),q=sq.q,hard=hardInterp(Scal,level);
+  const k=cpRank(nC,a),srt=[...Scal].sort((x,y)=>x-y),cpq=k>nC?Infinity:srt[k-1];
+  const C=H2.map(r=>r.S.map(s=>sig((q-s)/ST.tau))),size=C.map(sum),Om=size.map(s=>Math.max(0,s-ST.kappa)),Ls=C.map((c,i)=>1-c[H2[i].y]);
+  const u=ST.useSet?1:0,N=H2.length,A=sum(Om.map((o,i)=>u*Ls[i]+ST.lamC*o))/N,L=Math.log(A+1e-8);
+  const dLdC=C.map((c,i)=>c.map((_,y)=>((y===H2[i].y?-u:0)+ST.lamC*(size[i]>ST.kappa?1:0))/N/(A+1e-8)));
+  const gPred=C.map((c,i)=>c.map((cv,y)=>-dLdC[i][y]*cv*(1-cv)/ST.tau));
+  const dLdq=sum(C.map((c,i)=>sum(c.map((cv,y)=>dLdC[i][y]*cv*(1-cv)/ST.tau))));
+  const gCal=sq.w.map(w=>dLdq*w);
+  const hardSets=H2.map(r=>r.S.map((s,y)=>s<=q?y:-1).filter(y=>y>=0));
+  return {level,Scal,sq,q,hard,k,cpq,C,size,Om,Ls,A,L,gPred,gCal,dLdq,hardSets};}
+function dpsmCompute(){
+  const a=ST.alpha,q=ST.q,S1=H1.map(r=>r.S[r.y]),N1=S1.length,above=S1.filter(s=>s>=q).length,gq=a-above/N1,qn=q-ST.gamma*gq;
+  const pin=qq=>sum(S1.map(s=>s>=qq?(1-a)*(s-qq):a*(qq-s)))/N1;
+  const srt=[...S1].sort((x,y)=>x-y),kk=(1-a)*N1;let lo,hi;
+  if(Math.abs(kk-Math.round(kk))<1e-9){const k=Math.round(kk);lo=srt[k-1];hi=srt[Math.min(k,N1-1)];}else{const k=Math.ceil(kk);lo=hi=srt[k-1];}
+  const CE=sum(H1.map(r=>-Math.log(r.p[r.y])))/N1;
+  const C=H2.map(r=>r.S.map(s=>sig((q-s)/ST.tau))),size=C.map(sum),N2=H2.length,LDM=sum(size)/N2;
+  const gPred=C.map(c=>c.map(cv=>-ST.lamD*cv*(1-cv)/ST.tau/N2)),gCal=H1.map(r=>1/r.p[r.y]/N1);
+  const hardSets=H2.map(r=>r.S.map((s,y)=>s<=q?y:-1).filter(y=>y>=0));
+  return {S1,above,gq,qn,pin,lo,hi,CE,C,size,LDM,upper:CE+ST.lamD*LDM,gPred,gCal,hardSets};}
+const POOL=(()=>{const r=rng(4242),a=H1.map(x=>x.S[x.y]);for(let i=0;i<392;i++)a.push(1-sig(1.4+1.5*normal(r)));return a;})();
+function simRun(){const r=rng(ST.seed*7919+11),T=300,s=8,a=ST.alpha,lvl=1-a*(1+1/s);let q=ST.q;const qs=[q],bq=[],idx=[];
+  for(let t=0;t<T;t++){const b=[],ii=[];for(let j=0;j<s;j++){const k=Math.floor(r()*POOL.length);ii.push(k);b.push(POOL[k]);}
+    idx.push(ii);bq.push(hardInterp(b,lvl));q=q-ST.gamma*(a-b.filter(v=>v>=q).length/s);qs.push(q);}
+  const srt=[...POOL].sort((x,y)=>x-y),k=Math.ceil((1-a)*POOL.length-1e-9);
+  return {T,qs,bq,idx,Q:srt[k-1],k};}
+
+// ---------- figures ----------
+function batchTables(){
+  const tbl=(rows,off,cap)=>`<div class="tablewrap"><table><caption>${cap}</caption><thead><tr><th>\\(i\\)</th><th>\\(Y_i\\)</th>${[1,2,3,4].map(y=>`<th>\\(y{=}${y}\\)</th>`).join('')}<th>\\(S_i\\)</th></tr></thead><tbody>`+
+    rows.map((r,i)=>`<tr><td>${off+i+1}</td><td>${r.y+1}</td>${r.p.map((v,y)=>`<td class="${y===r.y?'t':''}">${v.toFixed(2)}</td>`).join('')}<td>${(1-r.p[r.y]).toFixed(2)}</td></tr>`).join('')+'</tbody></table></div>';
+  $('batch-tables').innerHTML=tbl(H1,0,'Rows 1–8: ConfTr \\(\\mathcal B_{\\rm cal}\\), DPSM \\(\\mathcal B^1_t\\subset\\mathcal D_1\\)')+tbl(H2,8,'Rows 9–16: ConfTr \\(\\mathcal B_{\\rm pred}\\), DPSM \\(\\mathcal B^2_t\\subset\\mathcal D_2\\)');}
+
+function primerRender(){
+  const cal=DATA.cal,m=cal.length,a=ST.alpha,srt=[...cal].sort((x,y)=>x-y),k=cpRank(m,a),Q=k>m?Infinity:srt[k-1];
+  const St=DATA.test.map(sc),set=St.map((s,y)=>s<=Q?y:-1).filter(y=>y>=0);
+  const x0=28,x1=500,X=v=>x0+v*(x1-x0);let s='';
+  s+=`<text x="${x0}" y="13" class="fg">calibration set: the m = ${m} true-label scores</text>`;
+  srt.forEach((v,j)=>{s+=`<circle cx="${X(v)}" cy="46" r="5" fill="${v<=Q?'var(--acc)':'var(--bar)'}" ${j===k-1?'stroke="var(--fg)" stroke-width="2"':''}/>`;});
+  s+=axisX(x0,x1,62,X,T01,1);
+  s+=`<text x="${x0}" y="104" class="fg">a new input: the score of each label</text>`;
+  St.forEach((v,y)=>{const on=v<=Q;s+=`<circle cx="${X(v)}" cy="132" r="10" fill="${on?'var(--acc)':'var(--surface)'}" stroke="${on?'var(--acc)':'var(--bar)'}" stroke-width="1.5"/><text x="${X(v)}" y="136" text-anchor="middle" style="fill:${on?'var(--surface)':'var(--fg)'}">${y+1}</text>`;});
+  s+=axisX(x0,x1,150,X,T01,1);
+  s+=tex('\\text{non-conformity score } S_f(X,y)=1-f_\\theta(X)_y',(x0+x1)/2,196,{anchor:'middle',color:'var(--fg)',alt:'non-conformity score S = 1 − f(X)_y'});
+  if(isFinite(Q)){const xq=X(Q),R=xq>380;s+=`<line x1="${xq}" y1="24" x2="${xq}" y2="150" stroke="var(--fg)" stroke-width="1.5" stroke-dasharray="4 3"/>`;
+    s+=tex(`\\widehat Q_f(\\alpha)=${Q.toFixed(2)}`,R?xq-6:xq+6,30,{anchor:R?'end':'start',color:'var(--fg)'});
+    s+=tex(`S_{(${k})}`,xq-4,95,{anchor:'end',color:'var(--fg)',size:11});}
+  else s+=`<text x="${x1}" y="30" text-anchor="end" class="fg">k > m: threshold = ∞</text>`;
+  $('cp-fig').innerHTML=s;
+  setTex($('cp-work'),`\\[ \\begin{aligned}k&=\\lceil(1-\\alpha)(m+1)\\rceil=\\lceil ${(1-a).toFixed(2)}\\times 20\\rceil=${k}\\\\ \\widehat Q_f(\\alpha)&=S_{(${k})}=${fx(Q,2)}\\\\ \\mathcal C_f(X)&=${setList(set)}\\end{aligned} \\]`);
+  return {k,Q,set};}
+
+function shRender(){
+  const q=ST.qdemo,t=ST.tau,ex=ROWS[10],x0=46,x1=505,yb=172,yt=24,X=v=>x0+v*(x1-x0),Y=v=>yb-(yb-yt)*v;let s='';
+  s+=`<line x1="${x0}" y1="${yt}" x2="${x0}" y2="${yb}" stroke="var(--muted)"/>`;[0,.5,1].forEach(v=>{s+=`<line x1="${x0-4}" y1="${Y(v)}" x2="${x0}" y2="${Y(v)}" stroke="var(--muted)"/><text x="${x0-7}" y="${Y(v)+4}" text-anchor="end">${v}</text>`;});
+  s+=axisX(x0,x1,yb,X,T01,1);
+  s+=`<path d="M${X(0)} ${Y(1)} H${X(q)} V${Y(0)} H${X(1)}" fill="none" stroke="var(--fg)" stroke-width="1.2" stroke-dasharray="4 3" opacity="0.7"/>`;
+  let d='';for(let i=0;i<=200;i++){const v=i/200;d+=(i?'L':'M')+X(v).toFixed(1)+' '+Y(sig((q-v)/t)).toFixed(1);}
+  s+=`<path d="${d}" fill="none" stroke="var(--acc)" stroke-width="2.2"/>`;
+  ex.S.forEach((v,y)=>{const c=sig((q-v)/t);s+=`<circle cx="${X(v)}" cy="${Y(c)}" r="5" fill="var(--acc)" stroke="var(--surface)" stroke-width="1.5"/><text x="${X(v)+(y>=2?-8:8)}" y="${Y(c)-8}" text-anchor="${y>=2?'end':'start'}" class="fg">y=${y+1}</text>`;});
+  s+=tex('q',X(q),yt-6,{anchor:'middle',color:'var(--fg)'});
+  s+=tex('S_f(X,y)',(x0+x1)/2,yb+38,{anchor:'middle',color:'var(--fg)',size:11.5});
+  s+=tex('\\tilde{\\mathcal C}_{f,y}(X;q)\\ \\text{(soft)}',x1,yt+40,{anchor:'end',color:'var(--acc)',size:11.5,alt:'soft membership'})+`<text x="${x1}" y="${yt+58}" text-anchor="end">dashed: hard 0/1</text>`;
+  $('sh-fig').innerHTML=s;
+  const C=ex.S.map(v=>sig((q-v)/t)),hard=ex.S.filter(v=>v<=q).length;
+  $('sh-read').innerHTML=`<span>row 11, soft size <b class="val">${sum(C).toFixed(2)}</b></span><span>hard size <b class="val">${hard}</b></span>`;
+  return {C,soft:sum(C),hard};}
+
+function memFig(id,C,ys,cols,rowOff){
+  const cw=50,ch=24,g=3,x0=44,y0=40;let s='';
+  for(let y=0;y<K;y++)s+=tex(`y=${y+1}`,x0+y*(cw+g)+cw/2,24,{anchor:'middle',color:'var(--fg)',size:11});
+  const xe=x0+K*(cw+g)+12;cols.forEach((c,j)=>{s+=tex(c.h,xe+j*72+34,24,{anchor:'middle',color:c.off?'var(--muted)':'var(--fg)',size:11,alt:c.alt});});
+  C.forEach((row,i)=>{const yy=y0+i*(ch+g);s+=`<text x="${x0-8}" y="${yy+16}" text-anchor="end">${rowOff+i+1}</text>`;
+    row.forEach((c,y)=>{const x=x0+y*(cw+g),tr=y===ys[i];s+=`<rect x="${x}" y="${yy}" width="${cw}" height="${ch}" rx="3" fill="color-mix(in srgb, var(--acc) ${Math.round(c*85)}%, var(--surface))" stroke="${tr?'var(--fg)':'var(--line)'}" stroke-width="${tr?2:1}"/><text x="${x+cw/2}" y="${yy+16}" text-anchor="middle" style="font-size:10.5px;fill:${c>.55?'var(--surface)':'var(--fg)'}">${c.toFixed(2)}</text>`;});
+    cols.forEach((c,j)=>{s+=`<text x="${xe+j*72+34}" y="${yy+16}" text-anchor="middle" style="fill:${c.off?'var(--muted)':'var(--fg)'}">${c.v[i].toFixed(2)}</text>`;});});
+  const ym=y0+8*(ch+g)+20;s+=`<line x1="${x0}" y1="${ym-14}" x2="${xe+cols.length*72}" y2="${ym-14}" stroke="var(--line)"/><text x="${x0-8}" y="${ym}" text-anchor="end" class="fg">mean</text>`;
+  cols.forEach((c,j)=>{s+=`<text x="${xe+j*72+34}" y="${ym}" text-anchor="middle" style="fill:${c.off?'var(--muted)':'var(--fg)'};font-weight:600">${(sum(c.v)/c.v.length).toFixed(3)}</text>`;});
+  $(id).innerHTML=s;}
+
+function gradFig(id,gl,gr,ysR,o){
+  const cw=54,ch=24,g=3,yT=44,xL=52,xR=170,all=[...gl,...gr.flat()].map(Math.abs),gmax=Math.max(1e-12,...all);let s='';
+  s+=tex(o.lt,xL+cw/2,14,{anchor:'middle',color:'var(--fg)',size:10.5});s+=`<text x="${xL+cw/2}" y="30" text-anchor="middle">${o.lsub}</text>`;
+  s+=tex(o.rt,xR+2*(cw+g),14,{anchor:'middle',color:'var(--fg)',size:10.5});
+  for(let y=0;y<K;y++)s+=tex(`y=${y+1}`,xR+y*(cw+g)+cw/2,32,{anchor:'middle',size:10});
+  const cell=(x,y,v,strong)=>{const a=Math.abs(v)/gmax,col=v>0?'var(--ok)':'var(--no)';
+    return `<rect x="${x}" y="${y}" width="${cw}" height="${ch}" rx="3" fill="${Math.abs(v)<5e-4?'var(--surface)':`color-mix(in srgb, ${col} ${Math.round(10+70*a)}%, var(--surface))`}" stroke="${strong?'var(--fg)':'var(--line)'}" stroke-width="${strong?2:1}"/><text x="${x+cw/2}" y="${y+16}" text-anchor="middle" style="font-size:10px;fill:${a>.6?'var(--surface)':'var(--fg)'}">${fmtG(v)}</text>`;};
+  gl.forEach((v,i)=>{const y=yT+i*(ch+g);s+=`<text x="${xL-6}" y="${y+16}" text-anchor="end">${i+1}</text>`+cell(xL,y,v,false);});
+  gr.forEach((row,i)=>{const y=yT+i*(ch+g);s+=`<text x="${xR-6}" y="${y+16}" text-anchor="end">${i+9}</text>`;row.forEach((v,y2)=>s+=cell(xR+y2*(cw+g),y,v,y2===ysR[i]));});
+  const ye=yT+8*(ch+g)+22;s+=tex(o.et,xL-28,ye,{color:'var(--fg)',size:11})+`<text x="${xL+150}" y="${ye}" class="fg" style="font-weight:600">${o.ev}</text>`;
+  s+=`<text x="${xL-28}" y="${ye+18}">${o.enote}</text>`;
+  $(id).innerHTML=s;}
+
+function ctRender(){
+  const r=conftrCompute(),x0=40,x1=505,X=v=>x0+v*(x1-x0),yH=50,yS=98;let s='';
+  s+=`<text x="2" y="${yH-18}" class="fg">hard</text><text x="2" y="${yS-18}" class="fg">smooth</text>`;
+  const hs=[...r.Scal].map((v,i)=>[v,i]).sort((a,b)=>a[0]-b[0]);
+  // pooled blocks behind the smooth row
+  const seen=new Set();r.sq.memb.forEach((m,j)=>{const key=m.join(',');if(m.length>1&&!seen.has(key)){seen.add(key);const pos=r.sq.memb.map((mm,jj)=>mm.join(',')===key?jj:-1).filter(jj=>jj>=0);
+    const xa=X(r.sq.asc[pos[0]])-8,xb=X(r.sq.asc[pos[pos.length-1]])+8;s+=`<rect x="${xa}" y="${yS-10}" width="${xb-xa}" height="20" rx="10" fill="color-mix(in srgb, var(--acc) 16%, transparent)"/>`;}});
+  hs.forEach(([v,i],j)=>{s+=`<line x1="${X(v)}" y1="${yH+5}" x2="${X(r.sq.asc[j])}" y2="${yS-5}" stroke="var(--line)" stroke-width="1.2"/>`;});
+  hs.forEach(([v,i])=>{s+=`<circle cx="${X(v)}" cy="${yH}" r="4.5" fill="var(--fg)"/><text x="${X(v)}" y="${yH-9}" text-anchor="middle" class="fg" style="font-size:10px">${i+1}</text>`;});
+  r.sq.asc.forEach(v=>{s+=`<circle cx="${X(v)}" cy="${yS}" r="4.5" fill="var(--acc)"/>`;});
+  s+=axisX(x0,x1,124,X,T01,1);
+  const xq=X(r.q),xh=X(r.hard);
+  s+=`<line x1="${xh}" y1="${yH-4}" x2="${xh}" y2="124" stroke="var(--fg)" stroke-width="1.2" stroke-dasharray="3 3"/>`;
+  s+=`<line x1="${xq}" y1="${yH-26}" x2="${xq}" y2="124" stroke="var(--acc)" stroke-width="2"/>`+tex(`\\hat q_f=${r.q.toFixed(3)}`,xq+5,yH-24,{color:'var(--acc)',size:11.5});
+  if(isFinite(r.cpq)){const xc=X(r.cpq);s+=`<line x1="${xc}" y1="${yS+12}" x2="${xc}" y2="124" stroke="var(--muted)" stroke-width="1" stroke-dasharray="1 2"/>`;}
+  // gradient shares
+  const yb=232,hmax=62;s+=`<text x="2" y="${yb-hmax-10}" class="fg">share of the threshold's gradient</text>`;
+  s+=`<line x1="${x0}" y1="${yb}" x2="${x1}" y2="${yb}" stroke="var(--muted)"/>`;
+  r.Scal.forEach((v,i)=>{const w=r.sq.w[i],x=X(v);if(w>1e-9){s+=`<rect x="${x-5}" y="${yb-w*hmax}" width="10" height="${w*hmax}" fill="var(--acc)"/><text x="${x}" y="${yb-w*hmax-4}" text-anchor="middle" style="font-size:9.5px" class="fg">${w.toFixed(2).replace(/^0/,'')}</text>`;}
+    s+=`<text x="${x}" y="${yb+13}" text-anchor="middle" style="font-size:9.5px">${i+1}</text>`;});
+  $('ct-cal').innerHTML=s;
+  setTex($('ct-q-work'),`\\[ \\begin{aligned}p&=1-${ST.alpha.toFixed(2)}\\times\\tfrac98=${r.level.toFixed(4)}\\\\ \\text{hard sort, same }p&:\\ ${r.hard.toFixed(3)}\\\\ \\hat q_f&=${r.q.toFixed(3)}\\end{aligned} \\]`);
+  setTex($('ct-q-note'),`Dashed line: hard sort, linearly interpolated at the same level. Dotted line: the conservative conformal rank \\(\\lceil(1-\\alpha)(8+1)\\rceil=${r.k}\\)${isFinite(r.cpq)?`, i.e. \\(S_{(${r.k})}=${r.cpq.toFixed(2)}\\)`:' > 8, an infinite threshold'}. With only 8 calibration points the two disagree; ConfTr does not say how its smooth quantile rounds the level.`);
+  const u=ST.useSet;
+  memFig('ct-pred',r.C,H2.map(x=>x.y),[{h:'\\textstyle\\sum_y\\tilde{\\mathcal C}',alt:'size',v:r.size},{h:'\\Omega',v:r.Om},{h:'\\mathcal L_{\\rm set}',alt:'L_set',v:r.Ls,off:!u}],8);
+  $('ct-hard').innerHTML=r.hardSets.map((h,i)=>`<span class="chip">${i+9}: ${h.length?'{'+h.map(y=>y+1).join(',')+'}':'∅'}</span>`).join(' ');
+  const mO=sum(r.Om)/8,mL=sum(r.Ls)/8;
+  setTex($('ct-l-work'),`\\[ \\begin{aligned}\\tfrac18\\textstyle\\sum_i\\Omega_i&=${mO.toFixed(3)}\\\\ \\tfrac18\\textstyle\\sum_i\\mathcal L_{{\\rm set},i}&=${mL.toFixed(3)}${u?'':'\\ (\\text{off})'}\\\\ \\mathcal L&=\\log\\big(${u?mL.toFixed(3)+'+':''}${ST.lamC}\\times${mO.toFixed(3)}\\big)=${r.L.toFixed(3)}\\end{aligned} \\]`+(r.A<1e-6?'<p class="note">Every soft size is at most \\(\\kappa\\) and \\(\\mathcal L_{\\rm set}\\) is off, so the batch loss is 0; the paper\'s code adds \\(10^{-8}\\) inside the log, and the gradient is zero.</p>':''));
+  gradFig('ct-grad',r.gCal,r.gPred,H2.map(x=>x.y),{lt:'\\partial\\mathcal L/\\partial S_f(X_i,Y_i)',lsub:'B_cal, via q̂',rt:'\\partial\\mathcal L/\\partial S_f(X_i,y),\\ i\\in\\mathcal B_{\\rm pred}',et:'\\partial\\mathcal L/\\partial\\hat q_f\\,=',ev:fmtG(r.dLdq),enote:'the calibration column is this number times the bar shares of step 1'});
+  const nz=r.sq.w.map((w,i)=>w>1e-9?i+1:0).filter(Boolean);
+  setTex($('ct-g-read'),`<span>calibration rows reached through \\(\\hat q_f\\): <span class="chips">${nz.map(i=>`<span class="chip on">${i}</span>`).join('')}</span></span>`);
+  return r;}
+
+function dmRender(){
+  const r=dpsmCompute(),a=ST.alpha,q=ST.q,x0=50,x1=505,yb=186,yt=26,X=v=>x0+v*(x1-x0);
+  const Lmax=Math.max(r.pin(0),r.pin(1)),Y=v=>yb-v/Lmax*(yb-yt);let s='';
+  s+=`<line x1="${x0}" y1="${yt}" x2="${x0}" y2="${yb}" stroke="var(--muted)"/>`;
+  s+=axisX(x0,x1,yb,X,T01,1);
+  if(r.hi>r.lo)s+=`<rect x="${X(r.lo)}" y="${yt}" width="${X(r.hi)-X(r.lo)}" height="${yb-yt}" fill="color-mix(in srgb, var(--acc) 14%, transparent)"/>`;
+  else s+=`<line x1="${X(r.lo)}" y1="${yt}" x2="${X(r.lo)}" y2="${yb}" stroke="color-mix(in srgb, var(--acc) 45%, transparent)" stroke-width="6"/>`;
+  s+=`<text x="${X((r.lo+r.hi)/2)}" y="${yt-6}" text-anchor="middle" class="acc">batch minimiser</text>`;
+  let d='';for(let i=0;i<=200;i++){const v=i/200;d+=(i?'L':'M')+X(v).toFixed(1)+' '+Y(r.pin(v)).toFixed(1);}
+  s+=`<path d="${d}" fill="none" stroke="var(--fg)" stroke-width="2"/>`;
+  r.S1.forEach(v=>{s+=`<path d="M${X(v)} ${yb} l-4 -7 h8z" fill="var(--muted)"/>`;});
+  const dq=.09,L0=r.pin(q);s+=`<line x1="${X(Math.max(0,q-dq))}" y1="${Y(L0-r.gq*(q-Math.max(0,q-dq)))}" x2="${X(Math.min(1,q+dq))}" y2="${Y(L0+r.gq*(Math.min(1,q+dq)-q))}" stroke="var(--acc)" stroke-width="2"/>`;
+  s+=`<circle cx="${X(q)}" cy="${Y(L0)}" r="5.5" fill="var(--acc)" stroke="var(--surface)" stroke-width="1.5"/>`;
+  const ya=yb+34;s+=`<defs><marker id="dm-ar" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10z" fill="var(--acc)"/></marker></defs>`;
+  const rt=r.qn>=q,dx=X(r.qn)-X(q);
+  s+=`<line x1="${X(q)}" y1="${Y(L0)+6}" x2="${X(q)}" y2="${ya-6}" stroke="var(--acc)" stroke-width="1" stroke-dasharray="2 3"/>`;
+  s+=tex('q_t',X(q)+(rt?-7:7),ya+4,{anchor:rt?'end':'start',color:'var(--acc)',size:11.5});
+  if(Math.abs(dx)>3)s+=`<line x1="${X(q)}" y1="${ya}" x2="${X(r.qn)}" y2="${ya}" stroke="var(--acc)" stroke-width="2" marker-end="url(#dm-ar)"/>`;
+  else s+=`<circle cx="${X(q)}" cy="${ya}" r="2.5" fill="var(--acc)"/>`;
+  s+=tex(`q_{t+1}\\ (${r.qn-q>=0?'+':'-'}${Math.abs(r.qn-q).toFixed(4)})`,X(r.qn)+(rt?8:-8),ya+4,{anchor:rt?'start':'end',color:'var(--acc)',size:11.5});
+  s+=tex('\\widehat{\\mathcal L}^{\\rm QR}(\\theta,q)\\ \\text{on }\\mathcal B^1_t',x1,yt+12,{anchor:'end',color:'var(--fg)',size:11,alt:'mean pinball loss on B1'});
+  $('dm-pb').innerHTML=s;
+  setTex($('dm-q-work'),`\\[ \\begin{aligned}\\#\\{i: S_i\\ge ${q.toFixed(2)}\\}&=${r.above}\\ \\text{of}\\ 8\\\\ \\nabla_q&=${a.toFixed(2)}-\\tfrac{${r.above}}{8}=${r.gq.toFixed(3)}\\\\ q_{t+1}&=${q.toFixed(2)}-${ST.gamma}\\times(${r.gq.toFixed(3)})=${r.qn.toFixed(4)}\\end{aligned} \\]`);
+  memFig('dm-pred',r.C,H2.map(x=>x.y),[{h:'\\textstyle\\sum_y\\tilde{\\mathcal C}',alt:'size',v:r.size}],8);
+  $('dm-hard').innerHTML=r.hardSets.map((h,i)=>`<span class="chip">${i+9}: ${h.length?'{'+h.map(y=>y+1).join(',')+'}':'∅'}</span>`).join(' ');
+  setTex($('dm-l-work'),`\\[ \\begin{aligned}\\widehat{\\mathcal L}_{\\rm cls}&=${r.CE.toFixed(3)},\\qquad \\widehat{\\mathcal L}^{\\rm DM}_c=${r.LDM.toFixed(3)}\\\\ \\widehat{\\mathcal L}_{\\rm cls}+\\lambda\\widehat{\\mathcal L}^{\\rm DM}_c&=${r.CE.toFixed(3)}+${ST.lamD}\\times${r.LDM.toFixed(3)}=${r.upper.toFixed(3)}\\end{aligned} \\]`);
+  gradFig('dm-grad',r.gCal,r.gPred,H2.map(x=>x.y),{lt:'\\partial\\widehat{\\mathcal L}_{\\rm cls}/\\partial S_f(X_i,Y_i)',lsub:'B¹, cross-entropy',rt:'\\lambda\\,\\partial\\widehat{\\mathcal L}^{\\rm DM}_c/\\partial S_f(X_i,y),\\ i\\in\\mathcal B^2_t',et:'\\nabla_q\\widehat{\\mathcal L}^{\\rm QR}\\,=',ev:fmtG(r.gq)+'  (to q only)',enote:'rows 1–8 get nothing from the set size: q_t is a constant there'});
+  setTex($('dm-g-read'),`<span>\\(q\\) moves by \\(-\\gamma\\nabla_q=${(-ST.gamma*r.gq).toFixed(4)}\\)</span><span>size-term gradient to rows 1–8: <b>0</b></span>`);
+  return r;}
+
+function simRender(){
+  const sm=simRun(),x0=46,x1=505,yb=196,yt=18,X=t=>x0+t/sm.T*(x1-x0),Y=v=>yb-v*(yb-yt);let s='';
+  s+=`<line x1="${x0}" y1="${yt}" x2="${x0}" y2="${yb}" stroke="var(--muted)"/>`;[0,.25,.5,.75,1].forEach(v=>{s+=`<line x1="${x0-4}" y1="${Y(v)}" x2="${x0}" y2="${Y(v)}" stroke="var(--muted)"/><line x1="${x0}" y1="${Y(v)}" x2="${x1}" y2="${Y(v)}" stroke="var(--line)" stroke-width=".6"/><text x="${x0-7}" y="${Y(v)+4}" text-anchor="end">${v}</text>`;});
+  s+=axisX(x0,x1,yb,X,[0,100,200,300],0);
+  sm.bq.forEach((v,t)=>{s+=`<circle cx="${X(t+.5).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="1.8" fill="var(--bar)"/>`;});
+  s+=`<line x1="${x0}" y1="${Y(sm.Q)}" x2="${x1}" y2="${Y(sm.Q)}" stroke="var(--fg)" stroke-width="1.5" stroke-dasharray="5 4"/>`;
+  s+=`<polyline points="${sm.qs.map((v,t)=>X(t).toFixed(1)+','+Y(Math.max(0,Math.min(1,v))).toFixed(1)).join(' ')}" fill="none" stroke="var(--acc)" stroke-width="2"/>`;
+  s+=`<text x="${(x0+x1)/2}" y="${yb+30}" text-anchor="middle" class="fg">iteration t</text>`;
+  $('sim-fig').innerHTML=s;
+  const last=sm.qs.slice(-100),mad=sum(last.map(v=>Math.abs(v-sm.Q)))/100,mb=sum(sm.bq)/sm.bq.length,sdb=Math.sqrt(sum(sm.bq.map(v=>(v-mb)**2))/sm.bq.length);
+  const sdq=Math.sqrt(sum(last.map(v=>(v-sum(last)/100)**2))/100);
+  setTex($('sim-read'),`<span>pool quantile <b class="val">${sm.Q.toFixed(3)}</b></span><span>final \\(q\\) <b class="val">${sm.qs[sm.T].toFixed(3)}</b></span><span>spread of \\(q_t\\), last 100 <b class="val">${sdq.toFixed(3)}</b></span><span>spread of batch quantiles <b class="val">${sdb.toFixed(3)}</b></span>`);
+  return {...sm,mad,sdb,sdq};}
+
+function cmpRender(c,d){
+  const mC=sum(c.size)/8,mD=sum(d.size)/8,hC=sum(c.hardSets.map(h=>h.length))/8,hD=sum(d.hardSets.map(h=>h.length))/8;
+  const nz=c.sq.w.filter(w=>w>1e-9).length;
+  $('cmp-live').innerHTML=`<thead><tr><th></th><th class="c">ConfTr</th><th class="d">DPSM</th></tr></thead><tbody>`+
+    `<tr><th>threshold used on rows 9–16</th><td>q̂_f = ${c.q.toFixed(3)} (from rows 1–8 now)</td><td>q_t = ${ST.q.toFixed(3)} (carried over)</td></tr>`+
+    `<tr><th>threshold after this step</th><td>discarded</td><td>next q = ${d.qn.toFixed(4)}</td></tr>`+
+    `<tr><th>mean soft size, rows 9–16</th><td>${mC.toFixed(3)}</td><td>${mD.toFixed(3)}</td></tr>`+
+    `<tr><th>mean hard size at that threshold</th><td>${hC.toFixed(3)}</td><td>${hD.toFixed(3)}</td></tr>`+
+    `<tr><th>rows 1–8 reached by the size gradient</th><td>${nz}</td><td>0</td></tr>`+
+    `<tr><th>loss on this batch</th><td>log(mean of L_set + λΩ) = ${c.L.toFixed(3)}</td><td>L_cls + λ·L_DM = ${d.upper.toFixed(3)}</td></tr></tbody>`;}
+
+// ---------- diagrams ----------
+function mk(id,c){return `<marker id="${id}" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10z" fill="${c}"/></marker>`;}
+function bx(x,y,w,h,title,sub,st,o={}){return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="7" fill="var(--surface)" stroke="${st||'var(--line)'}" stroke-width="${o.sw||1.4}"/>`+
+  `<text x="${x+w/2}" y="${y+21}" text-anchor="middle" class="fg" style="font-size:12px">${title}</text>`+(sub?tex(sub,x+w/2,y+h-13,{anchor:'middle',color:'var(--fg)',size:o.size||11,alt:o.alt}):'');}
+const fa=(d,c,m,o='')=>`<path d="${d}" fill="none" stroke="${c}" stroke-width="1.5" marker-end="url(#${m})" ${o}/>`;
+function ctDiagram(){
+  const A='var(--ct)',M='var(--muted)',f=d=>fa(d,M,'fwc');let s=`<defs>${mk('fwc',M)}${mk('gc',A)}</defs>`;
+  s+=bx(12,152,118,62,'mini-batch','\\mathcal B=\\{(X_i,Y_i)\\}');
+  s+=bx(160,152,120,62,'model','f_\\theta(X_i)_y\\ \\to\\ S_f(X_i,y)',null,{size:10});
+  s+=bx(330,40,175,62,'calibration half','S_f(X_i,Y_i),\\ i\\in\\mathcal B_{\\rm cal}',A);
+  s+=bx(540,40,205,62,'smooth sort, then quantile','\\varepsilon_{\\rm sort},\\ \\text{level }1-\\alpha(1+1/|\\mathcal B_{\\rm cal}|)',A,{size:10});
+  s+=`<circle cx="815" cy="71" r="27" fill="var(--surface)" stroke="${A}" stroke-width="2"/>`+tex('\\hat q_f',815,76,{anchor:'middle',color:'var(--fg)',size:16});
+  s+=`<text x="850" y="62" class="fg">threshold</text><text x="850" y="78">this batch only</text>`;
+  s+=bx(330,262,175,62,'prediction half','S_f(X_i,y),\\ \\text{all }y,\\ i\\in\\mathcal B_{\\rm pred}',A,{size:10.5});
+  s+=bx(540,262,205,62,'soft membership','\\tilde{\\mathbf 1}[S_f(X_i,y)\\le\\hat q_f],\\ \\tau_{\\rm Sigmoid}',A,{size:10.5});
+  s+=bx(775,262,212,62,'loss on the soft sets','\\log\\tfrac{1}{|\\mathcal B_{\\rm pred}|}\\textstyle\\sum_i\\big(\\mathcal L_{\\rm set}+\\lambda\\Omega\\big)',A,{size:10.5});
+  // forward
+  s+=f('M130 183 H159');
+  s+=f('M280 183 H300 V71 H329')+f('M280 183 H300 V293 H329');
+  s+=`<text x="306" y="178" style="font-size:10px">50/50</text>`;
+  s+=f('M505 71 H539')+f('M745 71 H787');
+  s+=f('M505 293 H539')+f('M745 293 H774');
+  s+=f('M802 93 V190 H640 V261');
+  // gradients
+  s+=fa('M800 324 V350 H418 V325',A,'gc','stroke-dasharray="6 4"')+fa('M418 350 H220 V215',A,'gc','stroke-dasharray="6 4"');
+  s+=tex('\\nabla_\\theta\\text{ through the prediction half\'s scores}',600,367,{anchor:'middle',color:A,size:11.5,alt:'gradient through the prediction half'});
+  s+=fa('M700 261 V215 H835 V93',A,'gc','stroke-dasharray="6 4"');
+  s+=fa('M815 44 V16 H418 V39',A,'gc','stroke-dasharray="6 4"')+fa('M418 16 H220 V151',A,'gc','stroke-dasharray="6 4"');
+  s+=tex('\\nabla_\\theta\\text{ through }\\hat q_f\\text{, the smooth sort and the calibration half\'s scores}',600,11,{anchor:'middle',color:A,size:11.5,alt:'gradient through the threshold, the smooth sort and the calibration half'});
+  s+=tex('\\partial\\mathcal L/\\partial\\hat q_f',843,164,{color:A,size:11.5});
+  s+=tex('\\kappa\\text{ in }\\Omega;\\ \\mathcal L_{\\rm set}\\text{ uses }Y_i',987,343,{anchor:'end',size:10.5});
+  $('ct-dg').innerHTML=s;}
+function dmDiagram(){
+  const A='var(--dm)',M='var(--muted)',f=d=>fa(d,M,'fwd');let s=`<defs>${mk('fwd',M)}${mk('gd',A)}</defs>`;
+  s+=bx(10,160,100,62,'training set','\\mathcal D_{\\rm tr}');
+  s+=bx(140,48,100,62,'fixed half','\\mathcal D_1\\ (n/2)');
+  s+=bx(140,272,100,62,'fixed half','\\mathcal D_2\\ (n/2)');
+  s+=bx(270,48,88,62,'batch','\\mathcal B^1_t');
+  s+=bx(270,272,88,62,'batch','\\mathcal B^2_t');
+  s+=bx(388,48,172,62,'model, true label','S_f(X_i,Y_i),\\ f_\\theta(X_i)_{Y_i}',null,{size:10.5});
+  s+=bx(388,272,172,62,'model, all labels','S_f(X_i,y),\\ y\\in\\mathcal Y',null,{size:10.5});
+  s+=bx(598,12,168,58,'cross-entropy','\\widehat{\\mathcal L}_{\\rm cls}(\\theta)',A);
+  s+=bx(598,92,168,58,'pinball loss','\\widehat{\\mathcal L}^{\\rm QR}(\\theta,q_t)',A);
+  s+=`<circle cx="682" cy="210" r="26" fill="var(--surface)" stroke="${A}" stroke-width="3"/>`+tex('q_t',682,215,{anchor:'middle',color:'var(--fg)',size:16});
+  s+=`<text x="560" y="206" text-anchor="end" class="fg">a parameter,</text><text x="560" y="221" text-anchor="end">kept between iterations</text>`;
+  s+=bx(598,276,168,58,'soft set size','\\widehat{\\mathcal L}^{\\rm DM}_c(\\theta,q_t)',A);
+  s+=bx(806,12,180,58,'update θ','\\theta_t-\\eta\\big(\\nabla_\\theta\\widehat{\\mathcal L}_{\\rm cls}+\\lambda\\nabla_\\theta\\widehat{\\mathcal L}^{\\rm DM}_c\\big)',A,{size:9.5,sw:1.8});
+  s+=bx(806,92,180,58,'update q','q_t-\\gamma\\,\\nabla_q\\widehat{\\mathcal L}^{\\rm QR}',A,{size:10.5,sw:1.8});
+  // forward
+  s+=f('M110 191 H125 V79 H139')+f('M110 191 H125 V303 H139');
+  s+=`<text x="128" y="186" style="font-size:10px">once</text>`;
+  s+=f('M240 79 H269')+f('M240 303 H269');
+  s+=f('M358 79 H387')+f('M358 303 H387');
+  s+=f('M560 79 H578 V41 H597')+f('M560 79 H578 V121 H597');
+  s+=f('M560 303 H597');
+  s+=f('M682 184 V151');
+  s+=f('M682 236 V275');
+  s+=`<circle cx="682" cy="256" r="7" fill="var(--surface)" stroke="var(--no)" stroke-width="1.5"/><path d="M677 261 L687 251" stroke="var(--no)" stroke-width="1.5"/>`;
+  s+=`<text x="696" y="252" style="fill:var(--no);font-size:10px">used as a constant:</text><text x="696" y="265" style="fill:var(--no);font-size:10px">no gradient to q</text>`;
+  // gradients
+  s+=fa('M766 41 H805',A,'gd','stroke-dasharray="6 4"');
+  s+=fa('M766 121 H805',A,'gd','stroke-dasharray="6 4"');
+  s+=fa('M766 305 H994 V41 H987',A,'gd','stroke-dasharray="6 4"');
+  s+=tex('\\lambda\\nabla_\\theta',988,238,{anchor:'end',color:A,size:12});
+  s+=`<text x="676" y="170" text-anchor="end" style="font-size:10px">pinball: θ-gradient unused</text>`;
+  // state loop
+  s+=`<path d="M896 150 V210 H710" fill="none" stroke="${A}" stroke-width="3" marker-end="url(#gd)"/>`+tex('q_{t+1}',800,203,{anchor:'middle',color:A,size:11.5});
+  s+=tex('\\text{no sorting}\\ \\cdot\\ \\text{no hyper-gradient }\\partial q^*/\\partial\\theta\\ \\cdot\\ \\text{the labels of }\\mathcal D_2\\text{ are never used}',500,368,{anchor:'middle',color:'var(--fg)',size:12,alt:'no sorting, no hyper-gradient, labels of D2 never used'});
+  $('dm-dg').innerHTML=s;}
+
+// ---------- controls ----------
+const FMT={alpha:v=>v.toFixed(2),tau:v=>v.toFixed(2),qdemo:v=>v.toFixed(2),q:v=>v.toFixed(2),eps:String,lamC:String,lamD:String,gamma:String};
+document.querySelectorAll('input[type=range][data-k]').forEach(inp=>inp.addEventListener('input',e=>{
+  const k=e.target.dataset.k,raw=+e.target.value,v=e.target.dataset.log?sig3(Math.pow(10,raw)):raw;ST[k]=v;
+  document.querySelectorAll(`input[data-k="${k}"]`).forEach(o=>{if(o!==e.target)o.value=e.target.value;});
+  document.querySelectorAll(`[data-v="${k}"]`).forEach(o=>o.textContent=FMT[k](v));update();}));
+$('ct-kappa').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;ST.kappa=+b.dataset.v;$('ct-kappa').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));update();});
+$('ct-set').addEventListener('change',e=>{ST.useSet=e.target.checked;update();});
+$('sim-new').addEventListener('click',()=>{ST.seed=Math.floor(Math.random()*1e9);update();});
+function update(){const p=primerRender(),h=shRender(),c=ctRender(),d=dmRender(),sm=simRender();cmpRender(c,d);window.__dbg={ST:{...ST},primer:p,soft:h,ct:c,dm:d,sim:sm,pool:POOL};}
+// ---------- collapsible sections ----------
+function mkToggle(box,head){const b=document.createElement('button');b.type='button';b.className='tgl';
+  const set=c=>{box.classList.toggle('collapsed',c);b.textContent=c?'show':'hide';b.setAttribute('aria-expanded',String(!c));};
+  b.addEventListener('click',()=>set(!box.classList.contains('collapsed')));head.appendChild(b);set(false);return set;}
+const TOGGLES=new Map();
+document.querySelectorAll('.wrap>section').forEach(s=>{const h=s.querySelector('h2');if(h)TOGGLES.set(s.id,mkToggle(s,h));});
+document.querySelectorAll('.stage').forEach(s=>{const h=s.querySelector(':scope>.stage-title');if(h)mkToggle(s,h);});
+document.querySelectorAll('.toc a').forEach(a=>a.addEventListener('click',()=>{const f=TOGGLES.get(a.getAttribute('href').slice(1));if(f)f(false);}));
+{const b=document.createElement('button');b.type='button';b.className='tgl';b.textContent='collapse all';let c=false;
+  b.addEventListener('click',()=>{c=!c;TOGGLES.forEach(f=>f(c));b.textContent=c?'expand all':'collapse all';});document.querySelector('.toc').appendChild(b);}
+batchTables();
+window.renderAll=()=>{ctDiagram();dmDiagram();update();};
+window.renderAll();
+</script>
+</body>
+</html>

@@ -1,0 +1,138 @@
+% !TEX root = main.tex
+% Shared preamble: included right after \documentclass[10pt,a4paper]{article} by main.tex. The proposals (notes/proposals/) carry their own copy.
+% Not a document on its own -- compile main.tex (or run ./build.sh), never this file.
+% ==================== base template (layout and typography) ====================
+\usepackage[margin=1.2cm,top=0.8cm,bottom=0.8cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{mathptmx}
+\usepackage{microtype}
+\usepackage{enumitem}
+\usepackage{booktabs,tabularx}
+\usepackage{xcolor,multicol}
+\setlength{\columnsep}{8pt}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,calc}
+\usepackage[font=small,labelfont=bf,skip=2pt]{caption}
+\usepackage[numbers,sort&compress]{natbib}      % loaded here so that the \thebibliography override below applies to it
+\usepackage[hidelinks]{hyperref}
+\urlstyle{same}
+
+\setlist{nosep,leftmargin=1.1em}
+\setlength{\parskip}{1.6pt}
+\setlength{\parindent}{0pt}
+\pagestyle{empty}
+\makeatletter
+\renewcommand\section{\@startsection{section}{1}{\z@}{4pt plus 1pt minus 1pt}{1.5pt}{\normalsize\bfseries}}
+\let\oldbib\thebibliography
+\renewcommand\thebibliography[1]{\oldbib{#1}\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}\fontsize{6.4}{7}\selectfont}
+\renewcommand\refname{\normalsize References}
+\makeatother
+\newcommand{\wpk}[1]{\par\vspace{1.5pt}\noindent\textbf{#1}\ }
+\newcommand{\pp}[1]{\textit{#1}}
+\newcommand{\cmt}[1]{\leavevmode{\color{purple}[\textsc{Note}: #1]}}
+
+% ==================== extensions the survey content needs ====================
+% lower section levels, in the style of \section above (the template defines only \section)
+\makeatletter
+\renewcommand\subsection{\@startsection{subsection}{2}{\z@}{3.5pt plus 1pt minus 1pt}{1.5pt}{\normalsize\bfseries\itshape}}
+\renewcommand\subsubsection{\@startsection{subsubsection}{3}{\z@}{3pt plus 1pt minus 1pt}{1pt}{\small\bfseries}}
+\newcommand\@runinperiod[1]{#1.}  % run-in \paragraph headings end with a period
+\renewcommand\paragraph{\@startsection{paragraph}{4}{\z@}{2.5pt plus 1pt}{-0.5em}{\normalsize\bfseries\@runinperiod}}
+\let\ps@plain\ps@empty            % \maketitle forces the plain style on page 1; keep it empty like the rest
+\setlength{\@fptop}{0pt}
+\makeatother
+\let\note\cmt                     % old name, still used by the content
+
+% packages
+\usepackage[scaled=0.82]{sourcecodepro} % typewriter font of the trajectory boxes and \code
+\usepackage{amssymb}
+\usepackage{makecell,array,graphicx,ragged2e}
+\usepackage{tcolorbox}\tcbuselibrary{skins,breakable,theorems}
+\usetikzlibrary{shapes,fit,backgrounds,decorations.pathreplacing}
+\usepackage{fontawesome5}
+\usepackage{CJKutf8}\newcommand{\cjk}[1]{\begin{CJK*}{UTF8}{gbsn}#1\end{CJK*}}
+\setlength{\emergencystretch}{3em} % let lines with long \code tokens wrap instead of overflowing
+\renewcommand*\setemergencystretch[2]{\emergencystretch 3em} % multicol otherwise resets it to 4pt per column
+\renewcommand{\arraystretch}{1.08}
+
+% ---------- palette (dataviz reference palette) ----------
+\definecolor{s1}{HTML}{2a78d6}\definecolor{s2}{HTML}{eb6834}\definecolor{s3}{HTML}{1baf7a}
+\definecolor{s4}{HTML}{eda100}\definecolor{s5}{HTML}{e87ba4}\definecolor{s6}{HTML}{008300}
+\definecolor{s7}{HTML}{6250d6}\definecolor{s8}{HTML}{e34948}
+\definecolor{critical}{HTML}{d03b3b}\definecolor{good}{HTML}{0ca30c}\definecolor{warning}{HTML}{fab219}
+\definecolor{ink}{HTML}{0b0b0b}\definecolor{ink2}{HTML}{52514e}\definecolor{ink3}{HTML}{8a8984}
+\definecolor{surface}{HTML}{f6f5f2}\definecolor{rule}{HTML}{d9d8d2}\definecolor{linkc}{HTML}{1c5cab}
+\colorlet{agA}{s1}\colorlet{agB}{s2}\colorlet{agC}{s3}\colorlet{agD}{s7}
+\colorlet{agE}{s5}\colorlet{agF}{s4}\colorlet{agG}{s6}\colorlet{agH}{ink3}
+
+% ---------- table of contents ----------
+% One column, between two hairlines. Section rows: bold, number in a coloured column, page flush right, a little air above.
+% Subsection rows: smaller, light dotted leaders, grey page numbers. Entries stay clickable (hyperref).
+\usepackage{titletoc}
+\setcounter{tocdepth}{2}
+\contentsmargin{2.4em}
+\titlecontents{section}[1.8em]{\addvspace{5pt}\normalsize\bfseries\color{ink}}
+  {\contentslabel[\textcolor{s1!65!black}{\thecontentslabel}]{1.8em}}{\hspace*{-1.8em}}
+  {\hfill\contentspage}[\addvspace{1pt}]
+\titlecontents{subsection}[4.3em]{\small\color{ink}}
+  {\contentslabel[\textcolor{ink2}{\thecontentslabel}]{2.5em}}{\hspace*{-2.5em}}
+  {\hspace{0.4em}\titlerule*[0.55em]{\textcolor{ink3}{.}}\hspace{0.4em}\textcolor{ink2}{\contentspage}}
+\makeatletter
+\newcommand\tochairline{\par{\color{rule}\hrule height 0.5pt}}
+\renewcommand\tableofcontents{\par\addvspace{6pt}\noindent{\normalsize\bfseries\color{ink}\contentsname}\par\vspace{3pt}\tochairline
+  {\setlength{\parskip}{0pt}\@starttoc{toc}}\par\vspace{4pt}\tochairline\vspace{4pt}}
+\makeatother
+
+% ---------- helper macros ----------
+\newcommand{\code}[1]{\texttt{\small\spaceskip=\fontdimen2\font plus .5\fontdimen2\font minus .2\fontdimen2\font\def\_{\textunderscore\allowbreak}#1}}  % underscores are break points; spaces inside may stretch (one-column justification)
+\newcommand{\chip}[2]{\tikz[baseline=(t.base)]\node[fill=#1!18,text=#1!60!black,rounded corners=2pt,inner xsep=3pt,inner ysep=1.5pt,font=\scriptsize\bfseries](t){#2};}
+\newcommand{\okbadge}{\chip{good}{available}}
+\newcommand{\gatedbadge}{\chip{warning}{gated}}
+\newcommand{\nobadge}{\chip{critical}{not released}}
+\newcommand{\partialbadge}{\chip{s7}{partial}}
+\newcommand{\naturalbadge}{\chip{s3}{natural}}
+\newcommand{\injected}{\chip{s2}{injected}}
+\newcommand{\lbl}[1]{\chip{ink3}{#1}}
+
+% key-value identity block
+\newenvironment{identity}{\begin{tcolorbox}[enhanced,colback=surface,colframe=rule,boxrule=0.3pt,arc=1.5pt,left=4pt,right=4pt,top=3pt,bottom=3pt,fontupper=\small]\begin{tabular}{@{}>{\bfseries\color{ink2}}l@{\hskip 5pt}>{\RaggedRight}p{\dimexpr\linewidth-2.1cm}@{}}}{\end{tabular}\end{tcolorbox}}
+
+% stats table wrapper
+\newenvironment{statsbox}{\begin{tcolorbox}[enhanced,colback=white,colframe=rule,boxrule=0.3pt,arc=1.5pt,left=3pt,right=3pt,top=2pt,bottom=2pt,fontupper=\small]}{\end{tcolorbox}}
+
+% ---------- trajectory rendering ----------
+\newcommand{\trajfont}{\ttfamily\footnotesize} % font for the trajectory step boxes
+\newcommand{\trajtask}[2]{%
+\begin{tcolorbox}[enhanced,colback=s1!6,colframe=s1!60!black,boxrule=0.4pt,arc=1.5pt,left=4pt,right=4pt,top=2pt,bottom=2pt,fontupper=\footnotesize,
+  title={\footnotesize\bfseries\faTasks\ Task \ifx\\#1\\\else\textnormal{\scriptsize(\code{#1})}\fi},coltitle=white,colbacktitle=s1!60!black,toptitle=1pt,bottomtitle=1pt]
+#2
+\end{tcolorbox}}
+% \begin{trajstep}{idx}{agent}{color} body \end{trajstep}
+\newenvironment{trajstep}[3]{%
+\begin{tcolorbox}[enhanced,breakable,colback=white,colframe=#3!55,boxrule=0pt,leftrule=2.2pt,arc=0pt,left=4pt,right=3pt,top=1.5pt,bottom=1.5pt,before skip=1.5pt,after skip=1.5pt,
+  fontupper=\trajfont\color{ink},overlay unbroken and first={\node[anchor=north west,fill=#3!18,text=#3!50!black,font=\scriptsize\bfseries,inner xsep=3pt,inner ysep=1pt,rounded corners=1.5pt] at ([xshift=2pt,yshift=-1pt]frame.north west){#1 \textperiodcentered\ #2};}]
+\vspace{8pt}\par}{\end{tcolorbox}}
+\newenvironment{faultystep}[3]{%
+\begin{tcolorbox}[enhanced,breakable,colback=critical!5,colframe=critical,boxrule=0.5pt,leftrule=2.2pt,arc=0pt,left=4pt,right=3pt,top=1.5pt,bottom=1.5pt,before skip=1.5pt,after skip=1.5pt,
+  fontupper=\trajfont\color{ink},overlay unbroken and first={\node[anchor=north west,fill=critical,text=white,font=\scriptsize\bfseries,inner xsep=3pt,inner ysep=1pt,rounded corners=1.5pt] at ([xshift=2pt,yshift=-1pt]frame.north west){\faExclamationTriangle\ #1 \textperiodcentered\ #2 \textperiodcentered\ ANNOTATED ERROR STEP};}]
+\vspace{8pt}\par}{\end{tcolorbox}}
+% \trajannotation{agent}{step}{category}{reason}{ground truth}{final output}{extra}
+\newcommand{\trajannotation}[7]{%
+\begin{tcolorbox}[enhanced,breakable,colback=critical!4,colframe=critical!70!black,boxrule=0.4pt,arc=1.5pt,left=4pt,right=4pt,top=2pt,bottom=2pt,fontupper=\footnotesize,
+  title={\footnotesize\bfseries\faTag\ Annotation},coltitle=white,colbacktitle=critical!70!black,toptitle=1pt,bottomtitle=1pt]
+\begin{tabular}{@{}>{\bfseries\color{ink2}}l@{\hskip 5pt}>{\RaggedRight}p{\dimexpr\linewidth-2.0cm}@{}}
+Faulty agent & #1\\
+Faulty step & #2\\
+Category & #3\\
+Reason & #4\\
+Ground truth & #5\\
+System output & #6\\
+\ifx\\#7\\\else Other labels & #7\\\fi
+\end{tabular}
+\end{tcolorbox}}
+% shrink a table to the line width only when it is too wide (font-independent)
+\newsavebox{\fitboxsb}
+\newcommand{\fitbox}[1]{\sbox{\fitboxsb}{#1}\ifdim\wd\fitboxsb>\linewidth\resizebox{\linewidth}{!}{\usebox{\fitboxsb}}\else\usebox{\fitboxsb}\fi}
+\newcommand{\badgerow}[1]{{\raggedright\noindent#1\par}} % badge rows wrap instead of overflowing

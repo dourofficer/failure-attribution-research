@@ -1,0 +1,348 @@
+% Conformal training for failure attribution -- research proposal.
+% Build: ./build.sh pps06_conformal-training  (pdflatex + bibtex, output pps06_conformal-training.pdf)
+\documentclass[10pt,a4paper]{article}
+\usepackage[margin=1.8cm,top=1.5cm,bottom=1.6cm,footskip=0.8cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb}
+\usepackage{times}  % Times text; mathptmx needs the rsfs font, which this TeX install lacks
+\usepackage{enumitem}
+\usepackage{booktabs,tabularx,array}
+\usepackage{xcolor}
+\usepackage[font=small,labelfont=bf,skip=3pt]{caption}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[hidelinks]{hyperref}
+
+\setlist{nosep,leftmargin=1.3em}
+\setlength{\parskip}{3pt}
+\setlength{\parindent}{0pt}
+\setlength{\textfloatsep}{8pt plus 2pt}
+\setlength{\floatsep}{6pt plus 2pt}
+\setlength{\intextsep}{8pt plus 2pt}
+\setlength{\abovedisplayskip}{5pt plus 1pt}
+\setlength{\belowdisplayskip}{5pt plus 1pt}
+\setlength{\abovedisplayshortskip}{2pt}
+\setlength{\belowdisplayshortskip}{3pt}
+\setlength{\emergencystretch}{2em}
+\pagestyle{plain}
+\makeatletter
+\renewcommand\section{\@startsection{section}{1}{\z@}{9pt plus 2pt minus 1pt}{3pt}{\large\bfseries}}
+\renewcommand\subsection{\@startsection{subsection}{2}{\z@}{7pt plus 2pt minus 1pt}{2pt}{\normalsize\bfseries}}
+\let\oldbib\thebibliography
+\renewcommand\thebibliography[1]{\oldbib{#1}\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}\footnotesize}
+\makeatother
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+
+% ---------- notation ----------
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\ind}{\mathbf{1}}
+\newcommand{\C}{C}
+\newcommand{\Chat}{\hat C}
+\newcommand{\Qhat}{\widehat Q}
+\newcommand{\Smin}{S^{\min}}
+\newcommand{\Dtr}{D_{\mathrm{train}}}
+\newcommand{\Dcal}{D_{\mathrm{cal}}}
+\newcommand{\Dtest}{D_{\mathrm{test}}}
+\newcommand{\Lcls}{\widehat{\mathcal L}_{\mathrm{cls}}}
+\newcommand{\Lsize}{\widehat{\mathcal L}_{\mathrm{size}}}
+\newcommand{\open}[1]{\textcolor{black!60}{\emph{Open choice.} #1}}
+\newcommand{\cmt}[1]{\textcolor{purple}{[\textsc{Note:} #1}]}
+
+\begin{document}
+
+\begin{center}
+{\Large\bfseries Conformal Training for Failure Attribution:\\[2pt] Learning Step Scorers that Give Small Prediction Sets}\\[4pt]
+{\small Research proposal \textperiodcentered\ draft, November 2026}
+\end{center}
+\vspace{-2pt}
+
+% \textbf{Abstract.} Failure attribution asks which steps of a failed agent trajectory caused the failure. The answer is rarely a single step, so recent work returns a set of steps, and conformal prediction (CP) can give such a set a guarantee: it contains an error step with a chosen probability $1-\alpha$. The guarantee holds for any step scorer and says nothing about how large the set is, and with current scorers the set covers most of the trajectory. We propose to train the scorer for the conformal procedure it will be used with, by adding a set-size term to its training objective (DPSM). We compare each objective with and without this term in three attributor families: an LLM that writes the set and is trained with reinforcement learning, an LLM that gives a distribution over steps, and a small encoder on frozen step vectors. Training data is a synthetic set of Magentic-One and CaptainAgent failures whose labels are sets of error steps confirmed by counterfactual replay. The two headline measurements are the average set size at a fixed coverage and the coverage actually observed on test trajectories, both on our test split and on real failure-attribution benchmarks.
+
+% =====================================================================
+\section{Introduction}
+
+\emph{Failure attribution} asks which step of a failed agent trajectory caused the failure \cite{zhang2025who}, and existing methods answer with a single step. Recent work questions this on two grounds. First, the label may not be a single step: MP-Bench \cite{mpbench2026} shows that analysts looking at the same failure can reasonably blame different steps. Second, a single step carries no measure of how far it can be trusted \cite{feng2026conformal}, and it is usually wrong (the best step accuracy reported in Who\&When is about 25\% \cite{zhang2025who}). Both grounds point to predicting a \emph{set} of steps.
+
+Conformal prediction (CP) \cite{angelopoulos2021gentle} turns any step scorer into such sets with a guarantee: given a held-out calibration set and a level $\alpha$ chosen by the user, the set contains a true error step with probability at least $1-\alpha$, in finite samples and without assumptions on the data distribution. OAT \cite{yeh2026oat} and Feng et al.\ \cite{feng2026conformal} are the first to apply CP to attribution.
+
+The guarantee holds for any scorer, even a random one, and says nothing about the size of the set: with a weak scorer the set is valid but covers most of the trajectory. Set size is decided by the scorer, and the usual training objective, cross-entropy, does not optimise it. \emph{Conformal training} \cite{stutz2022conftr,shi2025dpsm} adds a differentiable set-size term to the objective and reduces set size in image classification. It has not been studied in failure attribution. Moreover, the coverage of conformal attributors has so far been argued mainly from theory, with little evidence on real test trajectories; we measure it.
+
+We ask three research questions.
+\begin{itemize}
+\item \textbf{RQ1 (inefficiency).} At a fixed target coverage $1-\alpha$, does a step scorer trained with a conformal term return smaller calibrated prediction sets on held-out failed trajectories than the same scorer trained without it?
+\item \textbf{RQ2 (generality).} Does the reduction hold for both attributor families: an LLM that gives a distribution over steps, and an encoder on frozen step vectors?
+\item \textbf{RQ3 (empirical coverage).} Is the empirical coverage, the fraction of test trajectories whose prediction set contains a labelled error step, at least the nominal level $1-\alpha$, both on our own test split and on established failure-attribution benchmarks?
+\end{itemize}
+
+% =====================================================================
+\section{Problem Setup}
+
+\textbf{Trajectory and label.} A failed trajectory is a task and a sequence of steps, $x=(s_1,\dots,s_T)$, where a step is one agent turn and $T$ varies between trajectories. Write $[T]=\{1,\dots,T\}$. We label a trajectory with its \emph{failure-contributing steps}, a notion introduced by OAT \cite{yeh2026oat}: a step is failure-contributing if (i) it is erroneous given the task and the steps before it, and (ii) the error is not corrected later and contributes to the failure. A trajectory can have several such steps, so its label is a non-empty \emph{error set} $Y\subseteq[T]$, and every step in $Y$ is an equally valid answer. In our data a step enters $Y$ only when correcting it turns the failure into a success (Section~\ref{sec:data}).
+
+\textbf{Attributor.} An attributor has two parts. A \emph{step scorer} $f_\theta$ reads the trajectory and gives every step a score that says how likely the step is an error,
+\begin{equation}
+f_\theta(x)=(\pi_1,\dots,\pi_T),\qquad \pi_t\in[0,1], \label{eq:scorer}
+\end{equation}
+and a set rule turns the scores into a \emph{prediction set} $\C(x)\subseteq[T]$. We write $\pi_t(x)$ when the trajectory matters.
+
+\textbf{Target.} For a miscoverage level $\alpha\in(0,1)$ and a new failed trajectory $(x,Y)$, the set should contain at least one error step with probability at least $1-\alpha$, and be as small as possible:
+\begin{equation}
+\underbrace{\Prob\big(\C(x)\cap Y\neq\emptyset\big)\;\ge\;1-\alpha}_{\text{coverage}}\qquad\text{and}\qquad \underbrace{\E\,|\C(x)|}_{\text{inefficiency}}\ \text{ small.} \label{eq:target}
+\end{equation}
+With a single labelled step, $Y=\{t^{*}\}$, the event is the usual $t^{*}\in\C(x)$, so results on single-label benchmarks are directly comparable.
+
+% \open{``Contains at least one error step'' is the event that matches equally valid labels. The alternative is to bound the expected fraction of labelled steps that the set misses, $\E[1-|\C(x)\cap Y|/|Y|]\le\alpha$, with conformal risk control \cite{angelopoulos2024crc}. We report this fraction as a secondary metric.}
+
+\subsection{From step scores to a prediction set: split conformal prediction} \label{sec:cp}
+
+Data are split by task into $\Dtr$ (size $n$), $\Dcal$ (size $m$) and $\Dtest$. The scorer is trained on $\Dtr$ only. Given a trained scorer, split CP \cite{angelopoulos2021gentle} runs in three steps.
+\begin{enumerate}
+\item \emph{Score.} The non-conformity score of step $t$ is $S_\theta(x,t)=1-\pi_t(x)$: small when the scorer suspects the step. As in standard split CP, each calibration trajectory yields one number, the score of its labelled step. With a single labelled step $t^{*}$ this is $S_\theta(x,t^{*})$. With several labelled steps it is the smallest score among them,
+\begin{equation}
+\Smin_\theta(x,Y)=\min_{t\in Y}S_\theta(x,t)=1-\max_{t\in Y}\pi_t(x), \label{eq:smin}
+\end{equation}
+because a set of the form \eqref{eq:set} contains at least one labelled step exactly when it contains the labelled step with the smallest score. Only steps in $Y$ enter \eqref{eq:smin}; unlabelled steps play no role in calibration.
+\item \emph{Calibrate.} Compute $\Smin_i=\Smin_\theta(x_i,Y_i)$ for the $m$ calibration trajectories and set the threshold $\Qhat(\alpha)$ to their $\lceil(1-\alpha)(m+1)\rceil$-th smallest value.
+\item \emph{Predict.} For a new trajectory return every step whose score is at most the threshold,
+\begin{equation}
+\C_\theta(x)=\{\,t\in[T]:\ S_\theta(x,t)\le\Qhat(\alpha)\,\}. \label{eq:set}
+\end{equation}
+\end{enumerate}
+The set contains an error step exactly when $\Smin_\theta(x,Y)\le\Qhat(\alpha)$. If calibration and test trajectories are exchangeable (for example drawn independently from one distribution), then
+\begin{equation}
+1-\alpha\;\le\;\Prob\big(\C_\theta(x)\cap Y\neq\emptyset\big)\;\le\;1-\alpha+\tfrac{1}{m+1}, \label{eq:guarantee}
+\end{equation}
+where the upper bound needs scores without ties. 
+% Three properties matter for what follows.
+% \begin{itemize}
+% \item \emph{The unit is the trajectory.} Steps of one trajectory depend on each other, so $m$ counts trajectories, not steps.
+% \item \emph{The guarantee is marginal.} It holds on average over trajectories. A group (long trajectories, one agent system) can be under-covered while another is over-covered, which is why RQ3 looks within groups.
+% \item \emph{The guarantee does not depend on the scorer.} A better scorer does not raise coverage; it lowers $\Qhat(\alpha)$ relative to the scores of non-error steps, so fewer steps enter the set. Training acts on inefficiency only.
+% \end{itemize} \cmt{commented out.}
+
+% =====================================================================
+\section{Methods} \label{sec:methods}
+
+We study two attributor families. Within each family we train the same model twice: once with the family's standard objective, and once with a conformal term added. Everything else (data, backbone, optimiser, number of updates, the calibration and test procedure of Section~\ref{sec:cp}) is held fixed, so a difference in set size can be attributed to the term. Section~\ref{sec:term} defines the term once; Sections~\ref{sec:dist} and~\ref{sec:encoder} say how each family uses it.
+
+\subsection{The conformal term (DPSM)} \label{sec:term}
+
+Conformal training simulates, during training, the thresholding that CP will apply after training, and penalises the size of the resulting sets. We use the DPSM form \cite{shi2025dpsm} throughout. It needs three ingredients.
+
+\textbf{A learned threshold.} A scalar $q$ is trained next to the model and plays the role of $\Qhat(\alpha)$ during training. It is fitted by quantile regression: it minimises the pinball loss of the scores $\Smin_\theta(x_i,Y_i)$,
+\begin{equation}
+\rho_\alpha(q,S)=\begin{cases}(1-\alpha)(S-q), & S\ge q,\\ \alpha\,(q-S), & S<q,\end{cases} \label{eq:pinball}
+\end{equation}
+whose minimiser over a sample is the $(1-\alpha)$-quantile of that sample. One gradient step on a batch $B$ is
+\begin{equation}
+q\;\leftarrow\;q-\gamma\Big(\alpha-\frac{\#\{i\in B:\ \Smin_\theta(x_i,Y_i)\ge q\}}{|B|}\Big). \label{eq:qstep}
+\end{equation}
+The fraction in \eqref{eq:qstep} is the share of trajectories whose error steps all fall outside the set at threshold $q$. If that share exceeds $\alpha$ the threshold rises, and if it is below $\alpha$ the threshold falls.
+
+\textbf{A soft set.} Membership in \eqref{eq:set} is a 0/1 step function with zero gradient, so it is replaced by a sigmoid with temperature $\tau$, and the soft size of a set is the sum of the soft memberships:
+\begin{equation}
+\tilde c_t(x;q)=\sigma\!\Big(\frac{q-S_\theta(x,t)}{\tau}\Big),\qquad \widetilde{\mathrm{size}}_\theta(x;q)=\sum_{t=1}^{T}\tilde c_t(x;q). \label{eq:soft}
+\end{equation}
+
+\textbf{Two data halves.} $\Dtr$ is split once, by task, into $D_1$ and $D_2$. Each iteration draws a batch $B^1\subset D_1$ and a batch $B^2\subset D_2$. The classification loss and the threshold step \eqref{eq:qstep} use $B^1$; the size loss uses $B^2$, with $q$ treated as a constant. For a scorer with a distribution over steps,
+\begin{equation}
+\Lcls(\theta)=\frac{1}{|B^1|}\sum_{i\in B^1}-\log\!\sum_{t\in Y_i}\pi_t(x_i),\qquad \Lsize(\theta,q)=\frac{1}{|B^2|}\sum_{i\in B^2}\widetilde{\mathrm{size}}_\theta(x_i;q). \label{eq:losses}
+\end{equation}
+The classification loss is the cross-entropy of the event ``the predicted step is in $Y$'', which matches the coverage event in \eqref{eq:target}. The two objectives compared in every family are
+\begin{equation}
+\text{without the conformal term:}\ \ \min_\theta\ \Lcls(\theta);\qquad\quad \text{with it:}\ \ \min_\theta\ \Lcls(\theta)+\lambda\,\Lsize(\theta,q),\ \ q\text{ updated by \eqref{eq:qstep}.} \label{eq:objectives}
+\end{equation}
+After training, $q$ is discarded and split CP is run on $\Dcal$ as in Section~\ref{sec:cp}, for both objectives. The guarantee \eqref{eq:guarantee} therefore holds for both; the term can only change the size of the sets.
+
+% \textbf{Why DPSM.} ConfTr \cite{stutz2022conftr} computes the threshold as a quantile of each mini-batch. DPSM has two advantages for our setting. First, an LLM batch holds a few trajectories, too few for a quantile, while $q$ in \eqref{eq:qstep} accumulates over all iterations. Second, with $q$ a constant the loss of a trajectory depends on that trajectory alone, which is what the reinforcement-learning families need: a reward must be computable for one sampled output. \cmt{commented out.}
+
+
+% \textbf{Variable length.} A long trajectory adds more terms to $\widetilde{\mathrm{size}}$ than a short one. We also run the variant that divides it by $T$, which targets the relative set size.
+
+% ---- Temporarily removed: the family in which an LLM writes the set and is trained with GRPO. ----
+% \subsection{Family 1: an LLM that writes the set, trained with GRPO} \label{sec:writer}
+%
+% This family skips step scores. The LLM reads the trajectory and writes its answer as text, $o\sim p_\theta(\cdot\mid x)$: free reasoning followed by a list of step indices. A parser turns the output into a set $\Chat(o)\subseteq[T]$. The model is trained with GRPO \cite{shao2024grpo}, as AgenTracer trains its attributor \cite{agentracer2026}: for each trajectory $x_i$ it samples $G$ outputs $o_{i,1},\dots,o_{i,G}$, computes a reward $r_{i,g}$ for each, and increases the probability of the outputs with above-average reward,
+% \begin{equation}
+% A_{i,g}=\frac{r_{i,g}-\operatorname{mean}_g r_{i,g}}{\operatorname{std}_g r_{i,g}+\epsilon},\qquad \nabla_\theta J=\frac{1}{|B|\,G}\sum_{i\in B}\sum_{g=1}^{G}A_{i,g}\,\nabla_\theta\log p_\theta(o_{i,g}\mid x_i), \label{eq:grpo}
+% \end{equation}
+% with GRPO's clipping of the probability ratio and its penalty on the distance to the initial model. The two variants differ in the reward only.
+%
+% \textbf{Without a size term.} The reward is correctness, with a cap $K$ on the length of the list:
+% \begin{equation}
+% r^{\mathrm{hit}}(o;x,Y)=\ind\big[\Chat(o)\cap Y\neq\emptyset\big]\cdot\ind\big[1\le|\Chat(o)|\le K\big]. \label{eq:rhit}
+% \end{equation}
+% The cap is necessary: without it the reward is maximised by listing every step. An unparsable output receives reward 0.
+%
+% \textbf{With a size term.} The reward pays for a hit and charges for every listed step, at a price $\mu\ge0$:
+% \begin{equation}
+% r^{\mathrm{size}}_\mu(o;x,Y)=\ind\big[\Chat(o)\cap Y\neq\emptyset\big]-\mu\,\frac{|\Chat(o)|}{T}. \label{eq:rsize}
+% \end{equation}
+% There is no threshold to learn here, so the price takes the place of $q$. It is a scalar carried across iterations and moved by the same quantity as in \eqref{eq:qstep}, the gap between the observed miss rate and $\alpha$:
+% \begin{equation}
+% \mu\;\leftarrow\;\Big[\mu-\gamma_\mu\Big(\frac{\#\{(i,g):\ \Chat(o_{i,g})\cap Y_i=\emptyset\}}{|B|\,G}-\alpha\Big)\Big]_{+}. \label{eq:mustep}
+% \end{equation}
+% If the written sets miss more often than $\alpha$, steps become cheaper and the sets grow; if they miss less often, steps become dearer and the sets shrink. The policy thus minimises set size while training coverage is held near $1-\alpha$, which is the same trade-off that $\Lsize$ and the pinball step implement for a scorer.
+%
+% \textbf{What this family can and cannot claim.} The size-aware reward is the analogue of the conformal term, not the term itself: nothing is calibrated, and the coverage of the written sets on new trajectories is whatever training left. We evaluate the family in two ways. (i) \emph{As written:} the set $\Chat(o)$ of one decoded output, reported as a single (coverage, size) point with no guarantee. (ii) \emph{Calibrated:} sample $G$ outputs, score each step by its vote share $\pi_t=\tfrac1G\sum_{g}\ind[t\in\Chat(o_g)]$, and run split CP as in Section~\ref{sec:cp}, breaking ties at random. The second gives the family the same guarantee and the same axes as the others, at $G$ times the inference cost.
+%
+
+\subsection{Family 1: an LLM with a distribution over steps at the answer position} \label{sec:dist}
+
+The LLM is the step scorer. Every step in the prompt carries a dedicated index token. The LLM first writes reasoning $z\sim p_\theta(\cdot\mid x)$; then, at the position where the answer starts, the next-token logits are read at the $T$ index tokens only and normalised:
+\begin{equation}
+\pi_t(x,z)=\frac{\exp\ell_\theta(t\mid x,z)}{\sum_{t'=1}^{T}\exp\ell_\theta(t'\mid x,z)}, \label{eq:llmdist}
+\end{equation}
+where $\ell_\theta(t\mid x,z)$ is the logit of the index token of step $t$. These are scores of the form \eqref{eq:scorer} that depend on the sampled reasoning. The model is trained with GRPO \cite{shao2024grpo}, as AgenTracer trains its attributor \cite{agentracer2026}: for each trajectory it samples $G$ rollouts, scores each with a reward, and raises the probability of the rollouts whose reward is above the group average. The loss and its gradient are those of GRPO, so the two variants differ in the reward only.
+
+\textbf{Reward design.} A rollout is rewarded for what its step distribution $\pi(x,z)$ would do under conformal prediction.
+\begin{itemize}
+\item \emph{Correctness.} The probability mass placed on the labelled error steps,
+\begin{equation}
+r^{\mathrm{cls}}(x,Y,z)=\sum_{t\in Y}\pi_t(x,z)\ \in[0,1]. \label{eq:rcls}
+\end{equation}
+It is the probability that a step drawn from $\pi(x,z)$ is in $Y$, and it is graded: a rollout that moves mass towards an error step is rewarded before that step becomes the top one.
+\item \emph{Set size.} The soft size \eqref{eq:soft} of the set that the rollout would produce at the learned threshold $q$, as a fraction of the trajectory,
+\begin{equation}
+r^{\mathrm{size}}(x,z;q)=-\frac{1}{T}\sum_{t=1}^{T}\sigma\!\Big(\frac{q-1+\pi_t(x,z)}{\tau}\Big)\ \in[-1,0]. \label{eq:rsizellm}
+\end{equation}
+\end{itemize}
+The two variants compared are
+\begin{equation}
+\text{without the conformal term:}\ \ r=r^{\mathrm{cls}}(x,Y,z);\qquad\quad \text{with it:}\ \ r=r^{\mathrm{cls}}(x,Y,z)+\lambda\,r^{\mathrm{size}}(x,z;q). \label{eq:rewards}
+\end{equation}
+The threshold $q$ is updated by \eqref{eq:qstep} on the scores $\Smin_\theta(x_i,Y_i)$ of the rollouts in the batch, and is a constant inside the reward, so the reward of a rollout depends on that rollout alone. Both terms are given to every trajectory: GRPO standardises rewards within the group of rollouts of one trajectory, so a trajectory that received the size term alone, as in the two data halves of Section~\ref{sec:term}, would be unaffected by $\lambda$. At test time the reasoning is decoded greedily and $\pi(x,z)$ is read once.
+
+% ---- Replaced by the reward design above: per-rollout loss and explicit gradient. ----
+% \textbf{Objectives.} Each sampled reasoning has its own loss. For a trajectory in $B^1$ it is the classification loss, and for a trajectory in $B^2$ it is the size loss:
+% \begin{equation}
+% \ell_\theta(x,Y,z)=\begin{cases}-\log\sum_{t\in Y}\pi_t(x,z), & x\in B^1,\\[2pt] \lambda\,\sum_{t=1}^{T}\sigma\big((q-1+\pi_t(x,z))/\tau\big), & x\in B^2.\end{cases} \label{eq:llmloss}
+% \end{equation}
+% Without the conformal term, every trajectory uses the first line. With it, the threshold $q$ is updated by \eqref{eq:qstep} on the scores $\Smin$ of the $B^1$ rollouts.
+%
+% \textbf{Training.} The gradient of the expected loss has two parts, one through the step distribution and one through the choice of reasoning:
+% \begin{equation}
+% \nabla_\theta\,\E_{z}\big[\ell_\theta(x,Y,z)\big]=\E_{z}\Big[\underbrace{\nabla_\theta\,\ell_\theta(x,Y,z)}_{\text{step distribution, exact}}+\underbrace{\big(\ell_\theta(x,Y,z)-b(x)\big)\,\nabla_\theta\log p_\theta(z\mid x)}_{\text{reasoning, policy gradient}}\Big]. \label{eq:llmgrad}
+% \end{equation}
+% The first part is ordinary backpropagation. The second is a policy gradient in which $-\ell_\theta$ is the reward of the reasoning. As in GRPO \cite{shao2024grpo}, which AgenTracer uses to train its attributor \cite{agentracer2026}, we sample $G$ reasonings per trajectory and take $b(x)$ to be their mean loss. Because $q$ is a constant in \eqref{eq:llmloss}, the reward of a rollout depends on that rollout alone. At test time the reasoning is decoded greedily and $\pi(x,z)$ is read once.
+
+\subsection{Family 2: an encoder on frozen step vectors} \label{sec:encoder}
+
+This is our proposed attributor. It follows StepFinder \cite{stepfinder2026} in training a small sequence model over step vectors, and OAT \cite{yeh2026oat} in how the vectors are made.
+
+\textbf{Context-aware step vectors.} The whole trace (task and all steps) is passed once through a frozen LLM. Let $H_j$ be the hidden state of token $j$ at a fixed layer and $I_t$ the token positions of step $t$. The vector of step $t$ is the mean over its tokens, $h_t=\tfrac{1}{|I_t|}\sum_{j\in I_t}H_j$. 
+% Because the LLM has read everything before step $t$, $h_t$ already reflects the context of the step. Traces longer than the context window are encoded in overlapping windows.
+
+\textbf{Encoder.} A two-layer transformer encoder reads the sequence of step vectors, with learned embeddings for the agent that produced the step, $a(t)$, and for its position, and a linear head gives one logit per step:
+\begin{equation}
+u_t=Wh_t+e^{\mathrm{agent}}_{a(t)}+e^{\mathrm{pos}}_{t},\qquad (v_1,\dots,v_T)=\mathrm{Enc}_\phi(u_1,\dots,u_T),\qquad \pi_t(x)=\frac{\exp(w^{\top}v_t)}{\sum_{t'=1}^{T}\exp(w^{\top}v_{t'})}. \label{eq:encoder}
+\end{equation}
+The trained parameters are $\theta=(W,e^{\mathrm{agent}},e^{\mathrm{pos}},\phi,w)$; the LLM stays frozen.
+
+\textbf{Objectives.} Exactly \eqref{eq:objectives}: cross-entropy alone, and cross-entropy plus $\lambda\,\Lsize$ with the learned threshold. This family is the cleanest test of RQ1, since nothing is sampled and a training run takes minutes, which allows many seeds and a full sweep over $\lambda$, $\tau$ and $\alpha$.
+
+% \begin{table}[t]
+% \centering\small
+% \begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{2.9cm} L L L@{}}\toprule
+%  & LLM that writes the set & LLM with a step distribution & Encoder on step vectors\\\midrule
+% Trained parameters & LLM adapter & LLM adapter & encoder only, LLM frozen\\
+% Output & a list of steps & $\pi_t$ from index-token logits \eqref{eq:llmdist} & $\pi_t$ from the encoder \eqref{eq:encoder}\\
+% Training & GRPO & supervised (no reasoning) or GRPO-style (with reasoning) & supervised\\
+% Objective without the conformal term & hit reward with a size cap \eqref{eq:rhit} & cross-entropy $\Lcls$ & cross-entropy $\Lcls$\\
+% Objective with it & hit reward minus priced size \eqref{eq:rsize}, price from \eqref{eq:mustep} & $\Lcls+\lambda\Lsize$, threshold from \eqref{eq:qstep} & $\Lcls+\lambda\Lsize$, threshold from \eqref{eq:qstep}\\
+% Scores for calibration & vote share over $G$ samples & $\pi_t$ & $\pi_t$\\\bottomrule
+% \end{tabularx}
+% \caption{The three attributor families and the pair of objectives compared in each.}\label{tab:families}
+% \end{table}
+%
+
+% =====================================================================
+\section{Experiments}
+
+\subsection{Datasets} \label{sec:data}
+
+\textbf{Our synthetic dataset.} Existing generated datasets label one error step per trajectory, or none \cite{agentracer2026,aegis2026,correct2026}, and the only data with step sets, OAT's \cite{yeh2026oat}, has 88 failures. We therefore build our own. It consists of failed trajectories of Magentic-One \cite{fourney2024magentic} and CaptainAgent \cite{song2024captain}, the two systems behind Who\&When, on question-answering tasks that need web browsing and tools: GAIA \cite{mialon2024gaia}, AssistantBench \cite{yoran2024assistantbench}, WebWalkerQA \cite{wu2025webwalker}, FRAMES \cite{krishna2024frames} and BrowseComp \cite{wei2025browsecomp}. Each trajectory carries an error set $Y$ of one or more steps. A step is in $Y$ only if replaying the run with that step corrected turns the failure into a success. The data are split by task into train and test, so that no task appears on both sides; the train split is divided again, by task, into $\Dtr$ and $\Dcal$, and human annotators verify the labels of the test split. Appendix~\ref{app:data} gives the generation procedure.
+
+% \open{Human verification can remove steps from $Y$. If only the test split is verified, test labels are stricter than calibration labels and the observed coverage will fall below $1-\alpha$. We either verify $\Dcal$ as well, or report coverage against both label versions.}
+%
+% \open{The backbone of the agents (GPT-4o as in Who\&When, or a current model), the proposer model, $N$, and whether GAIA and AssistantBench tasks enter training, given that the real benchmarks use the same tasks.}
+
+\textbf{Established benchmarks.} We also evaluate on four human-labelled benchmarks with trajectories from the same two systems: Who\&When \cite{zhang2025who} (184 failures, one labelled step), TraceElephant \cite{traceelephant2026} (176 Magentic-One and CaptainAgent failures), AgentRx \cite{agentrx2026} (44 Magentic-One failures) and MP-Bench \cite{mpbench2026} (289 trajectories, each labelled by three annotators, giving a natural error set). 
+% They share tasks and partly trajectories, so they are reported side by side and not pooled. Each is evaluated under two protocols.
+% \begin{itemize}
+% \item \emph{Transfer:} the threshold comes from our $\Dcal$. Exchangeability does not hold, so the coverage gap to $1-\alpha$ measures how far the synthetic data is from real failures.
+% \item \emph{Recalibrated:} the real benchmark is split at random into calibration and test halves, repeated 200 times. Coverage is then guaranteed, and the comparison is on set size.
+% \end{itemize}
+
+\subsection{Metrics}
+
+All metrics are computed on test trajectories $(x_j,Y_j)$, $j=1,\dots,N_{\mathrm{test}}$, at $\alpha\in\{0.05,0.1,0.2\}$.
+\begin{equation}
+\widehat{\mathrm{Cov}}=\frac{1}{N_{\mathrm{test}}}\sum_{j}\ind\big[\C(x_j)\cap Y_j\neq\emptyset\big],\qquad \widehat{\mathrm{Ineff}}=\frac{1}{N_{\mathrm{test}}}\sum_{j}|\C(x_j)|,\qquad \widehat{\mathrm{Ineff}}_{\mathrm{rel}}=\frac{1}{N_{\mathrm{test}}}\sum_{j}\frac{|\C(x_j)|}{T_j}. \label{eq:metrics}
+\end{equation}
+
+% \begin{itemize}
+% \item \textbf{Coverage} (RQ3). For a fixed calibration set of size $m$, the coverage of split CP follows a $\mathrm{Beta}(k,\,m+1-k)$ distribution with $k=\lceil(1-\alpha)(m+1)\rceil$. We report $\widehat{\mathrm{Cov}}$ with a bootstrap interval over test trajectories and check it against this distribution. An observed value outside it signals a break of exchangeability, not a weak scorer.
+% \item \textbf{Inefficiency} (RQ1, RQ2). Set size and relative set size at each $\alpha$, as mean and standard deviation over training seeds. The comparison of interest is always within a family, between the two objectives, at the same $\alpha$.
+% \item \textbf{Conditional coverage.} $\widehat{\mathrm{Cov}}$ within groups: terciles of $T$, agent system, task source, and $|Y|$. We also report coverage by set size, to see whether small sets are the ones that miss.
+% \item \textbf{Secondary.} The fraction of labelled steps captured, $|\C(x)\cap Y|/|Y|$; the share of empty and of full sets; and top-1 hit rate ($\arg\max_t\pi_t\in Y$), which links to the step accuracy of earlier work.
+% \end{itemize}
+
+% \subsection{Models}
+
+% \begin{itemize}
+% \item \textbf{Backbone.} One open-weight instruction-tuned LLM of about 8B parameters is shared by the three families (candidate: Qwen3-8B), so that differences between families are not differences in the underlying model.
+% \item \textbf{Families 1 and 2.} The backbone with LoRA adapters \cite{hu2022lora}; all other weights frozen. Family~1 and the reasoning setting of Family~2 use $G$ sampled outputs per trajectory.
+% \item \textbf{Family 3.} The backbone frozen, used once per trajectory to produce step vectors, which are cached. The encoder has two layers; the hidden layer of the backbone is chosen on a validation part of $\Dtr$.
+% \item \textbf{Training level.} Models with the conformal term are trained at $\alpha=0.1$ and evaluated at all three levels; we also train at each level to see how specific the gain is to the training $\alpha$.
+% \item \textbf{Selection.} For every model, with or without the term, the checkpoint and hyperparameters are chosen by set size at $\alpha=0.1$ on the same validation part. Selecting one arm by accuracy and the other by set size would favour the second for reasons unrelated to the objective.
+% \end{itemize}
+
+\subsection{Baselines}
+
+The main comparison is within each family of Section~\ref{sec:methods}, between the model trained without the conformal term and the one trained with it. The baselines below answer three further questions.
+
+\textbf{Is the gain reachable without retraining?}
+%  These are applied to the cross-entropy models of both families and are the most important controls for RQ1: if one of them closes the gap, training with the conformal term is not needed.
+\begin{itemize}
+\item \emph{Temperature scaling} of the step distribution before calibration.
+\item \emph{Other conformal scores:} APS \cite{romano2020aps} and RAPS \cite{angelopoulos2021raps} on the step distribution, and the two-way filtration of \cite{feng2026conformal}.
+% and the length-corrected score $1-T\cdot\pi_t$.
+% \item \emph{Calibration per length bin}, one threshold per tercile of $T$.
+% \item \emph{Cross-entropy on $D_1$ only}, since the conformal objective uses half of the training data for cross-entropy.
+\end{itemize}
+
+\textbf{Has the scorer learned more than a prior?} All are calibrated with the procedure of Section~\ref{sec:cp}.
+\begin{itemize}
+\item \emph{Random scores}, which give the set size that coverage costs with no information.
+\item \emph{Position and agent prior:} $\pi_t$ is the frequency, in $\Dtr$, of an error at the relative position and agent role of step $t$. Existing datasets show strong position effects, so this is the floor every trained model must beat.
+\end{itemize}
+
+\textbf{How do existing attributors compare?}
+\begin{itemize}
+\item \emph{Prompted LLM judges} from Who\&When \cite{zhang2025who}: all-at-once (one predicted step) and step-by-step, whose per-step answer probability is used as $\pi_t$.
+% \item \emph{Conformal Agent Error Attribution} \cite{feng2026conformal}: its judge scores with its vanilla and filtration sets.
+\item \emph{OAT} \cite{yeh2026oat}, trained on our successful runs, with its own thresholding and with ours.
+% \item \emph{AgenTracer} \cite{agentracer2026}, if its trained attributor is available, as a point predictor.
+% \item \emph{StepFinder's encoder} \cite{stepfinder2026} in place of the transformer in Family~2, as an architecture ablation.
+\end{itemize}
+
+\bibliographystyle{unsrtnat}
+\bibliography{refs_conformal,refs_conformal_training}
+
+% =====================================================================
+\appendix
+\section{Generating the synthetic dataset} \label{app:data}
+
+Labels come from a variant of the counterfactual replay of AgenTracer \cite{agentracer2026} that can confirm several steps per trajectory.
+\begin{enumerate}
+\item \emph{Systems.} Magentic-One \cite{fourney2024magentic} and CaptainAgent \cite{song2024captain}, the two systems behind Who\&When, so that our trajectories have the structure of the real benchmarks. Runners and a logging LLM proxy are taken from TraceElephant \cite{traceelephant2026}.
+\item \emph{Tasks.} GAIA validation \cite{mialon2024gaia} (165 tasks) and AssistantBench development \cite{yoran2024assistantbench} (33), extended with WebWalkerQA \cite{wu2025webwalker} (680, of which the English part is used), FRAMES \cite{krishna2024frames} (824) and a sample of BrowseComp \cite{wei2025browsecomp}. All have public answers, which both the success check and the corrections need.
+\item \emph{Rollouts.} Run every task on both systems and score with the benchmark's checker. Keep failed and successful runs.
+\item \emph{Propose.} A strong LLM reads each failed trace with the ground-truth answer and proposes $N$ candidate error steps, each with a rationale and a corrected version of the step.
+\item \emph{Verify by replay.} For each candidate, replay the run: serve the logged LLM responses up to the candidate step, substitute the correction, and let the run continue live. If the run now succeeds, the step is \emph{confirmed}.
+\item \emph{Label.} The error set $Y$ of a trajectory is its set of confirmed steps. Trajectories with no confirmed step are discarded.
+\item \emph{Split.} Split by task into train and test, so that no task appears on both sides. The train split is divided again, by task, into $\Dtr$ (itself halved into $D_1$ and $D_2$) and $\Dcal$. Human annotators verify the labels of the test split.
+\end{enumerate}
+\end{document}

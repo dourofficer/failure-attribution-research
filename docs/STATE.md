@@ -16,5 +16,5 @@ Read this first. Update it in the same step whenever a campaign opens or closes,
 ## Next step
 <!-- what the next session should pick up, in a few lines -->
 - No campaign is open yet. The repo was moved onto this workflow on 2026-11-21; the example campaign, node `D001`, example setups and `probe_layer_sweep` are template references to delete once a real campaign exists.
-- Candidate first line, not yet agreed: prediction sets over error steps with a coverage guarantee (conformal), per `notes/proposal/`. It needs a discussion to settle the four items before `/campaign`.
-- `notes/scripts/` lacks the survey's build helpers (see its README), so `notes/build.sh` cannot run until they are restored.
+- Candidate first line, not yet agreed: prediction sets over error steps with a coverage guarantee (conformal), per `notes/proposals/` (`pps06_conformal-training`, `case_studies`). It needs a discussion to settle the four items before `/campaign`.
+- `notes/far-survey/scripts/` lacks the survey's build helpers (see its README), so `notes/far-survey/build.sh` cannot run until they are restored.

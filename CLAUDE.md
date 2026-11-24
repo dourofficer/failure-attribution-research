@@ -7,7 +7,7 @@ Rules for agents working on this research project on **failure attribution**. [R
 1. `docs/STATE.md`: active campaigns, live runs, what waits on [RESEARCHER], the next step.
 2. `docs/decisions/index.md`: the decision graph. Never propose a line that a node has already closed.
 
-`docs/ideas/` holds free-form ideas, none of them agreed. `notes/` is [RESEARCHER]'s own writing (the dataset survey, `proposal/`, `tutorial/` and the `scripts/` that build them; layout in `notes/README.md`): read or write it only when asked explicitly. `papers/` holds reference papers: read one only when asked explicitly.
+`docs/ideas/` holds free-form ideas, none of them agreed. `notes/` is [RESEARCHER]'s own writing (the dataset survey, `proposals/`, `tutorial/` and the `scripts/` that build them; layout in `notes/README.md`): read or write it only when asked explicitly. `papers/` holds reference papers: read one only when asked explicitly.
 
 ## The loop
 

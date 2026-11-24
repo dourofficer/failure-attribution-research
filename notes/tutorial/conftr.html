@@ -1,0 +1,888 @@
+<title>Conformal Training (ConfTr)</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Space+Grotesk:wght@500;600&display=swap">
+<script>
+window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},svg:{fontCache:'none'},
+  startup:{pageReady(){return MathJax.startup.defaultPageReady().then(()=>{window.MJ=true;if(window.renderAll)window.renderAll();});}}};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg.js" async></script>
+<style>
+/* Layout: one reading column; each part = paper-head, then stage cards; interactive stages split into numbered moves (text left, figure right). Same tokens as cp-pipelines.html. */
+:root{
+  --bg:#f5f7fa; --surface:#ffffff; --fg:#18202c; --muted:#5b6678; --line:#d8dee7; --bar:#c3cbd7;
+  --cp:#0d766f; --ct:#3a4db3; --err:#c4342a; --ok:#2c7a37; --no:#b0352a;
+  --display:"Space Grotesk",system-ui,sans-serif; --body:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#11151c; --surface:#181e27; --fg:#e4e8ef; --muted:#9aa5b6; --line:#2b3341; --bar:#475163;
+  --cp:#3dbdb1; --ct:#8d9cff; --err:#ff6a5c; --ok:#6cc47a; --no:#ff7b6e; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11151c; --surface:#181e27; --fg:#e4e8ef; --muted:#9aa5b6; --line:#2b3341; --bar:#475163;
+  --cp:#3dbdb1; --ct:#8d9cff; --err:#ff6a5c; --ok:#6cc47a; --no:#ff7b6e; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.55}
+.wrap{max-width:1040px;margin:0 auto;padding-block:32px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:36px}
+h1,h2,h3,h4{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.25}
+h1{font-size:2rem;font-weight:600} h2{font-size:1.45rem;font-weight:600} h3{font-size:1.05rem;font-weight:600} h4{font-size:.95rem;font-weight:600}
+p{margin:0}
+.lede{color:var(--muted)} .lede b{color:var(--fg)}
+.eyebrow{font-family:var(--mono);font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;color:var(--acc,var(--muted))}
+section.paper{--acc:var(--cp);display:grid;gap:18px}
+section.paper.ct{--acc:var(--ct)}
+section.paper.neu{--acc:var(--fg)}
+.paper-head{display:grid;gap:6px;border-left:4px solid var(--acc);padding-left:14px}
+.paper-head p{color:var(--muted)}
+.stage{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;display:grid;gap:16px;min-width:0}
+.stage-title{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.tag{font-family:var(--mono);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;background:color-mix(in srgb,var(--acc) 14%,transparent);color:var(--acc);padding:2px 8px;border-radius:4px}
+.s1{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:18px;align-items:center}
+ul.list{margin:0;padding-left:1.1em;display:grid;gap:4px}
+.cpstep{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.25fr);gap:18px;padding-top:14px;border-top:1px solid var(--line);align-items:start}
+.cpstep.first{border-top:0;padding-top:0}
+.cpstep .txt{display:grid;gap:8px;min-width:0;align-content:start}
+.cpstep .fig{display:grid;gap:6px;min-width:0}
+.num{display:inline-grid;place-items:center;width:1.5em;height:1.5em;border-radius:50%;background:var(--acc);color:var(--surface);font-family:var(--mono);font-size:.8rem;margin-right:8px;vertical-align:1px}
+.cap{font-size:.85rem;color:var(--muted)}
+.eq{background:var(--bg);border:1px solid var(--line);border-left:3px solid var(--acc);border-radius:6px;padding:8px 12px;overflow-x:auto;font-size:.95rem}
+.eq.work{border-left-color:var(--fg)}
+svg.chart{width:100%;height:auto;display:block}
+mjx-container svg{display:inline-block}
+mjx-container[display="true"]{margin:.3em 0!important}
+svg text{font-family:var(--mono);font-size:11px;fill:var(--muted)}
+svg .fg{fill:var(--fg)} svg .acc{fill:var(--acc)} svg .err{fill:var(--err)}
+mjx-container{color:inherit}
+.controls{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center;padding:10px 12px;border:1px dashed var(--line);border-radius:8px}
+.controls label,.controls .grp{display:flex;align-items:center;gap:8px;font-size:.9rem}
+input[type=range]{accent-color:var(--acc);width:150px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;flex-wrap:wrap}
+.seg button{font:inherit;font-size:.85rem;border:0;background:transparent;color:var(--fg);padding:4px 10px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed=true]{background:var(--acc);color:var(--surface)}
+button.plain{font:inherit;font-size:.85rem;border:1px solid var(--line);background:transparent;color:var(--fg);padding:4px 10px;border-radius:6px;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.val{font-family:var(--mono);font-variant-numeric:tabular-nums;min-width:3.2em}
+.verdict{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+.box{border-radius:8px;padding:12px 14px;display:grid;gap:6px;font-size:.92rem;align-content:start;min-width:0}
+.box .h{font-family:var(--mono);font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;font-weight:500}
+.box.ok{background:color-mix(in srgb,var(--ok) 11%,transparent);border:1px solid color-mix(in srgb,var(--ok) 45%,transparent)} .box.ok .h{color:var(--ok)}
+.box.no{background:color-mix(in srgb,var(--no) 9%,transparent);border:1px solid color-mix(in srgb,var(--no) 40%,transparent)} .box.no .h{color:var(--no)}
+.box.n{background:var(--bg);border:1px solid var(--line)} .box.n .h{color:var(--muted)}
+.box.acc{background:color-mix(in srgb,var(--acc) 9%,transparent);border:1px solid color-mix(in srgb,var(--acc) 40%,transparent)} .box.acc .h{color:var(--acc)}
+.stat{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:1.05rem;font-weight:500}
+.stat.good{color:var(--ok)} .stat.bad{color:var(--no)}
+.readout{font-size:.9rem;display:flex;flex-wrap:wrap;gap:4px 18px}
+.chips{display:inline-flex;flex-wrap:wrap;gap:4px;vertical-align:middle}
+.chip{font-family:var(--mono);font-size:.8rem;padding:0 6px;border-radius:4px;border:1px solid var(--line)}
+.chip.on{background:var(--acc);border-color:var(--acc);color:var(--surface)}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.card{border:1px solid var(--line);border-radius:8px;padding:12px;display:grid;gap:10px;background:var(--bg);min-width:0;align-content:start}
+.card .who{font-size:.82rem;color:var(--muted)}
+.card .eq{font-size:.84rem}
+.pipe{display:grid;gap:6px;justify-items:center;font-size:.82rem;text-align:center}
+.pipe .n{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:4px 8px;max-width:100%}
+.pipe .n.k{border-color:var(--acc);color:var(--acc);font-weight:500}
+.pipe .ar{color:var(--muted);line-height:1}
+.flow{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;font-size:.86rem}
+.flow .n{border:1px solid var(--line);background:var(--bg);border-radius:6px;padding:5px 10px}
+.flow .n.k{border-color:var(--acc);color:var(--acc);font-weight:500}
+.flow .n.x{text-decoration:line-through;color:var(--muted)}
+.flow .ar{color:var(--muted)}
+.figwrap{overflow-x:auto} .figwrap svg.chart{min-width:720px}
+.algo{font-family:var(--mono);font-size:.8rem;line-height:1.75;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;overflow-x:auto;display:grid;gap:2px;align-content:start;min-width:0}
+.algo .ln{color:var(--muted);display:inline-block;width:2.2em;text-align:right;margin-right:6px}
+.algo .i1{padding-left:1.4em} .algo .i2{padding-left:2.8em}
+.algo .cm{color:var(--muted)} .algo .hd{font-family:var(--display);font-weight:600;font-size:.85rem;margin-top:4px}
+.sc{font-variant:small-caps;letter-spacing:.02em}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.9rem;min-width:640px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+thead th{font-family:var(--display);font-weight:600}
+tbody th{font-weight:500;color:var(--muted);width:18%}
+tr:last-child td,tr:last-child th{border-bottom:0}
+th.o{color:var(--cp)} th.c{color:var(--ct)}
+table.res{font-size:.86rem}
+table.res th,table.res td{padding:7px 10px}
+table.res td.r{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+table.res td.r b{color:var(--ct)}
+table.res thead tr:first-child th{border-bottom:0;padding-bottom:0}
+table.res .grp{border-left:1px solid var(--line)}
+table.res tbody th{width:auto;color:var(--fg);white-space:nowrap}
+.simtab{min-width:0;font-size:.86rem;width:auto}
+.simtab td,.simtab th{padding:5px 8px;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.simtab tr.cur td{background:color-mix(in srgb,var(--acc) 12%,transparent)}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.8rem;color:var(--muted);align-items:center}
+.legend svg{vertical-align:-2px;margin-right:5px}
+.sw{display:inline-block;width:11px;height:11px;border-radius:2px;vertical-align:-1px;margin-right:5px}
+.note{font-size:.82rem;color:var(--muted)}
+.tip{position:fixed;z-index:10;pointer-events:none;background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:4px 8px;font-size:.8rem;font-family:var(--mono);box-shadow:0 2px 10px rgba(0,0,0,.15);opacity:0;transition:opacity .1s;max-width:340px}
+@media (max-width:780px){.s1,.cpstep,.verdict,.grid2,.cards{grid-template-columns:minmax(0,1fr)}}
+</style>
+
+<div class="wrap">
+<header style="display:grid;gap:10px">
+  <span class="eyebrow">Stutz, Dvijotham, Cemgil &amp; Doucet · ICLR 2022 · Learning Optimal Conformal Classifiers</span>
+  <h1>How conformal training puts conformal prediction inside the training loop</h1>
+  <p class="lede">Conformal prediction (CP) turns a trained classifier into a <b>set predictor</b> whose sets contain the true class with probability at least \(1-\alpha\). That guarantee holds for any model, so the only thing a better model can buy is <b>smaller sets</b>. Yet the model is trained with cross-entropy, which never sees a set. <b>Conformal training (ConfTr)</b> runs a smooth copy of CP on every mini-batch and trains the model to shrink the sets that copy produces. After training the copy is thrown away and ordinary CP is calibrated again, so the guarantee is untouched. Figures marked <i>toy</i> use simulated numbers; numbers from the paper name the table or section they come from.</p>
+</header>
+
+<!-- ======================= Part 1: split CP ======================= -->
+<section class="paper" id="cp">
+  <div class="paper-head">
+    <span class="eyebrow">Part 1 · Background · Sec. 1, 2.1</span>
+    <h2>Split conformal prediction: a wrapper added after training</h2>
+    <p>Train the classifier as usual and freeze it. Then choose one threshold on held-out labelled data. The guarantee assumes nothing about the model.</p>
+  </div>
+
+  <div class="stage">
+    <div class="stage-title"><span class="tag">Setting</span><h3>Where CP sits</h3></div>
+    <div class="flow">
+      <span class="n">training set</span><span class="ar">→</span>
+      <span class="n">fit \(\pi_\theta\) with cross-entropy</span><span class="ar">→</span>
+      <span class="n">freeze \(\theta\)</span><span class="ar">→</span>
+      <span class="n k">calibrate \(\tau\) on held-out \(I_{\rm cal}\)</span><span class="ar">→</span>
+      <span class="n k">return \(C(x)\subseteq[K]\) for each test input</span>
+    </div>
+    <ul class="list">
+      <li>A classifier \(\pi_\theta(x)\) gives a probability \(\pi_{\theta,k}(x)\) to each class \(k\in[K]=\{1,\dots,K\}\). The paper's main datasets are MNIST, Fashion-MNIST, EMNIST, CIFAR10 and CIFAR100.</li>
+      <li>Instead of one label, CP returns a <b>confidence set</b> \(C(x)\subseteq[K]\), with the guarantee \(\mathbb P\big(Y\in C(X)\big)\ge 1-\alpha\) whenever the calibration examples \((X_i,Y_i),\ i\in I_{\rm cal}\), are exchangeable with the test example.</li>
+      <li>The guarantee is <b>marginal</b>: the probability averages over test inputs and over draws of the calibration set. It is not a promise about each input.</li>
+      <li>Larger sets signal more uncertainty. A poor classifier gives large, uninformative sets.</li>
+    </ul>
+  </div>
+
+  <div class="stage">
+    <div class="stage-title"><span class="tag">THR</span><h3>The threshold predictor in three moves (toy)</h3></div>
+    <div class="controls">
+      <label for="cp-alpha">\(\alpha\) <input id="cp-alpha" type="range" min="0.02" max="0.3" step="0.01" value="0.1"><span class="val" id="cp-alpha-v">0.10</span></label>
+      <span class="grp">Toy classifier
+        <span class="seg" id="cp-model"><button type="button" data-v="sharp" aria-pressed="true">sharper</button><button type="button" data-v="blurry" aria-pressed="false">blurrier</button></span></span>
+      <button class="plain" id="cp-new" type="button">Resample data</button>
+    </div>
+
+    <div class="cpstep">
+      <div class="txt">
+        <h4><span class="num">1</span>Score each calibration example</h4>
+        <p>THR (Sadinle et al., 2019) scores class \(k\) by its probability, \(E_\theta(x,k)=\pi_{\theta,k}(x)\). On a calibration example only the true class counts, so its <b>conformity score</b> is the probability the model gives the right answer.</p>
+        <div class="eq">\[ E_\theta(x_i,y_i)=\pi_{\theta,y_i}(x_i),\qquad i\in I_{\rm cal} \]</div>
+        <p class="note">THR can also threshold logits (THRL) or log-probabilities (THRLP). This choice matters again in Part 3.</p>
+      </div>
+      <div class="fig">
+        <svg class="chart" id="cp-cal" viewBox="0 0 520 165" role="img" aria-label="Four calibration examples as bar charts of ten class probabilities"></svg>
+        <p class="cap">Four of the \(n=199\) toy calibration examples. Bars are the 10 class probabilities (classes 0–9); the green triangle marks the true class, and its bar height is the score \(E\).</p>
+      </div>
+    </div>
+
+    <div class="cpstep">
+      <div class="txt">
+        <h4><span class="num">2</span>Threshold = a low quantile of the scores</h4>
+        <p>Sort the \(n\) scores and take number \(m\) from the bottom. The paper calls this the \(\alpha(1+1/n)\)-quantile; \(m\) below is the index that makes the finite-sample bound hold.</p>
+        <div class="eq">\[ \tau=E_{(m)},\qquad m=\big\lfloor \alpha\,(n+1)\big\rfloor \]</div>
+        <div class="eq work" id="cp-q"></div>
+        <p class="note">\(m-1\) calibration scores fall below \(\tau\). By exchangeability, a new example's score lands below \(\tau\) with probability \(m/(n+1)\le\alpha\) (for distinct scores), and only then is its true class left out.</p>
+      </div>
+      <div class="fig">
+        <svg class="chart" id="cp-strip" viewBox="0 0 520 128" role="img" aria-label="Strip of calibration scores with the threshold tau"></svg>
+        <div class="legend"><span><i class="sw" style="background:var(--acc)"></i>true class would be kept</span><span><i class="sw" style="background:var(--no)"></i>true class would be left out</span></div>
+      </div>
+    </div>
+
+    <div class="cpstep">
+      <div class="txt">
+        <h4><span class="num">3</span>Predict a set for each new input</h4>
+        <p>Every class whose probability clears \(\tau\) goes in. A confident input gets one class, an ambiguous one gets several, and about a fraction \(\alpha\) of inputs lose their true class.</p>
+        <div class="eq">\[ C_\theta(x;\tau)=\{\,k:\ \pi_{\theta,k}(x)\ge\tau\,\} \]</div>
+        <div class="readout" id="cp-read"></div>
+      </div>
+      <div class="fig">
+        <svg class="chart" id="cp-test" viewBox="0 0 520 170" role="img" aria-label="Four test inputs with the threshold and their sets"></svg>
+        <div class="legend"><span><i class="sw" style="background:var(--acc)"></i>in the set</span><span><i class="sw" style="background:var(--bar)"></i>left out</span><span>dashed line: \(\tau\)</span><span><i class="sw" style="background:var(--ok)"></i>true class</span></div>
+      </div>
+    </div>
+
+    <div class="eq">\[ \text{Cover}=\frac{1}{|I_{\rm test}|}\sum_{i\in I_{\rm test}}\delta\big[y_i\in C(x_i)\big],\qquad \text{Ineff}=\frac{1}{|I_{\rm test}|}\sum_{i\in I_{\rm test}}\big|C(x_i)\big| \]</div>
+    <p class="note">The paper's two metrics (Eq. 2). Averaged over calibration/test splits, Cover \(\approx1-\alpha\) by the guarantee, so methods are compared by <b>inefficiency</b> (Ineff, the average set size; lower is better).</p>
+
+    <div class="verdict">
+      <div class="box ok"><span class="h">Guaranteed</span>
+        <span>\(\mathbb P\big(Y\in C(X)\big)\ge1-\alpha\), for any classifier, if calibration and test data are exchangeable.</span>
+        <span>Over 4,000 simulated test inputs: coverage <span class="stat" id="cp-cov"></span> (target <span id="cp-target"></span>).</span>
+        <span class="note">The bound holds on average over calibration draws; with \(n=199\) one draw can be off by about ±0.02. Resample to watch it move.</span></div>
+      <div class="box no"><span class="h">Not guaranteed</span>
+        <span>Small sets. How large they are depends entirely on the model; CP only picks \(\tau\). Here: Ineff <span class="stat" id="cp-ineff"></span>.</span>
+        <span class="note">Both toy classifiers below are calibrated the same way. Coverage barely moves between them; set size does.</span>
+        <div style="overflow-x:auto"><table class="simtab" id="cp-simtab"></table></div></div>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="stage-title"><span class="tag">APS</span><h3>Adaptive prediction sets, the other test-time predictor (toy)</h3></div>
+    <div class="cpstep first">
+      <div class="txt">
+        <p>APS (Romano et al., 2020) ranks the classes by probability, \(\pi_{\theta,y^{(1)}}(x)\ge\dots\ge\pi_{\theta,y^{(K)}}(x)\). The score of the class at rank \(k\) is the mass ranked above it plus a random share \(U\sim\mathcal U[0,1]\) of its own (Eq. 1). Low score means likely class.</p>
+        <div class="eq">\[ \begin{aligned}E_\theta(x,k)={}&\pi_{\theta,y^{(1)}}(x)+\dots+\pi_{\theta,y^{(k-1)}}(x)\\&+U\,\pi_{\theta,y^{(k)}}(x)\end{aligned} \]</div>
+        <div class="eq">\[ \begin{aligned}C_\theta(x;\tau)&=\{\,k:\ E_\theta(x,k)\le\tau\,\}\\ \tau&=E_{(m)},\quad m=\big\lceil(1-\alpha)(n+1)\big\rceil\end{aligned} \]</div>
+        <div class="eq work" id="aps-q"></div>
+        <p class="note">Because low is good here, the paper calibrates APS at the \((1-\alpha)(1+1/n)\)-quantile. On a fixed baseline model THR gives the smallest sets (paper Fig. 2, CIFAR10, \(\alpha=0.01\): Ineff 3.92 THRL, <b>2.93 THR</b>, 3.30 APS, 3.06 RAPS); APS was designed for better conditional coverage.</p>
+      </div>
+      <div class="fig">
+        <svg class="chart" id="aps-fig" viewBox="0 0 520 140" role="img" aria-label="Cumulative probability bar for one test input with the APS threshold"></svg>
+        <p class="cap">Toy test input \(x_1\) from above. Its class probabilities are laid end to end, most likely first; the black tick in each segment is that class's score \(E_\theta(x,k)\). Classes whose tick is left of \(\tau\) form the set.</p>
+        <div class="readout" id="aps-read"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= Part 2: mismatch ======================= -->
+<section class="paper neu" id="gap">
+  <div class="paper-head">
+    <span class="eyebrow">Part 2 · Motivation · Sec. 1</span>
+    <h2>The mismatch: trained for one label, used as a set predictor</h2>
+    <p>Calibration pins coverage whatever \(\theta\) is. What is left for the model to get right is set size, and cross-entropy never sees it.</p>
+  </div>
+  <div class="stage">
+    <div class="grid2">
+      <div class="card"><h4>What training optimises</h4>
+        <div class="pipe">
+          <span class="n">one labelled example \((x,y)\)</span><span class="ar">↓</span>
+          <span class="n">\(\pi_\theta(x)\)</span><span class="ar">↓</span>
+          <span class="n k">\(\ell_{\rm CE}=-\log\pi_{\theta,y}(x)\)</span><span class="ar">↓</span>
+          <span class="n">\(\nabla_\theta\,\ell_{\rm CE}\)</span>
+        </div>
+        <span class="who">No threshold, no set, no \(\alpha\). Each example asks only that its one label be likely.</span></div>
+      <div class="card"><h4>What deployment measures</h4>
+        <div class="pipe">
+          <span class="n">frozen \(\pi_\theta\)</span><span class="ar">↓</span>
+          <span class="n">\(\tau\) from held-out \(I_{\rm cal}\)</span><span class="ar">↓</span>
+          <span class="n">\(C(x)=\{k:\pi_{\theta,k}(x)\ge\tau\}\)</span><span class="ar">↓</span>
+          <span class="n">Cover \(\approx 1-\alpha\) (fixed by CP) · <b>Ineff</b> (depends on \(\theta\))</span>
+        </div>
+        <span class="who">No gradient ever passes through \(\tau\) or \(C(x)\).</span></div>
+    </div>
+    <div class="verdict">
+      <div class="box n"><span class="h">Consequence</span>
+        <span>Since every calibrated model covers, the better conformal classifier is the one with smaller sets. In the paper's words, the model parameters are "not informed about the post-hoc conformalization", so they are not tuned to reduce inefficiency.</span>
+        <span class="note" id="gap-live"></span></div>
+      <div class="box n"><span class="h">Concurrent work: Bel</span>
+        <span>Bellotti (2021), "Bel" in the results, learns a set predictor by thresholding logits (THRL) at a fixed \(\tau\), e.g. \(\tau=1\), which works because logits are unbounded. It uses a squared coverage loss per batch, \(\big[\tfrac{1}{|B|}\sum_{i\in B}C_{\theta,y_i}(x_i;\tau)-(1-\alpha)\big]^2\), plus a size loss with \(\kappa=0\) (App. E).</span>
+        <span class="note">Bel differentiates through prediction only and skips calibration during training. ConfTr also differentiates through calibration, which the paper calls crucial for reducing inefficiency further.</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= Part 3: ConfTr ======================= -->
+<section class="paper ct" id="conftr">
+  <div class="paper-head">
+    <span class="eyebrow">Part 3 · Method · Sec. 2.2, 3.1 · Fig. 1a · Alg. 1</span>
+    <h2>ConfTr: simulate CP on every mini-batch</h2>
+    <p>Each update splits the batch, calibrates a threshold on one half, predicts soft sets on the other half and penalises their size. The gradient reaches \(\theta\) through both halves.</p>
+  </div>
+
+  <div class="stage">
+    <div class="stage-title"><span class="tag">Fig. 1a</span><h3>One training update, and the two routes the gradient takes</h3></div>
+    <div class="controls">
+      <span class="grp">Show
+        <span class="seg" id="dg-mode"><button type="button" data-v="fwd" aria-pressed="false">forward pass</button><button type="button" data-v="r1" aria-pressed="false">① via predictions</button><button type="button" data-v="r2" aria-pressed="false">② via τ</button><button type="button" data-v="both" aria-pressed="true">both routes</button></span></span>
+    </div>
+    <div class="figwrap"><svg class="chart" id="dg" viewBox="0 0 1000 420" role="img" aria-label="Diagram of one ConfTr update: model, batch split, SmoothCal giving tau, SmoothPred giving soft sets, size loss, and two gradient routes back to the model"></svg></div>
+    <p class="cap">Solid grey arrows: forward pass. Dashed: the gradient of the loss flowing back to \(\theta\). Route ① runs through the soft sets' dependence on the predictions \(\pi_\theta(x)\), \(x\in B_{\rm pred}\). Route ② runs through their dependence on \(\tau\), and from \(\tau\) through SmoothCal into the predictions \(\pi_\theta(x_i)\), \(i\in B_{\rm cal}\). The paper's Fig. 1a labels these "diff. w.r.t. \(\theta\) through \(\pi_\theta(x_i)\) and \(\tau\)" and "through \(\pi_\theta(x_i)\)".</p>
+
+    <div class="grid2">
+      <div class="card"><h4><span class="num">1</span>Split the batch</h4>
+        <div class="eq">\[ B=B_{\rm cal}\uplus B_{\rm pred}\quad\text{(random halves)} \]</div>
+        <span class="who">Soft sets are computed only on \(B_{\rm pred}\), never on \(B_{\rm cal}\), so the half that sets \(\tau\) is not the half being scored: the same separation as calibration and test in Part 1.</span></div>
+      <div class="card"><h4><span class="num">2</span><span class="sc">SmoothCal</span>: a differentiable threshold</h4>
+        <div class="eq">\[ \tau=\mathrm{SmoothQuant}\Big(\{E_\theta(x_i,y_i)\}_{i\in B_{\rm cal}},\ \alpha\big(1+\tfrac{1}{|B_{\rm cal}|}\big)\Big) \]</div>
+        <span class="who">Any smooth sorting method works (Blondel et al., 2020; Cuturi et al., 2019; Williamson, 2020). Its dispersion \(\varepsilon\to0\) recovers hard sorting; the paper fixes \(\varepsilon=0.1\) (Table B). Now \(\tau\) has a gradient with respect to \(\pi_\theta(x_i)\), \(i\in B_{\rm cal}\).</span></div>
+      <div class="card"><h4><span class="num">3</span><span class="sc">SmoothPred</span>: soft membership</h4>
+        <div class="eq">\[ C_{\theta,k}(x;\tau)=\sigma\!\Big(\frac{E_\theta(x,k)-\tau}{T}\Big)\in[0,1],\quad x\in B_{\rm pred} \]</div>
+        <span class="who">Read \(C_{\theta,k}\) as the probability that class \(k\) is in the set. Temperature \(T\to0\) recovers the hard set. In the paper's runs \(E_\theta(x,k)=\log\pi_{\theta,k}(x)\) (THRLP).</span></div>
+      <div class="card"><h4><span class="num">4</span>Size loss and objective</h4>
+        <div class="eq">\[ \Omega\big(C_\theta(x;\tau)\big)=\max\Big(0,\ \sum_{k=1}^{K}C_{\theta,k}(x;\tau)-\kappa\Big) \]</div>
+        <div class="eq">\[ \min_\theta\ \log\mathbb E\big[\Omega(C_\theta(X;\tau))\big] \]</div>
+        <span class="who">\(\kappa=1\) by default, so a singleton costs nothing; \(\kappa\in\{0,1\}\) is a hyper-parameter (Table B picks 0 for some runs without \(\mathcal L_{\rm class}\)). Per batch the expectation is the mean over \(B_{\rm pred}\). Alg. 1 writes the gradient of that mean; Eq. (3)–(4) and the code in App. P take its log.</span></div>
+    </div>
+
+    <div class="box n"><span class="h">Why calibrate inside the loop</span>
+      <span>With a fixed \(\tau\), the size loss alone is minimised by empty sets, so a coverage loss must balance it, and \(\tau\) must be guessed in advance, which the paper found hard for THR and APS (App. E). Recomputing \(\tau\) on \(B_{\rm cal}\) at every update keeps coverage on \(B_{\rm pred}\) near \(1-\alpha\) (in expectation over batches, for \(T,\varepsilon\to0\) and large enough \(|B_{\rm cal}|\)), so ConfTr only needs to minimise size.</span>
+      <span class="note">One way to see it: pushing every score down by the same amount drags \(\tau\) down by that amount and leaves \(\Omega\) unchanged. The only way to shrink sets is to move wrong-class scores below the true-class scores of the hardest calibration examples.</span></div>
+
+    <div class="grid2">
+      <div class="algo">
+        <div class="hd">Alg. 1, test time (hard, THR)</div>
+        <div><span class="ln">1:</span><b>function</b> <span class="sc">Predict</span>(\(\pi_\theta(x),\tau\))</div>
+        <div class="i1"><span class="ln">2:</span>compute \(E_\theta(x,k),\ k\in[K]\)</div>
+        <div class="i1"><span class="ln">3:</span><b>return</b> \(C_\theta(x;\tau)=\{k: E_\theta(x,k)\ge\tau\}\)</div>
+        <div><span class="ln">1:</span><b>function</b> <span class="sc">Calibrate</span>(\(\{(\pi_\theta(x_i),y_i)\}_{i=1}^n,\alpha\))</div>
+        <div class="i1"><span class="ln">2:</span>compute \(E_\theta(x_i,y_i),\ i=1,\dots,n\)</div>
+        <div class="i1"><span class="ln">3:</span><b>return</b> <span class="sc">Quantile</span>(\(\{E_\theta(x_i,y_i)\},\ \alpha(1+1/n)\))</div>
+        <div class="hd">Alg. 1, training (smooth)</div>
+        <div><span class="ln">1:</span><b>function</b> <span class="sc">SmoothPred</span>(\(\pi_\theta(x),\tau,T{=}1\))</div>
+        <div class="i1"><span class="ln">2:</span><b>return</b> \(C_{\theta,k}(x;\tau)=\sigma\big(\tfrac{E_\theta(x,k)-\tau}{T}\big),\ k\in[K]\)</div>
+        <div><span class="ln">3:</span><b>function</b> <span class="sc">SmoothCal</span>(\(\{(\pi_\theta(x_i),y_i)\}_{i=1}^n,\alpha\))</div>
+        <div class="i1"><span class="ln">4:</span><b>return</b> <span class="sc">SmoothQuant</span>(\(\{E_\theta(x_i,y_i)\},\ \alpha(1+\tfrac1n)\))</div>
+      </div>
+      <div class="algo">
+        <div class="hd">Alg. 1, ConfTr</div>
+        <div><span class="ln">1:</span><b>function</b> <span class="sc">ConformalTraining</span>(\(\alpha,\lambda{=}1\))</div>
+        <div class="i1"><span class="ln">2:</span><b>for</b> mini-batch \(B\) <b>do</b></div>
+        <div class="i2"><span class="ln">3:</span>randomly split batch \(B_{\rm cal}\uplus B_{\rm pred}=B\)</div>
+        <div class="i2 cm"><span class="ln">4:</span>{"On-the-fly" calibration on \(B_{\rm cal}\):}</div>
+        <div class="i2"><span class="ln">5:</span>\(\tau=\) <span class="sc">SmoothCal</span>(\(\{(\pi_\theta(x_i),y_i)\}_{i\in B_{\rm cal}},\alpha\))</div>
+        <div class="i2 cm"><span class="ln">6:</span>{Prediction only on \(i\in B_{\rm pred}\):}</div>
+        <div class="i2"><span class="ln">7:</span>\(C_\theta(x_i;\tau)=\) <span class="sc">SmoothPred</span>(\(\pi_\theta(x_i),\tau\))</div>
+        <div class="i2 cm"><span class="ln">8:</span>{Optional classification loss:}</div>
+        <div class="i2"><span class="ln">9:</span>\(\mathcal L_B=0\) or \(\sum_{i\in B_{\rm pred}}\mathcal L(C_\theta(x_i;\tau),y_i)\)</div>
+        <div class="i2"><span class="ln">10:</span>\(\Omega_B=\sum_{i\in B_{\rm pred}}\Omega(C_\theta(x_i;\tau))\)</div>
+        <div class="i2"><span class="ln">11:</span>\(\Delta=\nabla_\theta\,\tfrac{1}{|B_{\rm pred}|}(\mathcal L_B+\lambda\Omega_B)\)</div>
+        <div class="i2"><span class="ln">12:</span>update parameters \(\theta\) using \(\Delta\)</div>
+      </div>
+    </div>
+    <p class="cap">Algorithm 1 of the paper, transcribed. Top left is ordinary CP at test time; bottom left are its smooth stand-ins; right is the training loop.</p>
+  </div>
+</section>
+
+<!-- ======================= Part 4: hard vs smooth ======================= -->
+<section class="paper ct" id="smooth">
+  <div class="paper-head">
+    <span class="eyebrow">Part 4 · Sec. 2.2</span>
+    <h2>Hard versus smooth: what makes CP differentiable</h2>
+    <p>Thresholding and sorting have zero or undefined gradients. ConfTr swaps each for a smooth stand-in with one knob: temperature \(T\) for prediction, dispersion \(\varepsilon\) for calibration. As \(T,\varepsilon\to0\) the hard versions come back.</p>
+  </div>
+
+  <div class="stage">
+    <div class="stage-title"><span class="tag">Toy batch</span><h3>One simulated batch: \(|B_{\rm cal}|=39\), one \(B_{\rm pred}\) input, \(\alpha=0.1\)</h3></div>
+    <div class="controls">
+      <label for="hs-T">\(T\) <input id="hs-T" type="range" min="-2" max="0.3" step="0.01" value="-0.301"><span class="val" id="hs-T-v">0.50</span></label>
+      <span class="grp">paper grid
+        <span class="seg" id="hs-Tgrid"><button type="button" data-v="0.01" aria-pressed="false">0.01</button><button type="button" data-v="0.1" aria-pressed="false">0.1</button><button type="button" data-v="0.5" aria-pressed="true">0.5</button><button type="button" data-v="1" aria-pressed="false">1</button></span></span>
+      <label for="hs-eps">\(\varepsilon\) <input id="hs-eps" type="range" min="-0.3" max="2.3" step="0.01" value="0.699"><span class="val" id="hs-eps-v">5.00</span></label>
+      <button class="plain" id="hs-new" type="button">Resample batch</button>
+    </div>
+    <p class="note">Scores are log-probabilities, \(E_\theta(x,k)=\log\pi_{\theta,k}(x)\), as in the paper's training runs (THRLP). The toy uses \(\alpha=0.1\) because 39 calibration scores cannot resolve the paper's \(\alpha=0.01\).</p>
+
+    <div class="cpstep">
+      <div class="txt">
+        <h4><span class="num">1</span><span class="sc">SmoothPred</span>: indicator → sigmoid</h4>
+        <p>The hard set uses an indicator; ConfTr uses a sigmoid. Each class gets a soft membership, and their sum is a soft set size. Lower \(T\) sharpens the sigmoid toward the indicator, but then classes away from \(\tau\) get almost no gradient.</p>
+        <div class="eq">\[ \begin{aligned}C_{\theta,k}(x;\tau)&=\sigma\!\Big(\frac{E_\theta(x,k)-\tau}{T}\Big)\\&\xrightarrow[T\to0]{}\ \delta\big[E_\theta(x,k)\ge\tau\big]\end{aligned} \]</div>
+        <div class="readout" id="hs-pred-read"></div>
+        <p class="note">The paper searched \(T\in\{0.01,0.1,0.5,1\}\) and found it mattered little; in the MNIST ablation \(T=0.01\) was worst (Ineff 2.39) and \(T=1\) best (2.18) (Table D).</p>
+      </div>
+      <div class="fig">
+        <svg class="chart" id="hs-pred" viewBox="0 0 520 256" role="img" aria-label="Indicator and sigmoid memberships against log-probability, with the ten classes of one input"></svg>
+        <div class="legend"><span><i class="sw" style="background:var(--fg)"></i>hard indicator at \(\tau\)</span><span><i class="sw" style="background:var(--acc)"></i>sigmoid at \(\tau_\varepsilon\), current \(T\)</span><span><i class="sw" style="background:var(--bar)"></i>paper grid \(T\)</span><span><i class="sw" style="background:var(--ok)"></i>true class</span></div>
+      </div>
+    </div>
+
+    <div class="cpstep">
+      <div class="txt">
+        <h4><span class="num">2</span><span class="sc">SmoothCal</span>: hard quantile → smooth quantile</h4>
+        <p>Sort the 39 true-class scores and read position \(m\). The smooth version reads the same position from a <b>soft sort</b>. Here that is the soft sort of Blondel et al. (2020) with quadratic regularisation, one of the methods the paper cites. Sorted scores whose gaps are small compared with \(1/\varepsilon\) stay put; across larger gaps it pools runs of scores into blocks, whose outputs sit evenly spaced around the block's mean. \(\tau_\varepsilon\) then depends equally on every score in its block.</p>
+        <div class="eq">\[ \begin{aligned}\tau&=E_{(m)},\qquad m=\lfloor\alpha(n+1)\rfloor\\ \tau_\varepsilon&=\big[\mathrm{SoftSort}_\varepsilon\big(\{E_\theta(x_i,y_i)\}_{i\in B_{\rm cal}}\big)\big]_m\end{aligned} \]</div>
+        <div class="eq work" id="hs-q"></div>
+        <p class="note">For small enough \(\varepsilon\) this soft sort is exactly the hard sort. As \(\varepsilon\to\infty\) every output tends to the mean score, so \(\tau_\varepsilon\) drifts away from the \(\alpha\)-quantile: coverage during training is only approximate. The paper does not name the method its runs use and fixes its dispersion at \(\varepsilon=0.1\) (Table B), on a scale not comparable with this toy's \(\varepsilon\).</p>
+      </div>
+      <div class="fig">
+        <svg class="chart" id="hs-cal" viewBox="0 0 520 236" role="img" aria-label="Hard-sorted and soft-sorted calibration scores, and the weight of each score in the smooth threshold"></svg>
+        <p class="cap">Top row: the scores, hard-sorted, with \(\tau\) at position \(m\) (ringed). Middle row: the soft-sorted values, joined to their hard counterparts. Bottom: \(\partial\tau_\varepsilon/\partial E_\theta(x_i,y_i)\), the share of the threshold each calibration example controls: \(1/|\text{block}|\) inside \(\tau_\varepsilon\)'s block, 0 outside. The shares sum to 1, because shifting every score shifts \(\tau_\varepsilon\) by the same amount.</p>
+      </div>
+    </div>
+
+    <div class="cpstep">
+      <div class="txt">
+        <h4><span class="num">3</span>The gradient, by both routes</h4>
+        <p>Both stand-ins are smooth, so \(\Omega\) has a gradient with respect to every score in the batch. It arrives by the two routes of the diagram in Part 3.</p>
+        <div class="eq">① \( \displaystyle \frac{\partial\Omega}{\partial E_\theta(x,k)}=\frac{C_{\theta,k}(1-C_{\theta,k})}{T} \)</div>
+        <div class="eq">② \( \displaystyle \frac{\partial\Omega}{\partial E_\theta(x_i,y_i)}=\frac{\partial\Omega}{\partial\tau}\cdot\frac{\partial\tau_\varepsilon}{\partial E_\theta(x_i,y_i)} \)<br>\( \displaystyle \quad \frac{\partial\Omega}{\partial\tau}=-\sum_k\frac{C_{\theta,k}(1-C_{\theta,k})}{T} \)</div>
+        <p>Gradient descent moves against these. Route ① lowers the \(B_{\rm pred}\) scores that sit near \(\tau\). Route ② raises the true-class scores of the calibration examples that set \(\tau\). Since \(\Omega\) depends on scores only through \(E-\tau\), the two routes carry equal and opposite totals.</p>
+        <div class="readout" id="hs-grad-read"></div>
+        <p class="note">Shown for \(\Omega\) of one \(B_{\rm pred}\) input (with \(\kappa=1\)), with respect to scores. The training loss is the log of the batch mean, which rescales these; backpropagation through \(\pi_\theta\) then carries them to \(\theta\).</p>
+      </div>
+      <div class="fig">
+        <svg class="chart" id="hs-grad" viewBox="0 0 520 252" role="img" aria-label="Gradient bars for the prediction route and the calibration route"></svg>
+        <div class="legend"><span><i class="sw" style="background:var(--ct)"></i>① via predictions, per class of the \(B_{\rm pred}\) input</span><span><i class="sw" style="background:var(--cp)"></i>② via \(\tau\), per \(B_{\rm cal}\) example</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= Part 5: L_class and shaping ======================= -->
+<section class="paper ct" id="shape">
+  <div class="paper-head">
+    <span class="eyebrow">Part 5 · Sec. 3.2–3.3 · Eq. 4–8 · Fig. 1b</span>
+    <h2>Beyond size: a classification loss that shapes the sets</h2>
+    <p>Size alone says nothing about which classes end up together. A loss on the soft sets can.</p>
+  </div>
+
+  <div class="stage">
+    <div class="stage-title"><span class="tag">Eq. 5</span><h3>\(\mathcal L_{\rm class}\) and the loss matrix \(L\) (toy, after Fig. 1b)</h3></div>
+    <p>ConfTr can add any loss \(\mathcal L\) on the sets (Eq. 4). The paper's choice is a configurable classification loss \(\mathcal L_{\rm class}\) (Eq. 5), steered by a loss matrix \(L\):</p>
+    <div class="eq">\[ \min_\theta\ \log\Big(\mathbb E\big[\mathcal L(C_\theta(X;\tau),Y)+\lambda\,\Omega(C_\theta(X;\tau))\big]\Big) \]</div>
+    <div class="eq">\[ \mathcal L_{\rm class}(C_\theta(x;\tau),y)=\sum_{k=1}^{K}L_{y,k}\Big[\underbrace{(1-C_{\theta,k}(x;\tau))\,\delta[y=k]}_{\text{enforce } y \text{ to be in } C}+\underbrace{C_{\theta,k}(x;\tau)\,\delta[y\ne k]}_{\text{penalise } k\ne y \text{ in } C}\Big] \]</div>
+    <div class="controls">
+      <label for="lc-w">off-diagonal weight on vehicles <input id="lc-w" type="range" min="0" max="1" step="0.05" value="1"><span class="val" id="lc-w-v">1.00</span></label>
+      <span class="note">0 gives \(L=I_K\)</span>
+    </div>
+    <div class="cpstep">
+      <div class="txt">
+        <p>With \(L=I_K\) only the first term is active: the loss is \(1-C_{\theta,y}\), which enforces coverage and is zero only when the true class is fully in. This is the "\(+\mathcal L_{\rm class}\)" column of Table 1. An entry \(L_{y,k}>0\), \(y\ne k\), charges for including class \(k\) when the truth is \(y\).</p>
+        <div class="eq work" id="lc-work"></div>
+      </div>
+      <div class="fig">
+        <svg class="chart" id="lc-fig" viewBox="0 0 520 212" role="img" aria-label="Soft memberships of ten CIFAR10 classes for a cat image and the loss each class contributes"></svg>
+        <div class="legend"><span><i class="sw" style="background:color-mix(in srgb,var(--ct) 30%,var(--surface))"></i>soft membership \(C_{\theta,k}\)</span><span><i class="sw" style="background:var(--no)"></i>penalty \(L_{y,k}C_{\theta,k}\)</span><span><i class="sw" style="border:1.5px dashed var(--ok)"></i>coverage gap \(1-C_{\theta,y}\)</span></div>
+        <p class="cap">Toy soft set for a cat image (\(y=\) cat), CIFAR10 classes, names shortened. The bottom row is the loss-matrix row \(L_{\text{cat},k}\). Above the dashed line (\(C=0.5\), where \(E=\tau\)) the hard set is {cat, dog, truck}, as in the paper's Fig. 1b, where penalising vehicles gives class loss \(0+1\) and the figure shows size \(|C|=3\).</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="stage-title"><span class="tag">Sec. 3.3</span><h3>Three ways to shape the sets</h3></div>
+    <p>The paper motivates these with medical diagnosis: less ambiguity on some conditions, fewer sets that mix two often-confused diseases, or no high-risk condition inside a low-risk patient's set.</p>
+    <div class="controls">
+      <span class="grp">Loss matrix
+        <span class="seg" id="lm-mode"><button type="button" data-v="id" aria-pressed="false">\(I_K\)</button><button type="button" data-v="pair" aria-pressed="true">pair 4↔6</button><button type="button" data-v="row" aria-pressed="false">row 6</button><button type="button" data-v="k0k1" aria-pressed="false">\(L_{K_0,K_1}\)</button><button type="button" data-v="k1k0" aria-pressed="false">\(L_{K_1,K_0}\)</button></span></span>
+    </div>
+    <div class="cpstep first">
+      <div class="txt">
+        <h4 id="lm-title"></h4>
+        <p id="lm-txt"></p>
+        <p class="note">Coverage is still guaranteed and accuracy stays roughly the same, so pushing one pair apart usually raises confusion elsewhere.</p>
+      </div>
+      <div class="fig">
+        <svg class="chart" id="lm-fig" viewBox="0 0 330 300" role="img" aria-label="10 by 10 loss matrix with the active entries shaded" style="max-width:380px;justify-self:center"></svg>
+        <div class="legend" style="justify-content:center"><span><i class="sw" style="background:color-mix(in srgb,var(--ok) 55%,var(--surface))"></i>\(L_{y,y}\): enforce coverage</span><span><i class="sw" style="background:var(--no)"></i>\(L_{y,k}>0\): penalise \(k\) when truth is \(y\)</span></div>
+      </div>
+    </div>
+    <div class="cards">
+      <div class="card"><h4>(a) Class- or group-conditional inefficiency</h4>
+        <div class="eq">\[ \text{Ineff}[Y{=}y]=\frac{\sum_{i}\delta[y_i{=}y]\,|C(x_i)|}{\sum_{i}\delta[y_i{=}y]} \]</div>
+        <span class="who">Eq. 6. Tool: weight the size loss of Eq. (3) by the true class, \(\omega(Y)\cdot\Omega\).</span>
+        <span>Paper (Fig. 3, \(\omega=10\)): reductions of 20% or more for many CIFAR10 classes, including the hard class "cat"; also for groups (vehicles vs. animals); more than 30% when targeting one of CIFAR100's 20 coarse groups (5 classes each). Cost: average Ineff over all classes rises slightly.</span></div>
+      <div class="card"><h4>(b) Coverage confusion</h4>
+        <div class="eq">\[ \Sigma_{y,k}=\frac{1}{|I_{\rm test}|}\sum_{i}\delta\big[y_i{=}y\wedge k\in C(x_i)\big] \]</div>
+        <span class="who">Off-diagonals: how often \(k\) is in the set when the truth is \(y\) (Eq. 7). Tool: \(L_{y,k}>0\).</span>
+        <span>Paper (Fig. 4, Fashion-MNIST): coverage confusion of coat (4) and shirt (6) drops by roughly 1%, while that of pullover (2) with coat (4) can rise.</span></div>
+      <div class="card"><h4>(c) Mis-coverage between groups</h4>
+        <div class="eq">\[ \text{MisCover}_{0\to1}=\frac{\sum_{i}\delta\big[y_i\in K_0\wedge C(x_i)\cap K_1\ne\emptyset\big]}{\sum_{i}\delta[y_i\in K_0]} \]</div>
+        <span class="who">How often a set for a \(K_0\) example contains a \(K_1\) class (Eq. 8). Tool: \(L_{y,k}>0\) for \(y\in K_0,\ k\in K_1\).</span>
+        <span>Paper (Fig. 5): CIFAR10 with \(K_0=\{\)cat\(\}\): 98.92% → 91.60%. CIFAR100 human-made (35 classes) vs. natural (65): 40.09% → 15.77%, but Ineff rises from 10.44 to 16.50.</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= Part 6: after training ======================= -->
+<section class="paper" id="after">
+  <div class="paper-head">
+    <span class="eyebrow">Part 6 · Sec. 2.2, 3.1 · App. C</span>
+    <h2>After training: back to ordinary CP</h2>
+    <p>The training-time threshold and the smooth stand-ins are discarded. A standard, hard CP method is calibrated on held-out data, and that is where the guarantee comes from.</p>
+  </div>
+  <div class="stage">
+    <div class="stage-title"><span class="tag">Test time</span><h3>ConfTr changes inefficiency, not validity</h3></div>
+    <div class="flow">
+      <span class="n">ConfTr-trained \(\pi_\theta\)</span><span class="ar">→</span>
+      <span class="n x">training \(\tau\)</span><span class="n x"><span class="sc">SmoothCal</span></span><span class="n x"><span class="sc">SmoothPred</span></span><span class="ar">→</span>
+      <span class="n k">calibrate THR or APS (hard quantile) on held-out \(I_{\rm cal}\)</span><span class="ar">→</span>
+      <span class="n k">\(C(x)\) with \(\mathbb P(Y\in C(X))\ge1-\alpha\)</span>
+    </div>
+    <p>"After training, any CP method can be applied to re-calibrate \(\tau\) on a held-out calibration set \(I_{\rm cal}\) as usual, i.e., the thresholds \(\tau\) obtained during training are not kept" (Sec. 3.1). The smooth stand-ins only approximate coverage, exactly only as \(T,\varepsilon\to0\); that does not matter, because they are never used at test time (Sec. 2.2). The test-time predictor need not match the training one: Table 1 trains with THRLP and tests with THR or APS.</p>
+    <div class="verdict">
+      <div class="box ok"><span class="h">Unchanged: validity</span>
+        <span>\(\mathbb P\big(Y\in C(X)\big)\ge1-\alpha\) from the hard calibration on \(I_{\rm cal}\), under the usual conditions (App. C): calibration examples exchangeable with test examples, and a learning algorithm invariant to permutations of the training examples. With distinct scores it is near tight, \(\le 1-\alpha+\frac{1}{|I_{\rm cal}|+1}\).</span>
+        <span>MNIST, \(\alpha=0.01\), THR, 10 training runs (Table C): coverage <span class="stat">99.09%</span> baseline, <span class="stat">99.03%</span> ConfTr, <span class="stat">99.05%</span> ConfTr + \(\mathcal L_{\rm class}\).</span></div>
+      <div class="box acc"><span class="h">Changed: efficiency and composition</span>
+        <span>Same runs: Ineff <span class="stat">2.23</span> → <span class="stat">2.18</span> → <span class="stat">2.11</span>; accuracy 92.4% → 90.2% / 91.2%.</span>
+        <span>With the losses of Part 5, also which classes share a set and how inefficiency is spread across classes.</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= Part 7: results ======================= -->
+<section class="paper ct" id="results">
+  <div class="paper-head">
+    <span class="eyebrow">Part 7 · Results · Sec. 4.1 · Table 1</span>
+    <h2>Results: smaller sets at \(\alpha=0.01\)</h2>
+    <p>Inefficiency averaged over 10 trained models × 10 random calibration/test splits per method. ConfTr is trained with THRLP, Bel with THRL; both are evaluated with ordinary, hard THR or APS.</p>
+  </div>
+  <div class="stage">
+    <div class="stage-title"><span class="tag">Table 1</span><h3>Change in inefficiency against cross-entropy training</h3></div>
+    <div class="legend">
+      <span><svg width="12" height="12" viewBox="0 0 12 12"><rect x="1.5" y="1.5" width="9" height="9" fill="var(--surface)" stroke="var(--muted)" stroke-width="1.6"/></svg>Bel (Bellotti, 2021)</span>
+      <span><svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.2" fill="var(--surface)" stroke="var(--ct)" stroke-width="2"/></svg>ConfTr</span>
+      <span><svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill="var(--ct)"/></svg>ConfTr + \(\mathcal L_{\rm class}\) (\(L=I_K\)), labelled</span>
+      <span>vertical line: baseline</span>
+    </div>
+    <div class="figwrap"><svg class="chart" id="res-fig" viewBox="0 0 1000 262" role="img" aria-label="Dot plot of relative change in inefficiency for five datasets, THR and APS"></svg></div>
+    <p class="cap">Left of the line means smaller sets than the baseline. Bel has no APS column in the paper. Hover a mark for its value.</p>
+    <div class="tablewrap"><table class="res" id="res-tab"></table></div>
+    <p class="cap">Table 1 of the paper, with the model each dataset uses (Table A). Bold is the lowest per row and predictor; percentages are relative to the baseline, as printed for the \(+\mathcal L_{\rm class}\) column. With \(\mathcal L_{\rm class}\), ConfTr has the lowest THR inefficiency on every dataset. Without it, ConfTr ties the baseline on EMNIST (2.66) and is slightly above it on CIFAR100 (10.78 vs. 10.63). Bel is worse than the baseline on MNIST, EMNIST and CIFAR100. APS gains are larger, 11–32% with \(\mathcal L_{\rm class}\).</p>
+  </div>
+
+  <div class="stage">
+    <div class="stage-title"><span class="tag">Practice</span><h3>What the paper reports about making it work</h3></div>
+    <div class="grid2">
+      <div class="box n"><span class="h">Train with THRLP, whatever the test-time predictor</span>
+        <span>Every ConfTr model in Table 1 is trained with THR on log-probabilities, also when APS is used at test time. Training with THR or APS directly was hard, likely from limited gradient flow through probabilities (Sec. 4.1, App. I). On MNIST, ConfTr trained with APS reached Ineff 5.79 ± 3.1 across training runs, against 2.18 ± 0.025 with THRLP (Table C).</span>
+        <span class="note">Since \(\log\) is monotone, hard THR on log-probabilities returns exactly the same sets as on probabilities. The choice only changes the gradients of the smooth stand-ins.</span></div>
+      <div class="box n"><span class="h">CIFAR: only a linear layer is trained</span>
+        <span>On CIFAR, ConfTr trains a linear model on top of a pre-trained ResNet (ResNet-34 for CIFAR10, ResNet-50 for CIFAR100), whose features never see conformalization. THR gains are therefore small (−3.1%, −1.8%); APS gains stay large (−11.2%, −23.4%).</span></div>
+      <div class="box n"><span class="h">Accuracy can drop</span>
+        <span>ConfTr does not necessarily recover the baseline's accuracy (of the arg max prediction). Trained from scratch it can be 2–6% lower while still reducing inefficiency, which the paper reads as cross-entropy training not being appropriate for CP. MNIST: 92.4% → 90.2% (Table C).</span></div>
+      <div class="box n"><span class="h">Batch size matters most</span>
+        <span>MNIST ablation of ConfTr without \(\mathcal L_{\rm class}\) (Table D): with \(|B|=500\) or 1000, Ineff 2.17–2.27; with \(|B|=100\), so \(|B_{\rm cal}|=50\), it fails to converge (Ineff 7.32–9.66, accuracy 11.5–22.46%). The paper's explanation: too few calibration examples for \(\alpha=0.01\).</span>
+        <span class="note">Size weight \(\lambda\) and \(T\) had little effect; \(\varepsilon\) is fixed at 0.1. Table B's chosen MNIST setting <i>with</i> \(\mathcal L_{\rm class}\) does use \(|B|=100\).</span></div>
+    </div>
+    <p class="note">Lower \(\alpha\) at test time, with ConfTr still trained at \(\alpha=0.01\) (Table 2, EMNIST, THR): Ineff 4.10 → 3.37 (−17.8%) at \(\alpha=0.005\), and 15.73 → 13.65 (−13.2%) at \(\alpha=0.001\).</p>
+  </div>
+</section>
+
+<!-- ======================= Side by side ======================= -->
+<section style="display:grid;gap:14px">
+  <h2>Side by side</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th></th><th class="o">Cross-entropy, then CP</th><th class="c">ConfTr, then CP</th></tr></thead>
+    <tbody>
+      <tr><th>Training loss</th><td>\(-\log\pi_{\theta,y}(x)\), one label per example</td><td>\(\log\) of the \(B_{\rm pred}\) mean of \(\lambda\Omega\) (+ optional \(\mathcal L_{\rm class}\))</td></tr>
+      <tr><th>CP during training</th><td>None</td><td><span class="sc">SmoothCal</span> on \(B_{\rm cal}\), <span class="sc">SmoothPred</span> on \(B_{\rm pred}\), every update</td></tr>
+      <tr><th>Gradient reaches \(\theta\) through</th><td>\(\pi_{\theta,y}(x)\)</td><td>① \(\pi_\theta(x),\ x\in B_{\rm pred}\), and ② \(\tau\), i.e. \(\pi_\theta(x_i),\ i\in B_{\rm cal}\)</td></tr>
+      <tr><th>Training threshold</th><td>None</td><td>Recomputed per batch, differentiable, discarded after training</td></tr>
+      <tr><th>Test-time predictor</th><td>THR or APS, calibrated on held-out \(I_{\rm cal}\)</td><td>The same, calibrated the same way</td></tr>
+      <tr><th>Guarantee</th><td>\(\mathbb P(Y\in C(X))\ge1-\alpha\)</td><td>The same</td></tr>
+      <tr><th>What differs</th><td>Baseline set size</td><td>Smaller sets (Table 1), and control over which classes share them (Figs. 3–5)</td></tr>
+    </tbody>
+  </table></div>
+</section>
+</div>
+
+<script>
+// ---------- helpers (same as cp-pipelines.html) ----------
+function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function normal(r){let u=0;while(u===0)u=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*r());}
+const $=id=>document.getElementById(id);
+const sig=z=>1/(1+Math.exp(-z));
+const sum=a=>a.reduce((x,y)=>x+y,0);
+const f2=x=>x.toFixed(2), f3=x=>x.toFixed(3);
+const mn=s=>String(s).replace(/^-/,'−');
+const SUB='₀₁₂₃₄₅₆₇₈₉';
+// LaTeX inside SVG: MathJax SVG placed at baseline (x,y); falls back to plain text before MathJax loads.
+function tex(t,x,y,o={}){const size=o.size||12,anchor=o.anchor||'start',color=o.color||'var(--muted)';
+  if(!window.MJ)return `<text x="${x}" y="${y}" text-anchor="${anchor}" style="fill:${color}">${o.alt||t.replace(/\\(text|rm|mathcal|textstyle|tfrac|,|;|quad|\s)/g,' ').replace(/[\\{}^_]/g,'')}</text>`;
+  const s=MathJax.tex2svg(t,{display:false}).querySelector('svg');const vb=s.getAttribute('viewBox').split(/\s+/).map(Number);
+  const w=vb[2]/1000*size,h=vb[3]/1000*size;let x0=anchor==='end'?x-w:anchor==='middle'?x-w/2:x;
+  s.setAttribute('x',x0);s.setAttribute('y',y+vb[1]/1000*size);s.setAttribute('width',w);s.setAttribute('height',h);
+  s.removeAttribute('style');s.setAttribute('style',`color:${color};overflow:visible`);return s.outerHTML;}
+function setTex(el,html){if(window.MJ&&MathJax.typesetClear)MathJax.typesetClear([el]);el.innerHTML=html;if(window.MJ)MathJax.typeset([el]);}
+function hAxis(x0,x1,y,vmin,vmax,X,step,dec){let s=`<line x1="${x0}" y1="${y}" x2="${x1}" y2="${y}" stroke="var(--muted)"/>`;
+  for(let v=Math.ceil(vmin/step-1e-9)*step;v<=vmax+1e-9;v+=step){const x=X(v);s+=`<line x1="${x}" y1="${y}" x2="${x}" y2="${y+4}" stroke="var(--muted)"/><text x="${x}" y="${y+16}" text-anchor="middle">${mn((Math.abs(v)<1e-9?0:v).toFixed(dec))}</text>`;}return s;}
+const tri=(x,y,c)=>`<path d="M${(x-4.5).toFixed(1)} ${y+7} l4.5 -7 l4.5 7z" fill="${c||'var(--ok)'}"/>`;
+function segCtl(id,cb){$(id).addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  $(id).querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));cb(b.dataset.v);});}
+
+// ---------- toy 10-class classifier ----------
+// Random logits; the true class is lifted by `margin`, one look-alike class by a random fraction of it.
+const K=10;
+function softmax(z){const m=Math.max(...z);const e=z.map(v=>Math.exp(v-m));const s=sum(e);return e.map(v=>v/s);}
+function argmax(a){let b=0;for(let i=1;i<a.length;i++)if(a[i]>a[b])b=i;return b;}
+function genEx(r,margin){const y=Math.floor(r()*K);const z=[];for(let k=0;k<K;k++)z.push(normal(r));
+  const c=(y+1+Math.floor(r()*(K-1)))%K;z[c]+=0.9*margin*r();z[y]+=margin+0.9*normal(r);return {y,p:softmax(z)};}
+const kLow=(a,n)=>Math.floor(a*(n+1)+1e-9), kHigh=(a,n)=>Math.ceil((1-a)*(n+1)-1e-9);
+
+// ---------- Part 1: split CP ----------
+const CP={seed:12,alpha:0.1,model:'sharp'};
+const MARGIN={sharp:3.5,blurry:2.0}, NCAL=199, NSIM=4000;
+function thrCal(cal,a){const s=cal.map(e=>e.p[e.y]).sort((x,y)=>x-y);const n=s.length,k=kLow(a,n);return {tau:k<1?-Infinity:s[k-1],k,n};}
+const thrSet=(p,tau)=>p.map((v,j)=>v>=tau?j:-1).filter(j=>j>=0);
+function apsScore(p,k,u){let s=0;for(let j=0;j<p.length;j++)if(p[j]>p[k])s+=p[j];return s+u*p[k];}
+function apsCal(cal,us,a){const s=cal.map((e,i)=>apsScore(e.p,e.y,us[i])).sort((x,y)=>x-y);const n=s.length,k=kHigh(a,n);return {tau:k>n?Infinity:s[k-1],k,n};}
+const apsSet=(p,tau,u)=>p.map((_,k)=>apsScore(p,k,u)<=tau?k:-1).filter(k=>k>=0);
+// Same random draws for both classifiers: only the margin differs, so the inputs are "the same" under both.
+function cpData(model){const r=rng(CP.seed*7+1),m=MARGIN[model];const cal=[],test=[];
+  for(let i=0;i<NCAL;i++)cal.push(genEx(r,m));for(let i=0;i<4;i++)test.push(genEx(r,m));
+  const ru=rng(CP.seed*13+5);return {cal,test,uCal:cal.map(()=>ru()),uTest:test.map(()=>ru())};}
+function cpSim(model){const d=cpData(model),thr=thrCal(d.cal,CP.alpha),aps=apsCal(d.cal,d.uCal,CP.alpha);
+  const r=rng(CP.seed*31+9),m=MARGIN[model];let ct=0,st=0,ca=0,sa=0,acc=0;
+  for(let i=0;i<NSIM;i++){const e=genEx(r,m),u=r();const A=thrSet(e.p,thr.tau),B=apsSet(e.p,aps.tau,u);
+    if(A.includes(e.y))ct++;st+=A.length;if(B.includes(e.y))ca++;sa+=B.length;if(argmax(e.p)===e.y)acc++;}
+  return {thr:{cov:ct/NSIM,ineff:st/NSIM},aps:{cov:ca/NSIM,ineff:sa/NSIM},acc:acc/NSIM};}
+function panel(p,y,{x0,base,w,h,fill,tau}){const bw=w/K;let s='';
+  p.forEach((v,j)=>{const bh=Math.max(0.8,v*h);s+=`<rect x="${(x0+j*bw+1).toFixed(1)}" y="${(base-bh).toFixed(1)}" width="${(bw-2).toFixed(1)}" height="${bh.toFixed(1)}" rx="1.5" fill="${fill(j)}"/>`;});
+  s+=`<line x1="${x0}" y1="${base}" x2="${x0+w}" y2="${base}" stroke="var(--muted)" stroke-width="0.8"/>`+tri(x0+y*bw+bw/2,base+3);
+  if(tau!==undefined&&isFinite(tau)){const ty=(base-tau*h).toFixed(1);s+=`<line x1="${x0-2}" y1="${ty}" x2="${x0+w+2}" y2="${ty}" stroke="var(--fg)" stroke-width="1.2" stroke-dasharray="4 3"/>`;}
+  return s;}
+const chipList=a=>a.length?a.map(j=>`<span class="chip on">${j}</span>`).join(''):'<span class="chip">∅ empty</span>';
+
+function cpRender(){
+  const d=cpData(CP.model),{tau,k,n}=thrCal(d.cal,CP.alpha);
+  // 1: four calibration examples
+  let g='';d.cal.slice(0,4).forEach((e,i)=>{const x0=6+i*130;
+    g+=tex(`x_{${i+1}},\\ y_{${i+1}}=${e.y}`,x0+56,16,{anchor:'middle',color:'var(--fg)',alt:`x${SUB[i+1]}, y = ${e.y}`});
+    g+=panel(e.p,e.y,{x0,base:118,w:112,h:92,fill:j=>j===e.y?'var(--fg)':'var(--bar)'});
+    g+=tex(`E=${f2(e.p[e.y])}`,x0+56,150,{anchor:'middle',color:'var(--fg)',alt:`E = ${f2(e.p[e.y])}`});});
+  $('cp-cal').innerHTML=g;
+  // 2: strip of all calibration scores
+  const W=520,ml=16,mr=16,X=v=>ml+v*(W-ml-mr),rj=rng(77);let t='';
+  d.cal.forEach(e=>{const v=e.p[e.y];t+=`<circle cx="${X(v).toFixed(1)}" cy="${(24+rj()*44).toFixed(1)}" r="3.2" fill="${v>=tau?'var(--acc)':'var(--no)'}"/>`;});
+  t+=hAxis(ml,W-mr,78,0,1,X,0.2,1);
+  t+=tex('\\text{calibration score } E_\\theta(x_i,y_i)=\\pi_{\\theta,y_i}(x_i)',W/2,118,{anchor:'middle',color:'var(--fg)',alt:'calibration score E(x_i, y_i) = π_y(x_i)'});
+  if(isFinite(tau)){const xt=X(tau);t+=`<line x1="${xt}" y1="6" x2="${xt}" y2="78" stroke="var(--fg)" stroke-width="1.5" stroke-dasharray="4 3"/>`;
+    t+=tex(`\\tau=${f3(tau)}`,xt+5,15,{color:'var(--fg)',alt:`τ = ${f3(tau)}`});
+    t+=`<text x="${xt>=100?ml:xt+88}" y="15" style="fill:var(--no)">${k-1} below τ</text>`;}
+  $('cp-strip').innerHTML=t;
+  setTex($('cp-q'),`\\[ m=\\lfloor ${CP.alpha.toFixed(2)}\\times${n+1}\\rfloor=${k},\\quad \\tau=E_{(${k})}=${isFinite(tau)?f3(tau):'-\\infty'} \\]`);
+  // 3: four test inputs
+  let h='';d.test.forEach((e,i)=>{const x0=6+i*130,C=thrSet(e.p,tau),cov=C.includes(e.y);
+    h+=tex(`\\text{test } x_{${i+1}}`,x0+56,16,{anchor:'middle',color:'var(--fg)',alt:`test x${SUB[i+1]}`});
+    h+=panel(e.p,e.y,{x0,base:118,w:112,h:92,fill:j=>e.p[j]>=tau?'var(--acc)':'var(--bar)',tau});
+    h+=`<text x="${x0+56}" y="146" text-anchor="middle" class="fg">|C| = ${C.length}</text>`;
+    h+=`<text x="${x0+56}" y="162" text-anchor="middle" style="fill:${cov?'var(--ok)':'var(--no)'}">${cov?'covered':'missed'}</text>`;});
+  $('cp-test').innerHTML=h;
+  $('cp-read').innerHTML=d.test.map((e,i)=>`<span>x${SUB[i+1]}: <span class="chips">${chipList(thrSet(e.p,tau))}</span></span>`).join('');
+  // simulation for both classifiers
+  const S={sharp:cpSim('sharp'),blurry:cpSim('blurry')},cur=S[CP.model];
+  $('cp-cov').textContent=f3(cur.thr.cov);$('cp-cov').className='stat '+(cur.thr.cov>=1-CP.alpha-0.035?'good':'bad');
+  $('cp-target').textContent='≥ '+(1-CP.alpha).toFixed(2);
+  $('cp-ineff').textContent=f2(cur.thr.ineff);
+  $('cp-simtab').innerHTML='<tr><th>classifier</th><th>acc.</th><th>pred.</th><th>cover</th><th>Ineff</th></tr>'+
+    [['sharp','sharper'],['blurry','blurrier']].map(([m,l])=>['thr','aps'].map(pr=>`<tr class="${m===CP.model?'cur':''}"><td>${l}</td><td>${f2(S[m].acc)}</td><td>${pr.toUpperCase()}</td><td>${f3(S[m][pr].cov)}</td><td>${f2(S[m][pr].ineff)}</td></tr>`).join('')).join('');
+  $('gap-live').textContent=`Toy check, from Part 1 at α = ${CP.alpha.toFixed(2)} with THR: the sharper classifier covers ${f3(S.sharp.thr.cov)} with Ineff ${f2(S.sharp.thr.ineff)}; the blurrier one covers ${f3(S.blurry.thr.cov)} with Ineff ${f2(S.blurry.thr.ineff)}.`;
+  // APS on test input 1
+  const e=d.test[0],u=d.uTest[0],aps=apsCal(d.cal,d.uCal,CP.alpha),order=[...Array(K).keys()].sort((a,b)=>e.p[b]-e.p[a]);
+  const x0=20,x1=500,Xm=v=>x0+v*(x1-x0),Cs=apsSet(e.p,aps.tau,u),Cset=new Set(Cs);let cum=0,a='';
+  order.forEach(j=>{const xa=Xm(cum),xb=Xm(cum+e.p[j]),inS=Cset.has(j);
+    a+=`<rect x="${xa.toFixed(1)}" y="34" width="${Math.max(0.5,xb-xa-1.5).toFixed(1)}" height="30" rx="2" fill="${inS?'var(--acc)':'var(--bar)'}"/>`;
+    if(xb-xa>16)a+=`<text x="${((xa+xb)/2-4).toFixed(1)}" y="53" text-anchor="end" style="fill:${inS?'var(--surface)':'var(--fg)'}">${j}</text>`;
+    const xe=Xm(apsScore(e.p,j,u));a+=`<line x1="${xe.toFixed(1)}" y1="30" x2="${xe.toFixed(1)}" y2="68" stroke="var(--fg)" stroke-width="1.5"/>`;
+    if(j===e.y)a+=tri((xa+xb)/2,70);
+    cum+=e.p[j];});
+  if(isFinite(aps.tau)){const xt=Xm(Math.min(1,aps.tau));a+=`<line x1="${xt}" y1="8" x2="${xt}" y2="84" stroke="var(--fg)" stroke-width="1.5" stroke-dasharray="4 3"/>`;
+    a+=tex(`\\tau=${f3(aps.tau)}`,xt>400?xt-5:xt+5,18,{anchor:xt>400?'end':'start',color:'var(--fg)',alt:`τ = ${f3(aps.tau)}`});}
+  a+=hAxis(x0,x1,90,0,1,Xm,0.2,1);
+  a+=`<text x="${(x0+x1)/2}" y="132" text-anchor="middle" class="fg">cumulative probability, most likely class first</text>`;
+  $('aps-fig').innerHTML=a;
+  setTex($('aps-q'),`\\[ m=\\lceil ${(1-CP.alpha).toFixed(2)}\\times${NCAL+1}\\rceil=${aps.k},\\quad \\tau=E_{(${aps.k})}=${isFinite(aps.tau)?f3(aps.tau):'\\infty'} \\]`);
+  $('aps-read').innerHTML=`<span>APS set: <span class="chips">${chipList(Cs)}</span></span><span>THR set: <span class="chips">${chipList(thrSet(e.p,tau))}</span></span><span>true class ${e.y}</span><span>U = ${f2(u)}</span>`;
+}
+$('cp-alpha').addEventListener('input',e=>{CP.alpha=+e.target.value;$('cp-alpha-v').textContent=CP.alpha.toFixed(2);cpRender();});
+segCtl('cp-model',v=>{CP.model=v;cpRender();});
+$('cp-new').addEventListener('click',()=>{CP.seed=Math.floor(Math.random()*1e9);cpRender();});
+
+// ---------- Part 3: the ConfTr diagram ----------
+const DG={mode:'both'};
+function dgRender(){
+  const mk=(id,c)=>`<marker id="${id}" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10z" fill="${c}"/></marker>`;
+  const box=(x,y,w,h,st)=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6" fill="var(--surface)" stroke="${st||'var(--line)'}" stroke-width="1.3"/>`;
+  const T=(t,x,y,o)=>tex(t,x,y,Object.assign({anchor:'middle',color:'var(--fg)'},o||{}));
+  const txt=(s,x,y,o='')=>`<text x="${x}" y="${y}" text-anchor="middle" ${o}>${s}</text>`;
+  const m=DG.mode,fw=m==='fwd',o1=(m==='r1'||m==='both')?1:(fw?0:0.12),o2=(m==='r2'||m==='both')?1:(fw?0:0.12);
+  let s=`<defs>${mk('ah-f','var(--muted)')}${mk('ah-1','var(--ct)')}${mk('ah-2','var(--cp)')}</defs>`;
+  // regions
+  s+=`<rect x="405" y="35" width="390" height="85" rx="8" fill="color-mix(in srgb, var(--cp) 6%, transparent)" stroke="var(--cp)" stroke-dasharray="2 3"/>`;
+  s+=`<text x="412" y="50" style="fill:var(--cp)">Calibration</text>`;
+  s+=`<rect x="405" y="292" width="587" height="84" rx="8" fill="color-mix(in srgb, var(--ct) 6%, transparent)" stroke="var(--ct)" stroke-dasharray="2 3"/>`;
+  s+=`<text x="412" y="370" style="fill:var(--ct)">Prediction</text>`;
+  // boxes
+  s+=box(20,150,90,130)+txt('mini-batch B',65,140,'class="fg"');
+  s+=T('x_1,y_1',65,180)+T('x_2,y_2',65,204)+T('\\vdots',65,232)+T('x_{|B|},y_{|B|}',65,264);
+  s+=box(140,175,110,80,'var(--fg)')+txt('model',195,200,'class="fg"')+T('\\pi_\\theta',195,224,{size:14})+txt('weights θ',195,245);
+  s+=box(280,150,90,130)+txt('probabilities',325,140,'class="fg"')+T('\\pi_\\theta(x_i)',325,205)+txt('i ∈ B',325,228)+txt('K per input',325,250);
+  s+=box(420,60,170,45,'var(--cp)')+T('E_\\theta(x_i,y_i)',505,79)+T('\\text{true class},\\ i\\in B_{\\rm cal}',505,97,{size:10.5,color:'var(--muted)',alt:'true class, i ∈ B_cal'});
+  s+=box(630,60,150,45,'var(--cp)')+txt('<tspan style="font-variant:small-caps">SmoothCal</tspan>',705,80,'class="fg" style="font-size:12px"')+T('\\text{smooth quantile},\\ \\varepsilon',705,97,{size:10.5,color:'var(--muted)',alt:'smooth quantile, ε'});
+  s+=`<circle cx="705" cy="185" r="20" fill="var(--surface)" stroke="var(--cp)" stroke-width="1.5"/>`+T('\\tau',705,190,{size:15});
+  s+=box(420,305,170,45,'var(--ct)')+T('E_\\theta(x,k),\\ k\\in[K]',505,324)+T('\\text{all classes},\\ x\\in B_{\\rm pred}',505,342,{size:10.5,color:'var(--muted)',alt:'all classes, x ∈ B_pred'});
+  s+=box(630,305,150,45,'var(--ct)')+txt('<tspan style="font-variant:small-caps">SmoothPred</tspan>',705,324,'class="fg" style="font-size:12px"')+T('\\sigma((E-\\tau)/T)',705,342,{size:10.5,color:'var(--muted)'});
+  s+=box(820,305,160,45,'var(--ct)')+T('C_{\\theta,k}(x;\\tau)',900,324)+txt('soft set, in [0, 1]',900,342);
+  s+=box(810,150,180,85,'var(--fg)')+T('\\Omega=\\max(0,\\textstyle\\sum_k C_{\\theta,k}-\\kappa)',900,175,{size:11.5,alt:'Ω = max(0, Σ C − κ)'})+txt('+ optional class. loss L',900,197)+T('\\log\\tfrac{1}{|B_{\\rm pred}|}\\textstyle\\sum(\\mathcal L+\\lambda\\Omega)',900,222,{size:11.5,alt:'log mean(L + λΩ)'});
+  // forward arrows
+  const fa=`fill="none" stroke="var(--muted)" stroke-width="${fw?2:1.4}" marker-end="url(#ah-f)"`;
+  s+=`<g opacity="${fw?1:0.75}">`;
+  ['M110 215 H139','M250 215 H279','M370 195 H395 V82 H419','M370 235 H395 V328 H419','M590 82 H629','M705 105 V164','M705 205 V304','M590 328 H629','M780 328 H819','M900 305 V236'].forEach(d=>s+=`<path d="${d}" ${fa}/>`);
+  s+=`</g>`;
+  s+=T('50\\%\\to B_{\\rm cal}',392,50,{anchor:'end',size:11,color:'var(--muted)',alt:'50% → B_cal'});
+  s+=T('50\\%\\to B_{\\rm pred}',392,368,{anchor:'end',size:11,color:'var(--muted)',alt:'50% → B_pred'});
+  // gradient routes (backward), dashed
+  const r1=`fill="none" stroke="var(--ct)" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#ah-1)"`;
+  const r2=`fill="none" stroke="var(--cp)" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#ah-2)"`;
+  s+=`<g opacity="${o1}">`;['M914 235 V303','M820 342 H782','M630 342 H592','M420 342 H381 V249 H372','M280 229 H252'].forEach(d=>s+=`<path d="${d}" ${r1}/>`);
+  s+=`<text x="440" y="246" style="fill:var(--ct)">① via predictions on B_pred</text>`+tex('\\partial\\Omega/\\partial E_\\theta(x,k)',440,268,{color:'var(--ct)'})+`</g>`;
+  s+=`<g opacity="${o2}">`;['M886 235 V303','M820 316 H782','M719 305 V206','M719 166 V107','M630 96 H592','M420 68 H381 V181 H372','M280 201 H252'].forEach(d=>s+=`<path d="${d}" ${r2}/>`);
+  s+=`<text x="440" y="150" style="fill:var(--cp)">② via τ, then B_cal</text>`+tex('\\partial\\Omega/\\partial\\tau\\cdot\\partial\\tau/\\partial E_\\theta(x_i,y_i)',440,172,{color:'var(--cp)'})+`</g>`;
+  if(!fw)s+=txt('∇θ = ① + ②',195,300,'class="fg" style="font-size:12.5px"');
+  else s+=txt('forward pass only',195,300,'class="fg"');
+  $('dg').innerHTML=s;
+}
+segCtl('dg-mode',v=>{DG.mode=v;dgRender();});
+
+// ---------- Part 4: hard vs smooth ----------
+const HS={seed:5,T:0.5,eps:5,alpha:0.1,n:39,data:null,dseed:null};
+// Soft sort of Blondel et al. (2020), quadratic regularisation: the projection of rho/eps, rho=(n,...,1), onto the
+// permutahedron of the scores, by pool-adjacent-violators. Returns ascending outputs and, per ascending position, its pooled block.
+function softSortQ(v,eps){const n=v.length,d=[...v].sort((a,b)=>b-a),z=d.map((_,i)=>(n-i)/eps),B=[];
+  for(let i=0;i<n;i++){B.push({s:z[i]-d[i],c:1,st:i});
+    while(B.length>1){const b=B[B.length-1],a=B[B.length-2];if(a.s/a.c<b.s/b.c){a.s+=b.s;a.c+=b.c;B.pop();}else break;}}
+  const out=new Array(n),blk=new Array(n);
+  B.forEach(b=>{const m=b.s/b.c;for(let j=b.st;j<b.st+b.c;j++){out[n-1-j]=z[j]-m;blk[n-1-j]=[n-b.st-b.c,n-1-b.st];}});
+  return {out,blk};}
+function hsData(){if(HS.dseed===HS.seed)return HS.data;const r=rng(HS.seed*131+17);
+  const cal=[];for(let i=0;i<HS.n;i++)cal.push(genEx(r,2.5));const s=cal.map(e=>Math.log(e.p[e.y]));
+  const k=kLow(HS.alpha,HS.n),sorted=[...s].sort((a,b)=>a-b),tauH=sorted[k-1];let ex=null;
+  for(let t=0;t<500&&!ex;t++){const e=genEx(r,2.5),E=e.p.map(Math.log),m=E.filter(v=>v>=tauH).length;if(m>=2&&m<=4&&E[e.y]>=tauH)ex={y:e.y,E};}
+  if(!ex){const e=genEx(r,2.5);ex={y:e.y,E:e.p.map(Math.log)};}
+  HS.data={s,k,sorted,tauH,ex};HS.dseed=HS.seed;return HS.data;}
+function hsRender(){
+  const D=hsData(),T=HS.T,eps=HS.eps,E=D.ex.E;
+  const SQ=softSortQ(D.s,eps),ss=SQ.out,tauS=ss[D.k-1],bk=SQ.blk[D.k-1],bsize=bk[1]-bk[0]+1;
+  const C=E.map(e=>sig((e-tauS)/T)),soft=sum(C),hardSet=E.map((e,j)=>e>=D.tauH?j:-1).filter(j=>j>=0),Om=Math.max(0,soft-1),active=soft>1;
+  const g1=C.map(c=>active?c*(1-c)/T:0),dTau=-sum(g1);
+  // d tau_eps / d score: 1/|block| for the scores whose sorted position lies in tau_eps's block, 0 otherwise
+  const rank=new Array(HS.n);D.s.map((v,i)=>i).sort((a,b)=>D.s[a]-D.s[b]).forEach((i,r)=>{rank[i]=r;});
+  const w=D.s.map((_,i)=>rank[i]>=bk[0]&&rank[i]<=bk[1]?1/bsize:0);
+  const g2=w.map(x=>dTau*x);
+  // --- figure 1: indicator vs sigmoid ---
+  {const W=520,ml=46,mr=14,yT=26,yB=160,xmin=Math.max(-12,Math.floor(Math.min(...E,tauS,D.tauH)-0.3)),xmax=0;
+   const X=v=>ml+(Math.max(xmin,v)-xmin)/(xmax-xmin)*(W-ml-mr),Y=c=>yB-c*(yB-yT);let s='';
+   [0,0.5,1].forEach(c=>{s+=`<line x1="${ml}" y1="${Y(c)}" x2="${W-mr}" y2="${Y(c)}" stroke="var(--line)" stroke-width="0.6"/><text x="${ml-6}" y="${Y(c)+4}" text-anchor="end">${c}</text>`;});
+   s+=`<text x="6" y="${(yT+yB)/2}" text-anchor="middle" transform="rotate(-90 6 ${(yT+yB)/2})" class="fg">membership</text>`;
+   const curve=TT=>{let d='';for(let i=0;i<=300;i++){const v=xmin+(xmax-xmin)*i/300;d+=(i?'L':'M')+X(v).toFixed(1)+' '+Y(sig((v-tauS)/TT)).toFixed(1);}return d;};
+   [0.01,0.1,0.5,1].forEach(TT=>{s+=`<path d="${curve(TT)}" fill="none" stroke="var(--bar)" stroke-width="1.2"/>`;});
+   s+=`<path d="M${X(xmin)} ${Y(0)} H${X(D.tauH).toFixed(1)} V${Y(1)} H${X(xmax)}" fill="none" stroke="var(--fg)" stroke-width="1.6"/>`;
+   s+=`<line x1="${X(tauS).toFixed(1)}" y1="${yT-12}" x2="${X(tauS).toFixed(1)}" y2="${yB}" stroke="var(--acc)" stroke-width="1" stroke-dasharray="3 3"/>`;
+   s+=`<path d="${curve(T)}" fill="none" stroke="var(--acc)" stroke-width="2.4"/>`;
+   s+=tex('\\tau',X(D.tauH)-3,yT-12,{anchor:'end',color:'var(--fg)'})+tex('\\tau_\\varepsilon',X(tauS)+3,yT-12,{color:'var(--acc)'});
+   s+=`<line x1="${ml}" y1="${yB}" x2="${W-mr}" y2="${yB}" stroke="var(--muted)"/>`;
+   for(let v=xmin;v<=xmax;v++){const x=X(v);s+=`<line x1="${x}" y1="${yB}" x2="${x}" y2="${yB+4}" stroke="var(--muted)"/><text x="${x}" y="${yB+15}" text-anchor="middle">${mn(v)}</text>`;}
+   const ord=[...Array(K).keys()].sort((a,b)=>E[a]-E[b]);let lastX=-99,row=0;
+   s+=`<text x="${ml-6}" y="${yB+33}" text-anchor="end">class</text>`;
+   ord.forEach(j=>{const x=X(E[j]),yy=Y(C[j]);row=(x-lastX<13)?Math.min(row+1,2):0;lastX=x;const ty=yB+33+row*11,isY=j===D.ex.y;
+     s+=`<line x1="${x.toFixed(1)}" y1="${yB}" x2="${x.toFixed(1)}" y2="${yy.toFixed(1)}" stroke="var(--acc)" stroke-width="0.8" stroke-dasharray="2 2" opacity="0.6"/>`;
+     s+=`<circle cx="${x.toFixed(1)}" cy="${yy.toFixed(1)}" r="4.5" fill="${isY?'var(--ok)':'var(--acc)'}" stroke="var(--surface)" stroke-width="2"/>`;
+     s+=`<text x="${x.toFixed(1)}" y="${ty}" text-anchor="middle" style="${isY?'fill:var(--ok);font-weight:600':'fill:var(--fg)'}">${j}</text>`;});
+   s+=tex('\\text{score } E_\\theta(x,k)=\\log\\pi_{\\theta,k}(x)',(ml+W-mr)/2,250,{anchor:'middle',color:'var(--fg)',alt:'score E(x,k) = log π_k(x)'});
+   $('hs-pred').innerHTML=s;
+   $('hs-pred-read').innerHTML=`<span>hard set <span class="chips">${chipList(hardSet)}</span> |C| = ${hardSet.length}</span><span>soft size Σ<sub>k</sub> C<sub>k</sub> = <b>${f2(soft)}</b></span><span>Ω = max(0, ${f2(soft)} − 1) = <b>${f2(Om)}</b></span>`;}
+  // --- figure 2: hard vs smooth quantile ---
+  {const W=520,ml=72,mr=14,lo=Math.floor(Math.min(...D.s,...ss)-0.2),X=v=>ml+(v-lo)/(0-lo)*(W-ml-mr),yH=30,yS=80,yW=172;let s='';
+   s+=`<text x="${ml-8}" y="${yH+4}" text-anchor="end" class="fg">hard sort</text><text x="${ml-8}" y="${yS+4}" text-anchor="end" class="fg">soft sort</text>`;
+   s+=tex('\\partial\\tau_\\varepsilon/\\partial E_i',ml-8,yW-26,{anchor:'end',color:'var(--fg)',alt:'∂τ_ε/∂E_i'});
+   D.sorted.forEach((v,j)=>{s+=`<line x1="${X(v).toFixed(1)}" y1="${yH+3}" x2="${X(ss[j]).toFixed(1)}" y2="${yS-3}" stroke="var(--line)" stroke-width="1"/>`;});
+   D.sorted.forEach((v,j)=>{s+=`<circle cx="${X(v).toFixed(1)}" cy="${yH}" r="3" fill="var(--fg)"/>`;});
+   ss.forEach((v,j)=>{s+=`<circle cx="${X(v).toFixed(1)}" cy="${yS}" r="3" fill="var(--cp)"/>`;});
+   s+=`<circle cx="${X(D.tauH).toFixed(1)}" cy="${yH}" r="6.5" fill="none" stroke="var(--fg)" stroke-width="1.5"/><circle cx="${X(tauS).toFixed(1)}" cy="${yS}" r="6.5" fill="none" stroke="var(--cp)" stroke-width="1.5"/>`;
+   s+=`<line x1="${X(D.tauH).toFixed(1)}" y1="${yH-18}" x2="${X(D.tauH).toFixed(1)}" y2="${yH+10}" stroke="var(--fg)" stroke-width="1.3" stroke-dasharray="3 2"/>`+tex('\\tau',X(D.tauH)+4,yH-9,{color:'var(--fg)'});
+   s+=`<line x1="${X(tauS).toFixed(1)}" y1="${yS-14}" x2="${X(tauS).toFixed(1)}" y2="${yS+14}" stroke="var(--cp)" stroke-width="1.3" stroke-dasharray="3 2"/>`+tex('\\tau_\\varepsilon',X(tauS)+4,yS+22,{color:'var(--cp)'});
+   s+=`<line x1="${ml}" y1="${yW}" x2="${W-mr}" y2="${yW}" stroke="var(--line)"/>`;
+   s+=`<line x1="${ml}" y1="${yW-56}" x2="${W-mr}" y2="${yW-56}" stroke="var(--line)" stroke-width="0.6" stroke-dasharray="2 3"/><text x="${W-mr}" y="${yW-60}" text-anchor="end">1</text>`;
+   D.s.forEach((v,i)=>{const x=X(v).toFixed(1),hh=Math.max(-10,Math.min(1.05,w[i]))*56;if(Math.abs(hh)<0.4)return;
+     s+=`<line x1="${x}" y1="${yW}" x2="${x}" y2="${(yW-hh).toFixed(1)}" stroke="var(--cp)" stroke-width="2.2" stroke-linecap="round"/>`;});
+   s+=hAxis(ml,W-mr,yW+6,lo,0,X,1,0);
+   s+=tex('\\text{true-class score } E_\\theta(x_i,y_i)=\\log\\pi_{\\theta,y_i}(x_i)',(ml+W-mr)/2,230,{anchor:'middle',color:'var(--fg)',alt:'true-class score E(x_i, y_i) = log π_y(x_i)'});
+   $('hs-cal').innerHTML=s;
+   setTex($('hs-q'),`\\[ \\begin{aligned}m&=\\lfloor ${HS.alpha}\\times${HS.n+1}\\rfloor=${D.k},\\quad \\tau=E_{(${D.k})}=${D.tauH.toFixed(3)}\\\\ \\tau_\\varepsilon&=${tauS.toFixed(3)}\\quad(\\text{block of } ${bsize})\\end{aligned} \\]`);}
+  // --- figure 3: gradients by route ---
+  {const W=520,ml=34,mr=14,G=Math.max(1e-12,...g1,...g2.map(Math.abs)),H1=66,b1=96,b2=150;let s='';
+   s+=`<text x="${ml}" y="16" style="fill:var(--ct)">① via predictions: one B_pred input, by class</text>`;
+   s+=`<text x="${ml}" y="244" style="fill:var(--cp)">② via τ: the 39 B_cal examples, by true-class score →</text>`;
+   const bw1=(W-ml-mr)/K;g1.forEach((g,j)=>{const hh=g/G*H1,x=ml+j*bw1,isY=j===D.ex.y;
+     s+=`<rect x="${(x+4).toFixed(1)}" y="${(b1-hh).toFixed(1)}" width="${(bw1-8).toFixed(1)}" height="${Math.max(0,hh).toFixed(1)}" rx="2" fill="var(--ct)"/>`;
+     s+=`<text x="${(x+bw1/2).toFixed(1)}" y="${b1+13}" text-anchor="middle" style="${isY?'fill:var(--ok);font-weight:600':''}">${j}</text>`;});
+   s+=`<line x1="${ml}" y1="${b1}" x2="${W-mr}" y2="${b1}" stroke="var(--muted)"/>`;
+   const ord=D.s.map((v,i)=>i).sort((a,b)=>D.s[a]-D.s[b]),bw2=(W-ml-mr)/HS.n;
+   ord.forEach((i,r)=>{const hh=Math.abs(g2[i])/G*H1,x=ml+r*bw2,neg=g2[i]<=0;
+     s+=`<rect x="${(x+1).toFixed(1)}" y="${(neg?b2:b2-hh).toFixed(1)}" width="${(bw2-2).toFixed(1)}" height="${hh.toFixed(1)}" rx="1.5" fill="var(--cp)"/>`;});
+   s+=`<line x1="${ml}" y1="${b2}" x2="${W-mr}" y2="${b2}" stroke="var(--muted)"/>`;
+   const xk=ml+(D.k-1)*bw2+bw2/2;s+=`<text x="${xk.toFixed(1)}" y="${b2-5}" text-anchor="middle" class="fg">m</text>`;
+   s+=`<text x="${ml-6}" y="${b1-H1+4}" text-anchor="end">+</text><text x="${ml-6}" y="${b2+H1}" text-anchor="end">−</text>`;
+   if(!active)s+=`<text x="${W/2}" y="${(b1+b2)/2-12}" text-anchor="middle" class="fg">Ω = 0 here: soft size ≤ κ = 1, so no gradient</text>`;
+   $('hs-grad').innerHTML=s;
+   const sg=x=>(x>=0?'+':'−')+Math.abs(x).toFixed(3);
+   $('hs-grad-read').innerHTML=`<span>Σ ① = <b>${sg(sum(g1))}</b></span><span>Σ ② = <b>${sg(sum(g2))}</b></span><span>∂Ω/∂τ = ${sg(dTau)}</span><span>calibration examples sharing τ<sub>ε</sub>: <b>${bsize}</b></span>`;}
+}
+$('hs-T').addEventListener('input',e=>{HS.T=Math.pow(10,+e.target.value);$('hs-T-v').textContent=HS.T<0.1?HS.T.toFixed(3):HS.T.toFixed(2);
+  $('hs-Tgrid').querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',Math.abs(+b.dataset.v-HS.T)<1e-3*HS.T+1e-9?'true':'false'));hsRender();});
+segCtl('hs-Tgrid',v=>{HS.T=+v;$('hs-T').value=Math.log10(HS.T);$('hs-T-v').textContent=HS.T<0.1?HS.T.toFixed(3):HS.T.toFixed(2);hsRender();});
+$('hs-eps').addEventListener('input',e=>{HS.eps=Math.pow(10,+e.target.value);$('hs-eps-v').textContent=HS.eps<10?HS.eps.toFixed(2):HS.eps.toFixed(0);hsRender();});
+$('hs-new').addEventListener('click',()=>{HS.seed=Math.floor(Math.random()*1e9);hsRender();});
+
+// ---------- Part 5: L_class and the loss matrix ----------
+const LC={w:1};
+const CIF=['plane','car','bird','cat','deer','dog','frog','horse','ship','truck'],VEH=new Set([0,1,8,9]),LY=3;
+const LCM=[0.02,0.05,0.10,0.97,0.04,0.88,0.06,0.03,0.01,0.71]; // toy soft memberships for a cat image
+function lcRender(){const w=LC.w,L=LCM.map((_,k)=>k===LY?1:(VEH.has(k)?w:0));
+  const contrib=LCM.map((c,k)=>k===LY?L[k]*(1-c):L[k]*c),tot=sum(contrib),soft=sum(LCM),Om=Math.max(0,soft-1);
+  const ml=8,cw=50.4,base=150,h=120;let s='';
+  s+=`<line x1="${ml}" y1="${base-0.5*h}" x2="${ml+10*cw}" y2="${base-0.5*h}" stroke="var(--fg)" stroke-width="1" stroke-dasharray="4 3"/><text x="${ml+2}" y="${base-0.5*h-4}">C = 0.5</text>`;
+  LCM.forEach((c,k)=>{const x=ml+k*cw+8,bw=cw-16,isY=k===LY;
+    s+=`<rect x="${x}" y="${(base-c*h).toFixed(1)}" width="${bw}" height="${(c*h).toFixed(1)}" rx="2" fill="color-mix(in srgb, var(--ct) 30%, var(--surface))"/>`;
+    if(isY)s+=`<rect x="${x}" y="${base-h}" width="${bw}" height="${((1-c)*h).toFixed(1)}" fill="none" stroke="var(--ok)" stroke-width="1.5" stroke-dasharray="3 2"/>`;
+    else if(L[k]>0)s+=`<rect x="${x+4}" y="${(base-L[k]*c*h).toFixed(1)}" width="${bw-8}" height="${(L[k]*c*h).toFixed(1)}" rx="1.5" fill="var(--no)"/>`;
+    s+=`<text x="${x+bw/2}" y="${(base-Math.max(c,isY?1:0)*h-5).toFixed(1)}" text-anchor="middle" style="font-size:10px">${c.toFixed(2)}</text>`;
+    s+=`<text x="${x+bw/2}" y="${base+15}" text-anchor="middle" style="${isY?'fill:var(--ok);font-weight:600':'fill:var(--fg)'}">${CIF[k]}</text>`;
+    s+=`<text x="${x+bw/2}" y="${base+33}" text-anchor="middle" style="${L[k]>0?(isY?'fill:var(--ok)':'fill:var(--no)'):''}">${L[k]===0?'0':(Number.isInteger(L[k])?L[k]:L[k].toFixed(2))}</text>`;});
+  s+=`<line x1="${ml}" y1="${base}" x2="${ml+10*cw}" y2="${base}" stroke="var(--muted)"/>`;
+  s+=tex('L_{\\text{cat},k}',ml,base+56,{color:'var(--fg)',alt:'row L_cat,k'})+`<text x="${ml+10*cw}" y="${base+56}" text-anchor="end">values above: C_k</text>`;
+  $('lc-fig').innerHTML=s;
+  const ws=w.toFixed(2);
+  setTex($('lc-work'),`\\[ \\begin{aligned}\\mathcal L_{\\rm class}&=\\underbrace{1\\cdot(1-0.97)}_{\\text{cat}}\\\\&\\quad+${ws}\\cdot(\\underbrace{0.02+0.05+0.01+0.71}_{\\text{plane, car, ship, truck}})\\\\&=${tot.toFixed(3)}\\\\ \\Omega&=\\max(0,\\ ${soft.toFixed(2)}-1)=${Om.toFixed(2)}\\end{aligned} \\]`);
+}
+$('lc-w').addEventListener('input',e=>{LC.w=+e.target.value;$('lc-w-v').textContent=LC.w.toFixed(2);lcRender();});
+
+const LM={mode:'pair'};
+const LMODES={
+  id:{t:'\\(L=I_K\\): coverage only',cells:[],x:'Only the diagonal is set, so \\(\\mathcal L_{\\rm class}=1-C_{\\theta,y}(x;\\tau)\\): pull the true class into the set. This is the \\(+\\mathcal L_{\\rm class}\\) column of Table 1, where it generally helps slightly, most on datasets with many classes (EMNIST, \\(K=52\\); CIFAR100, \\(K=100\\)).'},
+  pair:{t:'One pair: coat (4) and shirt (6), Fashion-MNIST',cells:[[4,6],[6,4]],x:'Set \\(L_{4,6}>0\\) and \\(L_{6,4}>0\\) to keep coats and shirts out of each other\'s sets. As the off-diagonal weight grows, \\(\\Sigma_{4,6}\\) and \\(\\Sigma_{6,4}\\) drop by roughly 1%, while confusion of pullover (2) with coat (4) can rise (Fig. 4, left). Several pairs at once also work (Fig. 4, middle).'},
+  row:{t:'A whole row: class 6 (shirt), Fashion-MNIST',cells:[0,1,2,3,4,5,7,8,9].map(k=>[6,k]),x:'Set \\(L_{6,k}>0\\) for every \\(k\\ne6\\) but leave \\(L_{k,6}=0\\): keep other classes out of a shirt\'s set, not the reverse, so confusion is not reduced symmetrically. Confusion of 6 with classes 0, 2 and 4 falls by roughly 0.5% each, at the cost of more confusion elsewhere (Fig. 4, right).'},
+  k0k1:{t:'Group to group: \\(K_0=\\{3\\}\\) (cat) vs. \\(K_1\\) = the rest, CIFAR10',cells:[0,1,2,4,5,6,7,8,9].map(k=>[3,k]),x:'Set \\(L_{3,k}=1\\) for \\(k\\in K_1\\). With the ConfTr baseline, 98.92% of cat sets contain another class (MisCover\\(_{0\\to1}\\); reasonable at Ineff 2.84). This loss lowers it to 91.60%, with Ineff 2.89 (Fig. 5).'},
+  k1k0:{t:'The reverse: \\(L_{K_1,K_0}=1\\), CIFAR10',cells:[0,1,2,4,5,6,7,8,9].map(k=>[k,3]),x:'Set \\(L_{k,3}=1\\) for \\(k\\in K_1\\): keep "cat" out of other classes\' sets. MisCover\\(_{1\\to0}\\) falls from 36.52% to 26.43%, with Ineff 2.92 (Fig. 5).'}};
+function lmRender(){const M=LMODES[LM.mode],on=new Set(M.cells.map(([a,b])=>a*K+b)),x0=62,y0=44,c=24;let s='';
+  s+=`<text x="${x0+5*c}" y="12" text-anchor="middle" class="fg">class k in the set</text>`;
+  s+=`<text x="12" y="${y0+5*c}" text-anchor="middle" transform="rotate(-90 12 ${y0+5*c})" class="fg">true class y</text>`;
+  for(let k=0;k<K;k++)s+=`<text x="${x0+k*c+c/2}" y="${y0-8}" text-anchor="middle">${k}</text><text x="${x0-8}" y="${y0+k*c+c/2+4}" text-anchor="end">${k}</text>`;
+  for(let y=0;y<K;y++)for(let k=0;k<K;k++){const d=y===k,a=on.has(y*K+k);
+    s+=`<rect x="${x0+k*c+1}" y="${y0+y*c+1}" width="${c-2}" height="${c-2}" rx="2" fill="${d?'color-mix(in srgb, var(--ok) 55%, var(--surface))':a?'var(--no)':'var(--surface)'}" stroke="${d||a?'none':'var(--line)'}"/>`;}
+  $('lm-fig').innerHTML=s;
+  setTex($('lm-title'),M.t);setTex($('lm-txt'),M.x);}
+segCtl('lm-mode',v=>{LM.mode=v;lmRender();});
+
+// ---------- Part 7: Table 1 ----------
+// [dataset, K, model (Table A), THR: Basel, Bel, ConfTr, +Lclass, APS: Basel, ConfTr, +Lclass, printed % THR, printed % APS]
+const T1=[['MNIST',10,'linear',2.23,2.70,2.18,2.11,2.50,2.16,2.14,'-5.4%','-14.4%'],
+  ['F-MNIST',10,'2-layer MLP',2.05,1.90,1.69,1.67,2.36,1.82,1.72,'-18.5%','-27.1%'],
+  ['EMNIST',52,'2-layer MLP',2.66,3.48,2.66,2.49,4.23,2.86,2.87,'-6.4%','-32.2%'],
+  ['CIFAR10',10,'linear on ResNet-34',2.93,2.93,2.88,2.84,3.30,3.05,2.93,'-3.1%','-11.2%'],
+  ['CIFAR100',100,'linear on ResNet-50',10.63,10.91,10.78,10.44,16.62,12.99,12.73,'-1.8%','-23.4%']];
+const NAME={bel:'Bel',ct:'ConfTr',ctl:'ConfTr + L_class'};
+function marker(kind,x,y){x=x.toFixed(1);
+  if(kind==='bel')return `<rect x="${x-4.5}" y="${y-4.5}" width="9" height="9" fill="var(--surface)" stroke="var(--muted)" stroke-width="1.6"/>`;
+  if(kind==='ct')return `<circle cx="${x}" cy="${y}" r="5" fill="var(--surface)" stroke="var(--ct)" stroke-width="2"/>`;
+  return `<circle cx="${x}" cy="${y}" r="5.5" fill="var(--ct)" stroke="var(--surface)" stroke-width="2"/>`;}
+function resRender(){const rowsY=[58,92,126,160,194],vmin=-35,vmax=35;let s='';
+  const F=[{x0:120,x1:520,name:'THR',title:'THR at test time',cols:[[4,'bel'],[5,'ct'],[6,'ctl']],base:3,pr:10},{x0:580,x1:980,name:'APS',title:'APS at test time',cols:[[8,'ct'],[9,'ctl']],base:7,pr:11}];
+  F.forEach(f=>{const X=v=>f.x0+(v-vmin)/(vmax-vmin)*(f.x1-f.x0);
+    s+=`<text x="${f.x0}" y="20" class="fg" style="font-family:var(--display);font-size:13px;font-weight:600">${f.title}</text>`;
+    for(let v=-30;v<=30;v+=10){s+=`<line x1="${X(v)}" y1="36" x2="${X(v)}" y2="212" stroke="${v===0?'var(--fg)':'var(--line)'}" stroke-width="${v===0?1.3:0.6}"/><text x="${X(v)}" y="228" text-anchor="middle">${v>0?'+'+v:mn(v)}%</text>`;}
+    s+=`<text x="${(f.x0+f.x1)/2}" y="252" text-anchor="middle" class="fg">change in Ineff vs. baseline (left = smaller sets)</text>`;
+    T1.forEach((r,i)=>{const y=rowsY[i],b=r[f.base],pts=f.cols.map(([c,kind])=>({kind,v:r[c],pct:100*(r[c]-b)/b})),pl=pts.find(p=>p.kind==='ctl');
+      s+=`<line x1="${X(0)}" y1="${y}" x2="${X(pl.pct).toFixed(1)}" y2="${y}" stroke="var(--ct)" stroke-width="3" opacity="0.22"/>`;
+      pts.forEach(p=>{s+=marker(p.kind,X(p.pct),y);});
+      const xl=Math.min(...pts.map(p=>X(p.pct)))-10;s+=`<text x="${xl.toFixed(1)}" y="${y+4}" text-anchor="end">${mn(r[f.pr])}</text>`;
+      pts.forEach(p=>{const pc=(p.pct>=0?'+':'−')+Math.abs(p.pct).toFixed(1)+'%';
+        s+=`<circle cx="${X(p.pct).toFixed(1)}" cy="${y}" r="10" fill="transparent" data-tip="${r[0]} · ${f.name} · ${NAME[p.kind]}: Ineff ${p.v.toFixed(2)} vs. baseline ${b.toFixed(2)} (${pc})"/>`;});});});
+  T1.forEach((r,i)=>s+=`<text x="108" y="${rowsY[i]+4}" text-anchor="end" class="fg">${r[0]}</text>`);
+  $('res-fig').innerHTML=s;
+  const cell=(v,best,pr)=>`<td class="r">${v===best?'<b>'+v.toFixed(2)+'</b>':v.toFixed(2)}${pr?' <span class="note">('+mn(pr)+')</span>':''}</td>`;
+  let t='<thead><tr><th></th><th></th><th></th><th colspan="4" class="grp" style="text-align:center">THR</th><th colspan="3" class="grp" style="text-align:center">APS</th></tr>'+
+    '<tr><th>Dataset</th><th>K</th><th>model trained</th><th class="grp">Basel.</th><th>Bel</th><th>ConfTr</th><th>+<i>L</i><sub>class</sub></th><th class="grp">Basel.</th><th>ConfTr</th><th>+<i>L</i><sub>class</sub></th></tr></thead><tbody>';
+  T1.forEach(r=>{const bT=Math.min(r[3],r[4],r[5],r[6]),bA=Math.min(r[7],r[8],r[9]);
+    t+=`<tr><th>${r[0]}</th><td class="r">${r[1]}</td><td>${r[2]}</td>`+cell(r[3],bT).replace('<td class="r">','<td class="r grp">')+cell(r[4],bT)+cell(r[5],bT)+cell(r[6],bT,r[10])+cell(r[7],bA).replace('<td class="r">','<td class="r grp">')+cell(r[8],bA)+cell(r[9],bA,r[11])+'</tr>';});
+  $('res-tab').innerHTML=t+'</tbody>';}
+
+// tooltip for chart marks
+const tip=document.createElement('div');tip.className='tip';document.body.appendChild(tip);
+document.addEventListener('mouseover',e=>{const t=e.target.closest&&e.target.closest('[data-tip]');if(!t){tip.style.opacity=0;return;}tip.textContent=t.getAttribute('data-tip');tip.style.opacity=1;});
+document.addEventListener('mousemove',e=>{const x=Math.min(e.clientX+14,window.innerWidth-tip.offsetWidth-8);tip.style.left=x+'px';tip.style.top=(e.clientY+14)+'px';});
+
+window.renderAll=()=>{cpRender();dgRender();hsRender();lcRender();lmRender();resRender();};
+window.renderAll();
+</script>
