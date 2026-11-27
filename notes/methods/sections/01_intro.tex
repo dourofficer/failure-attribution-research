@@ -1,0 +1,104 @@
+% !TEX root = ../main.tex
+\section{Introduction and Problem Formulations}\label{sec:intro}
+
+Large Language Model (LLM) agents and Multi-Agent Systems (MAS) now tackle long-horizon workflows in software engineering, deep web research, tool orchestration, persistent memory management, and embodied control. Yet empirical audits repeatedly document high operational fragility---with failure rates ranging from $41\%$ to $86.7\%$ across mainstream MAS frameworks~\citep{cemri2025mast,zhang2025who}---because a single subtle mistake early in an execution can silently cascade across turns, tool outputs, and peer agents before surfacing as an incorrect final answer or timeout~\citep{zhao2026failureprocess,zhang2025who}.
+End-to-end evaluation reveals \emph{whether} an agent failed, but not \emph{where}, \emph{who}, or \emph{why}. \textbf{Automated failure attribution} bridges this gap by localizing the failure-responsible component(s), step(s), and/or failure mode(s) from execution traces, forming the foundation for targeted debugging, selective rollback, repair, and closed-loop policy improvement~\citep{qi2026life}.
+
+\subsection{Why Agent Failure Attribution Is Hard}
+Unlike classical software debugging---where program states are discrete, control-flow graphs are static, and executions are deterministic---LLM agent failure attribution faces five compounding difficulties:
+\begin{enumerate}
+  \item \textbf{Long horizons and context dilution:} Deep-search and coding trajectories routinely span $50$--$150+$ steps and $30\text{K}$--$100\text{K}$ tokens~\citep{liang2026searchauditor,wang2026drift,zhang2026longrca}, causing single-pass LLM judges to lose early causal clues or fixate on late symptoms.
+  \item \textbf{Delayed manifestation and error propagation:} An early epistemic or retrieval mistake may stay latent for dozens of turns~\citep{zhao2026failureprocess}; downstream agents faithfully process corrupted inputs, creating surface errors that mask the upstream root cause~\citep{guo2026blade,liao2026emfa}.
+  \item \textbf{Non-linear information flow and persistent state:} Agents cite non-adjacent earlier steps, execute parallel tool DAGs, or read/overwrite long-term memory across sessions~\citep{zhang2025graphtracer,deng2026memtrace,guan2026pararecover}, breaking purely chronological log analysis.
+  \item \textbf{Stochasticity and recoverability:} Because LLM decoding is stochastic and strong agents can self-repair early slips~\citep{bi2026agentscope,luan2026symtrace}, the chronologically first mistake need not be the decisive or unrecoverable error~\citep{barke2026agentrx,shen2026epv}.
+  \item \textbf{Partial observability and evaluator mismatch:} Many benchmarks log only agent outputs while omitting prompts, tool schemas, or environment state~\citep{chen2026traceelephant}; conversely, verifying candidate repairs with a stronger substitute model or greedy replay can misrank which interventions actually help the deployed policy~\citep{liao2026repairs}.
+\end{enumerate}
+
+\subsection{Five Formalizations of Failure Attribution in the Literature}
+A central source of confusion across recent papers is that ``failure attribution'' does not refer to a single uniform target. Let a failed trajectory be $\tau = (s_0, a_1, s_1, \dots, a_T, s_T)$ with active agent $i_t = \phi(t)$ and failure indicator $Z(\tau)=1$ (failure; $0$ denotes success). Existing methods target five distinct mathematical formulations, summarized in Table~\ref{tab:formulations}.
+
+\begin{table}[h]
+\centering\footnotesize
+\caption{Five formalizations of failure attribution across the 2025--2026 literature.}
+\label{tab:formulations}
+\fitbox{\begin{tabular}{@{}>{\bfseries}p{3.1cm}p{5.5cm}p{4.3cm}p{3.8cm}@{}}
+\toprule
+Formulation & Mathematical Target & Key Semantics / Assumption & Representative Works \\
+\midrule
+Earliest Decisive Error &
+$(i^*, t^*) = \arg\min_{(i,t):\Delta_{i,t}(\tau)=1} t$, where $\Delta_{i,t}(\tau) = \mathbb{I}[Z(\tilde{\tau}^{(i,t)})=0]$ &
+Single-step counterfactual recoverability; selects earliest step whose fix flips outcome. &
+Who\&When~\citep{zhang2025who}, AgenTracer~\citep{zhang2026agentracer}, CHIEF~\citep{wang2026chief}, EMFA~\citep{liao2026emfa}, StepFinder~\citep{zhu2026stepfinder} \\
+\midrule
+First Unrecoverable Error / PNR &
+Earliest $t^*$ after which recovery opportunity is missed or prefix value $V(h_t)$ collapses &
+Ignores transient errors later repaired by the agent/verifier; emphasizes recoverability. &
+AgentRx~\citep{barke2026agentrx}, TraceElephant~\citep{chen2026traceelephant}, Failure-as-Process~\citep{zhao2026failureprocess}, EPV~\citep{shen2026epv} \\
+\midrule
+Multi-Error / Contributing Set &
+Subset $Y(\tau) \subseteq \{1,\dots,T\}$, pairs $\{(n_k, c_k)\}$, or minimal repair family $S \subseteq V$ &
+Acknowledges compound, cascading, or emergent failures where no single step suffices. &
+OAT~\citep{yeh2026oat}, DRIFT~\citep{wang2026drift}, Aegis~\citep{kong2026aegis}, EDGE~\citep{hou2026edge}, MRFR~\citep{li2026mrfr}, MP-Bench~\citep{in2026mpbench} \\
+\midrule
+Conformal Prediction Interval &
+Contiguous set $C(\tau) = c_{j:k}$ s.t.\ $1-\alpha \le \mathbb{P}[t^* \in C(\tau)] < 1-\alpha+\frac{1}{n+1}$ &
+Trades brittle point estimates for finite-sample coverage guarantees and safe rollback. &
+CAEA~\citep{feng2026caea} \\
+\midrule
+Internal Phase-Wise Attribution &
+Decompose predictive entropy / failure gain across internal stages (Alignment, Reasoning, Decoding) &
+White-box attribution inside a policy's forward pass rather than over external text steps. &
+STAGE~\citep{anonymous2027stage} \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\paragraph{Empirical anatomy and relation to prior surveys}
+Large-scale empirical analyses underscore why process-level attribution is indispensable. \textbf{Failure as a Process}~\citep{zhao2026failureprocess} manually annotates $1{,}794$ CLI coding-agent trajectories ($>63{,}000$ steps across OpenHands, MiniSWE, and Terminus2 on Terminal-Bench), modeling failure through three stages---onset, evolution, and recovery---and finding that failures are predominantly epistemic, begin within the first few steps, and remain hidden until recovery is impossible. \textbf{LIFE Survey}~\citep{qi2026life} reviews MAS across a four-stage lifecycle (capability, collaboration, failure attribution, self-evolution) and groups attribution methods into \emph{data-driven}, \emph{constraint-guided}, and \emph{causal-inference} approaches.
+Our survey complements~\citep{qi2026life} by focusing specifically on attribution methodology at fine technical depth, incorporating late-2026 developments (e.g., EMFA, BLADE, DeFA, OAT, CAEA, StepFinder, STAGE, SearchAuditor, DRIFT, MemTrace, SymTrace, DuoTrace, AFANet, VerifyMAS, AgentLocate, EPV, MRFR), and organizing the field along an operational axis that directly governs deployment cost and engineering effort: \textbf{Prompting-Based}, \textbf{Training-Based (LLM Training Only)}, and \textbf{Other Paradigms} (Figure~\ref{fig:taxonomy}).
+
+\begin{figure}[htbp]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  node distance=4mm and 7mm,
+  root/.style={rectangle,rounded corners=3pt,draw=ink,fill=surface,thick,font=\small\bfseries,align=center,minimum height=11mm,text width=24mm},
+  cat/.style={rectangle,rounded corners=2.5pt,thick,font=\footnotesize\bfseries,align=left,minimum height=8mm,text width=36mm,inner sep=4pt},
+  sub/.style={rectangle,rounded corners=2pt,draw=rulec,fill=white,font=\scriptsize,align=left,text width=84mm,inner sep=3.5pt},
+  edge/.style={-{Stealth[length=2.2mm]},thick,draw=ink3}
+]
+\node[root] (R) {Failure\\Attribution\\Methods};
+
+% Category I
+\node[cat,draw=s1,fill=s1!12,text=s1!65!black,above right=19mm and 9mm of R] (C1) {\textbf{I. Prompting-Based}\\(Frozen LLMs, Sec.~\ref{sec:prompting})};
+\node[sub,right=7mm of C1,yshift=13mm] (C1a) {\textbf{Direct \& Scanning Judges:} Who\&When~\citep{zhang2025who}, MAST~\citep{cemri2025mast}, TRAIL~\citep{deshpande2025trail}, AgentFail~\citep{ma2025agentfail}, TraceElephant~\citep{chen2026traceelephant}, SDBL~\citep{sun2026sdbl}};
+\node[sub,below=2mm of C1a] (C1b) {\textbf{Structured Context / Constraints / Claims:} ECHO~\citep{banerjee2025echo}, AgentDebug~\citep{zhu2026agentdebug}, AgentRx~\citep{barke2026agentrx}, AgentScope~\citep{bi2026agentscope}, CORRECT~\citep{yu2026correct}, DRIFT~\citep{wang2026drift}, SearchAuditor~\citep{liang2026searchauditor}, TrajDebug~\citep{qi2026trajdebug}};
+\node[sub,below=2mm of C1b] (C1c) {\textbf{Causal \& Dependency-Graph Prompting:} A2P~\citep{weng2025a2p}, CHIEF~\citep{wang2026chief}, EMFA~\citep{liao2026emfa}, DeFA~\citep{anonymous2027defa}, BLADE~\citep{guo2026blade}, MemTrace~\citep{deng2026memtrace}, FALAT~\citep{rafi2026falat}, AIG~\citep{bakish2026aig}, EDGE~\citep{hou2026edge}, TRIAGE~\citep{wang2026triage}};
+\node[sub,below=2mm of C1c] (C1d) {\textbf{Iterative Multi-Agent \& Search:} RAFFLES~\citep{zhu2026raffles}, ErrorProbe~\citep{li2026errorprobe}, Continual Search~\citep{raj2026megarca}};
+
+% Category II
+\node[cat,draw=s2,fill=s2!12,text=s2!65!black,right=9mm of R,yshift=-3mm] (C2) {\textbf{II. Training-Based}\\(LLM Training Only, Sec.~\ref{sec:training})};
+\node[sub,below=4mm of C1d] (C2a) {\textbf{LLM RL (GRPO) Attributors:} AgenTracer-8B~\citep{zhang2026agentracer}, GraphTracer-8B~\citep{zhang2025graphtracer}, Aegis-GRPO~\citep{kong2026aegis}, HPFA~\citep{zhu2026hpfa}};
+\node[sub,below=2mm of C2a] (C2b) {\textbf{LLM SFT / Verifiers / Post-Training:} Aegis-SFT~\citep{kong2026aegis}, VerifyMAS~\citep{qiao2026verifymas}, AgentLocate~\citep{xia2026agentlocate}, AED/AET~\citep{zhu2026aed}, ParaRecover-SDE~\citep{guan2026pararecover}};
+
+% Category III
+\node[cat,draw=s3,fill=s3!12,text=s3!65!black,below right=27mm and 9mm of R] (C3) {\textbf{III. Other Paradigms}\\(Non-Prompting / Non-LLM-Train, Sec.~\ref{sec:other})};
+\node[sub,below=4mm of C2b] (C3a) {\textbf{Non-LLM Neural / Latent Models:} StepFinder~\citep{zhu2026stepfinder}, OAT~\citep{yeh2026oat}, MASC~\citep{shen2026masc}, AFANet~\citep{li2026afanet}, DuoTrace~\citep{zhang2026duotrace}, ProMAS~\citep{zhao2026promas}, TrajGuard~\citep{advani2026trajguard}, Aegis-DCL~\citep{kong2026aegis}};
+\node[sub,below=2mm of C3a] (C3b) {\textbf{Execution, Spectrum \& Replay:} FAMAS~\citep{ge2025famas}, SymTrace~\citep{luan2026symtrace}, DoVer~\citep{ma2025dover}, CausalFlow~\citep{bonagiri2026causalflow}, CAR~\citep{shah2026car}, MRFR~\citep{li2026mrfr}, EPV~\citep{shen2026epv}, Repairs-for-Whom~\citep{liao2026repairs}};
+\node[sub,below=2mm of C3b] (C3c) {\textbf{Formal Causal Discovery \& Zero-LLM Graphs:} CDC-MAS~\citep{ma2025cdcmas}, AgentTrace~\citep{wang2026agenttrace}, ASE/MMDP-SCM~\citep{triantafyllou2023ase,triantafyllou2024mmdpscm}, Chen et al.~\citep{chen2025importance}};
+\node[sub,below=2mm of C3c] (C3d) {\textbf{Conformal Set-Valued UQ:} CAEA~\citep{feng2026caea} \quad\textbar\quad \textbf{White-Box Phase-Wise:} STAGE~\citep{anonymous2027stage}, Thought Anchors~\citep{bogdan2025thoughtanchors}};
+
+% Edges
+\draw[edge,draw=s1] (R.east) -- ++(3.5mm,0) |- (C1.west);
+\draw[edge,draw=s2] (R.east) -- ++(3.5mm,0) |- (C2.west);
+\draw[edge,draw=s3] (R.east) -- ++(3.5mm,0) |- (C3.west);
+
+\foreach \n in {C1a,C1b,C1c,C1d} \draw[edge,draw=s1!70] (C1.east) -- ++(3mm,0) |- (\n.west);
+\foreach \n in {C2a,C2b} \draw[edge,draw=s2!70] (C2.east) -- ++(3mm,0) |- (\n.west);
+\foreach \n in {C3a,C3b,C3c,C3d} \draw[edge,draw=s3!70] (C3.east) -- ++(3mm,0) |- (\n.west);
+\end{tikzpicture}%
+}
+\caption{Taxonomy of failure attribution methods for LLM agent systems, strictly separating prompting-based inference over frozen LLMs (Category~I), LLM parameter training (Category~II), and five alternative methodological paradigms (Category~III).}
+\label{fig:taxonomy}
+\end{figure}
+\clearpage

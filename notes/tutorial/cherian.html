@@ -1,0 +1,353 @@
+<title>Conditional Boosting and Level-Adaptive CP</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Space+Grotesk:wght@500;600&display=swap">
+<script>
+window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},svg:{fontCache:'none'}};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg.js" async></script>
+<style>
+/* Layout: one reading column; a starting point, then one short section per upgrade (text left, figure right). Same tokens as conftr.html and dcf.html. */
+:root{
+  --bg:#f5f7fa; --surface:#ffffff; --fg:#18202c; --muted:#5b6678; --line:#d8dee7; --bar:#c3cbd7;
+  --cp:#0d766f; --ct:#3a4db3; --err:#c4342a; --ok:#2c7a37; --no:#b0352a;
+  --display:"Space Grotesk",system-ui,sans-serif; --body:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#11151c; --surface:#181e27; --fg:#e4e8ef; --muted:#9aa5b6; --line:#2b3341; --bar:#475163;
+  --cp:#3dbdb1; --ct:#8d9cff; --err:#ff6a5c; --ok:#6cc47a; --no:#ff7b6e; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11151c; --surface:#181e27; --fg:#e4e8ef; --muted:#9aa5b6; --line:#2b3341; --bar:#475163;
+  --cp:#3dbdb1; --ct:#8d9cff; --err:#ff6a5c; --ok:#6cc47a; --no:#ff7b6e; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.55}
+.wrap{max-width:1040px;margin:0 auto;padding-block:32px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:36px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.25}
+h1{font-size:2rem;font-weight:600} h2{font-size:1.45rem;font-weight:600} h3{font-size:1.02rem;font-weight:600}
+p{margin:0}
+.top{display:grid;gap:10px}
+.lede{color:var(--muted);max-width:74ch} .lede b{color:var(--fg);font-weight:600}
+.eyebrow{font-family:var(--mono);font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;color:var(--acc,var(--muted))}
+section.paper{--acc:var(--cp);display:grid;gap:18px}
+section.paper.ct{--acc:var(--ct)}
+section.paper.neu{--acc:var(--fg)}
+.paper-head{display:grid;gap:6px;border-left:4px solid var(--acc);padding-left:14px}
+.paper-head p{color:var(--muted);max-width:74ch}
+.stage{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;display:grid;gap:16px;min-width:0}
+.split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px;align-items:start}
+.split>div{display:grid;gap:10px;min-width:0;align-content:start}
+.cap{font-size:.85rem;color:var(--muted)}
+.note{font-size:.84rem;color:var(--muted)}
+.eq{background:var(--bg);border:1px solid var(--line);border-left:3px solid var(--acc);border-radius:6px;padding:8px 12px;overflow-x:auto;font-size:.95rem}
+mjx-container svg{display:inline-block}
+mjx-container[display="true"]{margin:.3em 0!important}
+mjx-container{color:inherit}
+.box{border-radius:8px;padding:12px 14px;display:grid;gap:6px;font-size:.92rem;align-content:start;min-width:0}
+.box .h{font-family:var(--mono);font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;font-weight:500}
+.box.ok{background:color-mix(in srgb,var(--ok) 11%,transparent);border:1px solid color-mix(in srgb,var(--ok) 45%,transparent)} .box.ok .h{color:var(--ok)}
+.box.no{background:color-mix(in srgb,var(--no) 9%,transparent);border:1px solid color-mix(in srgb,var(--no) 40%,transparent)} .box.no .h{color:var(--no)}
+.box.n{background:var(--bg);border:1px solid var(--line)} .box.n .h{color:var(--muted)}
+.box.acc{background:color-mix(in srgb,var(--acc) 9%,transparent);border:1px solid color-mix(in srgb,var(--acc) 40%,transparent)} .box.acc .h{color:var(--acc)}
+ul.plain{margin:0;padding-left:1.2em;display:grid;gap:6px}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.8rem;color:var(--muted);align-items:center}
+.legend svg{vertical-align:-2px;margin-right:5px}
+.figwrap{overflow-x:auto} .figwrap svg.chart{min-width:760px}
+/* diagrams */
+svg.chart{width:100%;height:auto;display:block}
+svg text{font-family:var(--mono);font-size:11px;fill:var(--muted)}
+svg .tt{font-size:13px;font-weight:500;fill:var(--fg)}
+svg .bx{fill:var(--bg);stroke:var(--bar);stroke-width:1.2}
+svg .ar{stroke:var(--muted);stroke-width:1.4;fill:none}
+svg .gr{stroke:var(--ct);stroke-width:1.6;fill:none;stroke-dasharray:6 4}
+svg .ax{stroke:var(--bar);stroke-width:1.2;fill:none}
+svg .pooled{stroke:var(--muted);stroke-width:1.5;stroke-dasharray:4 3;fill:none}
+svg .gth{stroke:var(--cp);stroke-width:2.8;fill:none}
+svg .f-muted{fill:var(--muted)} svg .f-fg{fill:var(--fg)} svg .f-cp{fill:var(--cp)} svg .f-ct{fill:var(--ct)} svg .f-bar{fill:var(--bar)}
+svg .c-cp{fill:var(--cp)} svg .c-ct{fill:var(--ct)} svg .c-err{fill:var(--err)}
+svg .band1{fill:var(--cp);opacity:.2} svg .band2{fill:var(--err);opacity:.28}
+svg .track{fill:var(--bg);stroke:var(--line);stroke-width:1}
+svg .on{fill:var(--surface);font-size:12px;font-weight:500}
+/* level cards */
+.levels{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+.lv{border:1px solid var(--line);border-radius:8px;padding:14px;display:grid;gap:8px;background:var(--bg);min-width:0;align-content:start}
+.lv.on{border-color:var(--acc)}
+.lv .h{font-family:var(--mono);font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.lv .big{font-family:var(--display);font-size:2.1rem;font-weight:600;line-height:1;font-variant-numeric:tabular-nums}
+.lv.on .big{color:var(--acc)}
+.blocks{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:4px;max-width:210px}
+.blocks i{aspect-ratio:1;border-radius:3px;border:1px solid var(--bar)}
+.blocks i.k{background:var(--acc);border-color:var(--acc)}
+/* table */
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.88rem;min-width:640px}
+th,td{text-align:left;padding:8px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+thead th{font-family:var(--display);font-weight:600}
+tbody th{font-weight:500;color:var(--muted)}
+tr:last-child td,tr:last-child th{border-bottom:0}
+@media (max-width:780px){.split,.levels{grid-template-columns:minmax(0,1fr)}}
+</style>
+
+<div class="wrap">
+<header class="top">
+  <span class="eyebrow">Cherian, Gibbs &amp; Candès · NeurIPS 2024 · arXiv 2406.09714</span>
+  <h1>Three upgrades to conformal claim filtering</h1>
+  <p class="lede">Conformal factuality filters an LLM answer. It drops the claims a scorer trusts least, so that what remains has no false claim with probability \(1-\alpha\). This paper keeps that filter and improves three things about it. <b>The threshold</b> depends on the prompt, so the guarantee holds within groups of prompts. <b>The level</b> depends on the prompt, so the answer stays useful and carries a calibrated probability. <b>The scorer</b> is trained through the procedure, so more claims survive. Toy numbers and schematic figures on this page are illustrations; the results are the paper's.</p>
+</header>
+
+<!-- ======================= Starting point ======================= -->
+<section class="paper neu" id="start">
+  <div class="paper-head">
+    <span class="eyebrow">Starting point · Mohri &amp; Hashimoto</span>
+    <h2>One filter, one threshold</h2>
+    <p>Split the answer into claims, score each claim, and keep the ones at or above a threshold. The marks show where each of the paper's three changes acts.</p>
+  </div>
+  <div class="stage">
+    <div class="figwrap"><svg class="chart" viewBox="0 0 1000 270" role="img" aria-label="Pipeline: an answer is split into claims, a scorer gives each claim a confidence, a filter keeps claims above a threshold set from calibration data. Mark 1: the threshold is set per prompt. Mark 2: the level alpha is set per prompt. Mark 3: the scorer is trained through the filter.">
+      <defs>
+        <marker id="ov-m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="f-muted"/></marker>
+        <marker id="ov-c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="f-ct"/></marker>
+      </defs>
+      <rect class="bx" x="20" y="70" width="140" height="64" rx="8"/>
+      <text class="tt" x="90" y="98" text-anchor="middle">Answer</text>
+      <text x="90" y="117" text-anchor="middle">from the LLM</text>
+      <rect class="bx" x="200" y="70" width="140" height="64" rx="8"/>
+      <text class="tt" x="270" y="98" text-anchor="middle">Claims</text>
+      <text x="270" y="117" text-anchor="middle">split by an LLM</text>
+      <rect class="bx" x="380" y="70" width="170" height="64" rx="8"/>
+      <text class="tt" x="465" y="98" text-anchor="middle">Scorer</text>
+      <text x="465" y="117" text-anchor="middle">confidence per claim</text>
+      <rect class="bx" x="590" y="70" width="180" height="64" rx="8"/>
+      <text class="tt" x="680" y="98" text-anchor="middle">Filter</text>
+      <text x="680" y="117" text-anchor="middle">keep score ≥ threshold</text>
+      <rect class="bx" x="810" y="70" width="170" height="64" rx="8"/>
+      <text class="tt" x="895" y="98" text-anchor="middle">Kept claims</text>
+      <text x="895" y="117" text-anchor="middle">error-free w.p. 1 − α</text>
+      <path class="ar" d="M160 102H198" marker-end="url(#ov-m)"/>
+      <path class="ar" d="M340 102H378" marker-end="url(#ov-m)"/>
+      <path class="ar" d="M550 102H588" marker-end="url(#ov-m)"/>
+      <path class="ar" d="M770 102H808" marker-end="url(#ov-m)"/>
+      <rect class="bx" x="590" y="196" width="180" height="56" rx="8"/>
+      <text class="tt" x="680" y="221" text-anchor="middle">Calibration data</text>
+      <text x="680" y="239" text-anchor="middle">labelled answers</text>
+      <path class="ar" d="M680 196V137" marker-end="url(#ov-m)"/>
+      <!-- mark 1 -->
+      <circle class="f-cp" cx="704" cy="166" r="10"/><text class="on" x="704" y="170" text-anchor="middle">1</text>
+      <text class="c-cp" x="720" y="170">threshold set per prompt</text>
+      <!-- mark 2 -->
+      <circle class="f-cp" cx="822" cy="48" r="10"/><text class="on" x="822" y="52" text-anchor="middle">2</text>
+      <text class="c-cp" x="838" y="52">level α set per prompt</text>
+      <!-- mark 3 -->
+      <path class="gr" d="M650 70C650 30 465 30 465 67" marker-end="url(#ov-c)"/>
+      <circle class="f-ct" cx="442" cy="20" r="10"/><text class="on" x="442" y="24" text-anchor="middle">3</text>
+      <text class="c-ct" x="458" y="24">scorer trained through the filter</text>
+    </svg></div>
+    <div class="split">
+      <div>
+        <h3>How the one threshold is set</h3>
+        <p>Each labelled calibration answer is reduced to one number \(S_i\): the score of its highest-scoring false claim. Any threshold above \(S_i\) leaves that answer error-free. The threshold is a conformal quantile of these numbers.</p>
+        <div class="eq">\[ \hat\tau=S_{(k)},\quad k=\lceil(1-\alpha)(n+1)\rceil \qquad\text{keep } C_j \text{ if } p(C_j)\ge\hat\tau \]</div>
+      </div>
+      <div>
+        <div class="box n"><span class="h">What this leaves open</span>
+          <ul class="plain">
+            <li>The guarantee is an average over prompts. It can be too lax on hard prompts and too strict on easy ones.</li>
+            <li>At a 90% level with a weak scorer, almost every claim is removed.</li>
+            <li>The scorer is fixed. Nothing tunes it for the filter it feeds.</li>
+          </ul></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= Upgrade 1 ======================= -->
+<section class="paper" id="cond">
+  <div class="paper-head">
+    <span class="eyebrow">Upgrade 1 · Sec. 3.1 · Thm. 3.1</span>
+    <h2>The threshold depends on the prompt</h2>
+    <p>Replace the single quantile with a quantile regression of \(S_i\) on features of the prompt.</p>
+  </div>
+  <div class="stage">
+    <div class="split">
+      <div>
+        <p>Choose features \(\Phi(X)\) of the prompt and answer, for example indicators of topic groups. Fit a quantile regression of the calibration scores on those features. The threshold for a new prompt is the fitted quantile at its features.</p>
+        <div class="eq">\[ \hat\tau(X)=\Phi(X)^\top\hat\beta,\qquad \hat\beta=\arg\min_{\beta}\sum_{i=1}^{n}\ell_\alpha\big(S_i-\Phi(X_i)^\top\beta\big) \]</div>
+        <p class="note">\(\ell_\alpha\) is the pinball loss, whose minimiser is the \(1-\alpha\) quantile. The paper's fit also includes the test point with an imputed score (Eq. 7), which is what makes the guarantee hold in finite samples. With a constant feature this is the starting point again.</p>
+        <div class="box ok"><span class="h">Guaranteed</span>
+          <span>The filtered answer is error-free with probability \(1-\alpha\) within every group encoded in the features, and no longer only on average. The same construction covers looser targets such as "at most 3 false claims".</span></div>
+      </div>
+      <div>
+        <svg class="chart" viewBox="0 0 520 240" role="img" aria-label="Toy: calibration scores for popular topics sit lower than for rare topics. One pooled threshold is higher than the popular group needs and lower than the rare group needs.">
+          <text class="tt" x="10" y="80">Popular</text>
+          <text class="tt" x="10" y="164">Rare</text>
+          <path class="ax" d="M110 76H490"/><path class="ax" d="M110 160H490"/>
+          <rect class="band1" x="307.6" y="68" width="98.8" height="16"/>
+          <rect class="band2" x="406.4" y="152" width="30.4" height="16"/>
+          <g class="f-fg">
+            <rect x="165.5" y="68" width="3" height="16"/><rect x="192.1" y="68" width="3" height="16"/><rect x="222.5" y="68" width="3" height="16"/><rect x="245.3" y="68" width="3" height="16"/><rect x="275.7" y="68" width="3" height="16"/><rect x="306.1" y="68" width="3" height="16"/>
+            <rect x="260.5" y="152" width="3" height="16"/><rect x="317.5" y="152" width="3" height="16"/><rect x="347.9" y="152" width="3" height="16"/><rect x="374.5" y="152" width="3" height="16"/><rect x="404.9" y="152" width="3" height="16"/><rect x="435.3" y="152" width="3" height="16"/>
+          </g>
+          <path class="pooled" d="M406.4 44V186"/>
+          <text x="406.4" y="36" text-anchor="middle">pooled threshold</text>
+          <path class="gth" d="M307.6 58V94"/><path class="gth" d="M436.8 142V178"/>
+          <text class="c-cp" x="300" y="52" text-anchor="middle">group threshold</text>
+          <text class="c-cp" x="436.8" y="194" text-anchor="middle">group threshold</text>
+          <text class="c-cp" x="357" y="104" text-anchor="middle">too strict</text>
+          <text class="c-err" x="446" y="138">too lax</text>
+          <text x="110" y="216" text-anchor="middle">0</text><text x="490" y="216" text-anchor="middle">1</text>
+          <text x="300" y="232" text-anchor="middle">score of each answer's highest false claim</text>
+        </svg>
+        <div class="legend"><span><svg width="10" height="12" viewBox="0 0 10 12"><rect class="f-fg" x="3.5" y="0" width="3" height="12"/></svg>one calibration answer</span><span><svg width="16" height="10" viewBox="0 0 16 10"><path class="pooled" d="M0 5H16"/></svg>pooled threshold</span><span><svg width="16" height="10" viewBox="0 0 16 10"><path class="gth" d="M0 5H16"/></svg>group threshold</span></div>
+        <p class="cap">Toy, \(\alpha=0.2\), six answers per group. The scorer is more reliable on popular topics, so their false claims score lower. One pooled threshold removes more claims than popular topics need, and too few for rare topics. The paper finds this pattern on Wikipedia biographies grouped by page views (Fig. 6).</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= Upgrade 2 ======================= -->
+<section class="paper" id="adaptive">
+  <div class="paper-head">
+    <span class="eyebrow">Upgrade 2 · Sec. 3.2 · Thm. 3.2</span>
+    <h2>The level depends on the prompt</h2>
+    <p>Fix what must survive, then issue the strongest guarantee each prompt allows.</p>
+  </div>
+  <div class="stage">
+    <div class="split">
+      <div>
+        <p>A fixed 90% level is the wrong promise for a hard prompt, because meeting it means deleting the answer. The paper turns the question around.</p>
+        <ul class="plain">
+          <li>Pick a usefulness target, such as keeping at least 70% of the claims.</li>
+          <li>On separate data, learn a function \(\alpha(X)\) that gives each prompt the smallest \(\alpha\) expected to meet the target.</li>
+          <li>Calibrate as in upgrade 1, with each point using its own level: \(\ell_\alpha\) becomes \(\ell_{\alpha(X_i)}\).</li>
+          <li>Report \(1-\alpha(X)\) with the filtered answer.</li>
+        </ul>
+        <div class="box ok"><span class="h">Guaranteed</span>
+          <span>The issued level is calibrated: among answers issued 70%, about 70% are error-free. This needs \(\alpha(\cdot)\) to be among the regression features.</span></div>
+        <div class="box no"><span class="h">Not guaranteed</span>
+          <span>That the target is met, or that the level is high. A weak scorer gets an honest low number.</span></div>
+      </div>
+      <div>
+        <div class="levels">
+          <div class="lv"><span class="h">Fixed level</span><span class="big">90%</span>
+            <div class="blocks" aria-hidden="true"><i class="k"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            <span class="cap">Nearly every claim is removed.</span></div>
+          <div class="lv on"><span class="h">Adaptive level</span><span class="big">63%</span>
+            <div class="blocks" aria-hidden="true"><i class="k"></i><i class="k"></i><i class="k"></i><i class="k"></i><i class="k"></i><i class="k"></i><i class="k"></i><i class="k"></i><i class="k"></i><i></i></div>
+            <span class="cap">Most of the answer survives, with its probability attached.</span></div>
+        </div>
+        <p class="cap">Schematic of the paper's Fig. 1, an answer to "How often is a shingles vaccine required?". Filled blocks are kept claims; the block counts are not the paper's. The right-hand output also uses the trained scorer of upgrade 3.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= Upgrade 3 ======================= -->
+<section class="paper ct" id="boost">
+  <div class="paper-head">
+    <span class="eyebrow">Upgrade 3 · Sec. 3.3 · Conditional boosting</span>
+    <h2>The scorer is trained through the filter</h2>
+    <p>Rehearse the calibration on training data, and move the scorer's weights so that more claims clear the threshold.</p>
+  </div>
+  <div class="stage">
+    <div class="figwrap"><svg class="chart" viewBox="0 0 1000 300" role="img" aria-label="One training step: the scorer scores a calibration half and a held-out half. A quantile regression on the calibration half gives the threshold. The number of held-out claims above the threshold is the objective, and its gradient updates the scorer's weights.">
+      <defs>
+        <marker id="bd-m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="f-muted"/></marker>
+        <marker id="bd-c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="f-ct"/></marker>
+      </defs>
+      <rect class="bx" x="20" y="110" width="150" height="64" rx="8"/>
+      <text class="tt" x="95" y="138" text-anchor="middle">Scorer</text>
+      <text x="95" y="157" text-anchor="middle">weights θ</text>
+      <rect class="bx" x="240" y="40" width="170" height="64" rx="8"/>
+      <text class="tt" x="325" y="68" text-anchor="middle">Calibration half</text>
+      <text x="325" y="87" text-anchor="middle">labelled answers</text>
+      <rect class="bx" x="240" y="180" width="170" height="64" rx="8"/>
+      <text class="tt" x="325" y="208" text-anchor="middle">Held-out half</text>
+      <text x="325" y="227" text-anchor="middle">claims to keep</text>
+      <rect class="bx" x="480" y="40" width="200" height="64" rx="8"/>
+      <text class="tt" x="580" y="68" text-anchor="middle">Quantile regression</text>
+      <text x="580" y="87" text-anchor="middle">threshold from d points</text>
+      <rect class="bx" x="760" y="110" width="220" height="64" rx="8"/>
+      <text class="tt" x="870" y="138" text-anchor="middle">Claims kept</text>
+      <text x="870" y="157" text-anchor="middle">sigmoid(score − threshold)</text>
+      <path class="ar" d="M170 128L238 79" marker-end="url(#bd-m)"/>
+      <path class="ar" d="M170 156L238 205" marker-end="url(#bd-m)"/>
+      <text x="212" y="146" text-anchor="middle">scores</text>
+      <path class="ar" d="M410 72H478" marker-end="url(#bd-m)"/>
+      <path class="ar" d="M680 72L758 127" marker-end="url(#bd-m)"/>
+      <text x="728" y="88">threshold</text>
+      <path class="ar" d="M410 212L758 158" marker-end="url(#bd-m)"/>
+      <text x="560" y="208">scores</text>
+      <path class="gr" d="M870 174V268H95V178" marker-end="url(#bd-c)"/>
+      <text class="c-ct" x="482" y="288" text-anchor="middle">gradient step on θ, then split again</text>
+    </svg></div>
+    <div class="split">
+      <div>
+        <p>The scorer \(p_\theta\) has weights \(\theta\). Each step splits the training data at random, fits the threshold on one half, and counts the claims kept on the other.</p>
+        <div class="eq">\[ \max_\theta\ \sum_{i\,\in\,\text{held-out}}\ \sum_{j}\ \mathbf 1\big\{\,p_\theta(C_{ij})\ge\hat\tau_i(\theta)\,\big\} \]</div>
+        <p>Two things block the gradient, and each has a fix.</p>
+        <ul class="plain">
+          <li><b>The indicator is a step.</b> Replace it with a sigmoid, as ConfTr does.</li>
+          <li><b>The threshold depends on \(\theta\).</b> Quantile regression is a linear program. Its fitted line passes exactly through \(d\) of the calibration points, called the basis \(B\), where \(d\) is the number of features. So the threshold is a linear function of those \(d\) scores and can be differentiated exactly.</li>
+        </ul>
+        <div class="eq">\[ \hat\tau_i(\theta)=\Phi(X_i)^\top\,\Phi_B^{-1}\,S_B(\theta) \]</div>
+      </div>
+      <div>
+        <div class="box acc"><span class="h">At test time</span>
+          <span>Freeze \(\theta\), then run upgrades 1 and 2 as usual on fresh calibration data. Nothing is smoothed there, so the guarantees hold for the trained scorer.</span></div>
+        <div class="box n"><span class="h">Two details that matter</span>
+          <span>The objective counts every kept claim, true or false. Labels enter only through the calibration scores \(S_i\), which set the threshold.</span>
+          <span>What is trained is small: three or four weights that mix existing claim scores, such as agreement across resampled answers and the model's self-reported confidence.</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= Results ======================= -->
+<section class="paper neu" id="results">
+  <div class="paper-head">
+    <span class="eyebrow">Results · Sec. 1.1, 4.2</span>
+    <h2>What it buys</h2>
+    <p>Medical long-form question answering (MedLFQA), with zero false claims as the target.</p>
+  </div>
+  <div class="stage">
+    <div class="split">
+      <div>
+        <h3>Mean share of claims kept at a 90% level</h3>
+        <svg class="chart" viewBox="0 0 520 96" role="img" aria-label="Mean share of claims kept: 24 percent with the frequency score, 39 percent with the boosted score.">
+          <text x="10" y="33">Frequency score</text>
+          <rect class="track" x="170" y="20" width="300" height="18" rx="3"/>
+          <rect class="f-bar" x="170" y="20" width="72" height="18" rx="3"/>
+          <text class="tt" x="250" y="34">24%</text>
+          <text x="10" y="69">Boosted score</text>
+          <rect class="track" x="170" y="56" width="300" height="18" rx="3"/>
+          <rect class="f-ct" x="170" y="56" width="117" height="18" rx="3"/>
+          <text class="tt" x="295" y="70">39%</text>
+        </svg>
+      </div>
+      <div>
+        <ul class="plain">
+          <li><b>Training the scorer</b> raises the mean share of claims kept from 24% to 39%.</li>
+          <li><b>Adapting the level</b>, with a target of 70% of claims kept, meets the target on most examples, and the share of error-free answers tracks the issued level.</li>
+          <li><b>The limit:</b> the filter is only as good as its scores. Training reweights existing scores and cannot add signal they lack.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= Comparison ======================= -->
+<section class="paper neu" id="compare">
+  <div class="paper-head">
+    <span class="eyebrow">Reading note</span>
+    <h2>Next to ConfTr and DCF</h2>
+    <p>This table is the page's own summary of the three method sections. It is not in the paper.</p>
+  </div>
+  <div class="tablewrap"><table>
+    <thead><tr><th></th><th>ConfTr</th><th>DCF</th><th>Conditional boosting</th></tr></thead>
+    <tbody>
+      <tr><th>Filters</th><td>class labels into a set</td><td>claims in a dependency graph</td><td>claims in a list, no structure</td></tr>
+      <tr><th>Threshold during training</th><td>smooth quantile</td><td>soft quantile of soft per-graph scores</td><td>exact quantile regression, gradient through the basis</td></tr>
+      <tr><th>Objective</th><td>small sets</td><td>true claims kept</td><td>all claims kept, labels unused</td></tr>
+      <tr><th>Guarantee at test time</th><td>on average</td><td>on average, coherent factuality</td><td>per group, with a per-prompt level</td></tr>
+      <tr><th>What is trained</th><td>a classifier</td><td>a claim scorer over hand-made features</td><td>3–4 weights mixing existing scores</td></tr>
+    </tbody></table></div>
+</section>
+</div>

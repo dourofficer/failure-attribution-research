@@ -1,0 +1,160 @@
+% Work Package 2: Conformal Training with a Reasoning Model (LRM) via Hybrid Modified GRPO
+\documentclass[10pt,a4paper]{article}
+\input{wp_style}
+
+\newcommand{\Lcls}{\mathcal{L}^{\mathrm{cls}}}
+\newcommand{\Lsize}{\mathcal{L}^{\mathrm{size}}}
+
+\begin{document}
+
+\wpheader
+  {Work Package 2 \textperiodcentered\ Implementation Spec}
+  {Conformal Training with a Reasoning Model (LRM) via Modified GRPO}
+  {Distributional LRM trained with hybrid exact-logit + clipped GRPO and DPSM, evaluated with vanilla split CP}
+  {\tagpill{Backbone:} Qwen3-8B + LoRA \ \textcolor{rulegray}{|}\ 
+   \tagpill{Readout:} KV-cached $\pi_\theta(t\mid x,z)$ \ \textcolor{rulegray}{|}\ 
+   \tagpill{Score:} $S=1-\pi_t$ \ \textcolor{rulegray}{|}\ 
+   \tagpill{RL:} Hybrid mGRPO + DPSM ($\alpha=0.1$)}
+
+% =====================================================================
+\section{Implementation Steps}
+
+\subsection{Step 1: Prompting and Distributional Step Readout}
+\begin{enumerate}
+\item Load \textbf{Qwen3-8B} (thinking mode) with trainable LoRA adapters $\theta$ on attention/MLP layers ($r=16, \alpha_{\mathrm{lora}}=32$); use base weights (LoRA disabled) as frozen $p_{\mathrm{ref}}$.
+\item Format $x=(s_1,\dots,s_T)$ with numbered steps \texttt{Step 1}--\texttt{Step T}; instruct reasoning in \texttt{<think>...</think>} followed by the step index immediately after \texttt{<answer>}.
+\item \textbf{Rollouts:} Sample $G$ chains $z_1,\dots,z_G\sim p_{\theta_{\mathrm{old}}}(\cdot\mid x)$ (temp $0.7$--$1.0$, max $L_{\max}$ tokens), stopping right after \texttt{<answer>} (if $L_{\max}$ is hit mid-thought, append \texttt{</think><answer>}).
+\item \textbf{KV-cached multi-token readout:} Reuse the prefix KV cache of $(x,z)$ to score every step index $t\in[T]$ with tokens $\mathrm{tok}(t)=(u_{t,1},\dots,u_{t,K_t})$:
+\begin{equation}
+\ell_\theta(t\mid x,z) = \sum_{k=1}^{K_t}\log p_\theta(u_{t,k}\mid x,z,u_{t,<k}), \qquad
+\pi_\theta(t\mid x,z) = \frac{\exp \ell_\theta(t\mid x,z)}{\sum_{t'=1}^{T}\exp \ell_\theta(t'\mid x,z)}. \label{eq:wp2-dist}
+\end{equation}
+Set $S_\theta(x,t;z)=1-\pi_\theta(t\mid x,z)$ and $\Smin_\theta(x,Y;z)=1-\max_{t\in Y}\pi_\theta(t\mid x,z)$.
+\item \textbf{Test time:} Greedy-decode one reasoning $z$ (temp $0$), compute $\pi_\theta(\cdot\mid x,z)$ once, and apply $\Qhat(\alpha)$ from Section~\ref{sec:vanilla-cp}.
+\end{enumerate}
+
+\subsection{Step 2: Rewards and Per-Rollout Loss}
+With $\varepsilon=10^{-4}$, threshold $q\in[0,1]$, temperature $\tau>0$, and effective weight $\lambda_{\mathrm{eff}}$ ($\lambda_{\mathrm{eff}}=0$ on $B^1\subset D_1$; $\lambda_{\mathrm{eff}}=\lambda$ on $B^2\subset D_2$):
+\begin{align}
+\Lcls_\theta(x,Y,z) &= -\log\!\Big(\sum_{t\in Y}\pi_\theta(t\mid x,z)+\varepsilon\Big), &
+\Lsize_\theta(x,z;q) &= \frac{1}{T}\sum_{t=1}^{T}\sigma\!\left(\frac{q - 1 + \pi_\theta(t\mid x,z)}{\tau}\right), \label{eq:wp2-terms}\\
+\mathcal{J}_\theta(x,Y,z;q,\lambda_{\mathrm{eff}}) &= \Lcls_\theta(x,Y,z) + \lambda_{\mathrm{eff}}\,\Lsize_\theta(x,z;q), &
+r(x,Y,z;q,\lambda_{\mathrm{eff}}) &= -\mathcal{J}_\theta(x,Y,z;q,\lambda_{\mathrm{eff}}). \label{eq:wp2-comb}
+\end{align}
+Note: $B^2$ keeps $r^{\mathrm{cls}}$ alongside $\lambda r^{\mathrm{size}}$ so $\lambda$ does not cancel under GRPO group standardization, while $q$ updates strictly on $B^1$ to avoid in-sample bias (Appendix~\ref{app:wp2-split}).
+
+\subsection{Step 3: Hybrid Modified-GRPO Objective, Gradients, and Algorithm}
+For trajectory $(x_i,Y_i)$ with $G$ rollouts $z_{i,1..G}\sim p_{\theta_{\mathrm{old}}}(\cdot\mid x_i)$ of lengths $L_{i,g}$, define detached group advantages and token ratios:
+\[
+A_{i,g} = \frac{r_{i,g} - \operatorname{mean}_{g'} r_{i,g'}}{\operatorname{std}_{g'} r_{i,g'} + 10^{-6}}, \qquad
+\rho_{i,g,l}(\theta) = \frac{p_\theta(z_{i,g,l}\mid x_i, z_{i,g,<l})}{p_{\theta_{\mathrm{old}}}(z_{i,g,l}\mid x_i, z_{i,g,<l})}.
+\]
+\textbf{Minimize the hybrid objective} (exact logit loss + clipped GRPO reasoning surrogate + KL):
+\begin{align}
+\widehat{\mathcal{L}}^{\mathrm{mGRPO}}(\theta; x_i,Y_i,q,\lambda_{\mathrm{eff}})
+&= \underbrace{\frac{1}{G}\sum_{g=1}^{G}\mathcal{J}_\theta(x_i,Y_i,z_{i,g};q,\lambda_{\mathrm{eff}})}_{\text{direct exact-logit loss}}
++ \beta_{\mathrm{KL}}\,\widehat{\mathbb{D}}_{\mathrm{KL}}(p_\theta \,\|\, p_{\mathrm{ref}}) \nonumber\\
+&\quad - \underbrace{\frac{\omega_{\mathrm{pg}}}{G}\sum_{g=1}^{G}\frac{1}{L_{i,g}}\sum_{l=1}^{L_{i,g}}\min\!\Big(\rho_{i,g,l}(\theta)A_{i,g},\; \operatorname{clip}(\rho_{i,g,l}(\theta),1-\epsilon_{\mathrm{clip}},1+\epsilon_{\mathrm{clip}})A_{i,g}\Big)}_{\text{clipped GRPO reasoning surrogate}}. \label{eq:wp2-obj}
+\end{align}
+\textbf{Explicit gradient} ($m_{i,g,l}\in\{0,1\}$ is the unclipped mask; $P_Y=\sum_{s\in Y}\pi_s$, $\tilde c'_t=\frac{1}{\tau}\tilde c_t(1-\tilde c_t)$):
+\begin{align}
+\nabla_\theta \widehat{\mathcal{L}}^{\mathrm{mGRPO}}
+&= \frac{1}{G}\sum_{g=1}^{G}\sum_{k=1}^{T}\left(\frac{\partial\Lcls}{\partial\ell_k} + \lambda_{\mathrm{eff}}\frac{\partial\Lsize}{\partial\ell_k}\right)\nabla_\theta\ell_\theta(k\mid x_i,z_{i,g})
++ \beta_{\mathrm{KL}}\,\nabla_\theta\widehat{\mathbb{D}}_{\mathrm{KL}} \nonumber\\
+&\quad - \frac{\omega_{\mathrm{pg}}}{G}\sum_{g=1}^{G}\frac{A_{i,g}}{L_{i,g}}\sum_{l=1}^{L_{i,g}} m_{i,g,l}\,\rho_{i,g,l}(\theta)\,\nabla_\theta\log p_\theta(z_{i,g,l}\mid x_i, z_{i,g,<l}), \label{eq:wp2-grad}
+\end{align}
+where
+\begin{equation}
+\frac{\partial \Lcls}{\partial \ell_k} = \frac{P_Y}{P_Y+\varepsilon}\,\pi_k - \frac{\ind[k\in Y]}{P_Y+\varepsilon}\,\pi_k, \qquad
+\frac{\partial \Lsize}{\partial \ell_k} = \frac{\pi_k}{T}\Big(\tilde c'_k - \sum_{t=1}^{T}\pi_t\tilde c'_t\Big). \label{eq:wp2-lgrad}
+\end{equation}
+
+\begin{tcolorbox}[algbox,title={Algorithm 1 \textperiodcentered\ Hybrid Modified GRPO + DPSM for Distributional LRM}]
+\small
+\textbf{Inputs:} Disjoint $D_1,D_2\subset\Dtr\setminus\Dval$; $\alpha=0.1$; $G, b, K$; $\lambda, \tau, \eta, \gamma, \epsilon_{\mathrm{clip}}, \beta_{\mathrm{KL}}, \omega_{\mathrm{pg}}$. \quad \textbf{Init:} LoRA $\theta_0$, $\theta_{\mathrm{old}}\leftarrow\theta_0$, $q_0=0.5$.
+\begin{enumerate}[leftmargin=1.4em,itemsep=2pt]
+\item \textbf{For} $k=1,\dots,K$:
+  \begin{enumerate}[label=\arabic{enumi}.\arabic*.,leftmargin=1.6em,itemsep=1.5pt]
+  \item Sample batches $B^1\subset D_1$ and $B^2\subset D_2$ of size $b$.
+  \item \textbf{Sample rollouts (no grad):} Draw $G$ chains $z_{i,1..G}\sim p_{\theta_{\mathrm{old}}}(\cdot\mid x_i)$ for all $x_i\in B^1\cup B^2$; cache old token log-probs.
+  \item \textbf{Forward pass under $\theta$:} Compute $\log p_\theta(z_{i,g,l}\mid\cdot)$ and KV-cached step distribution $\pi_\theta(\cdot\mid x_i,z_{i,g})$ via \eqref{eq:wp2-dist}.
+  \item \textbf{Compute hybrid loss \eqref{eq:wp2-obj}:} use $\lambda_{\mathrm{eff}}=0$ on $B^1$, and $\lambda_{\mathrm{eff}}=\lambda$ with \texttt{stop\_grad($q$)} on $B^2$.
+  \item \textbf{LoRA step:} Backpropagate mean loss over $B^1\cup B^2$ via \eqref{eq:wp2-grad}, clip grad norm to $1.0$, step AdamW ($\eta$).
+  \item \textbf{Threshold step ($B^1$, no grad to $\theta$):} with pre-update $\Smin_{i,g}=1-\max_{t\in Y_i}\pi_\theta(t\mid x_i,z_{i,g})$,
+  \[
+  q \leftarrow \mathrm{clip}_{[0,1]}\!\left(q - \gamma\left(\alpha - \frac{\#\{(i,g)\in B^1\times[G] : \Smin_{i,g}\ge q\}}{|B^1|\,G}\right)\right).
+  \]
+  \item Sync $\theta_{\mathrm{old}}\leftarrow\theta$ ($\mu_{\mathrm{grpo}}=1$ on-policy step per rollout batch).
+  \end{enumerate}
+\item \textbf{Output:} Discard $q$; select best checkpoint $\theta^\star$ on $\Dval$ and calibrate $\Qhat(\alpha)$ on $\Dcal$ (Section~\ref{sec:vanilla-cp}).
+\end{enumerate}
+\end{tcolorbox}
+
+\textbf{Default config (tune on $\Dval$):} $G=8$, $b=8$/half (128 rollouts/step), $\mu_{\mathrm{grpo}}=1$, $\epsilon_{\mathrm{clip}}=0.2$, $\omega_{\mathrm{pg}}=1$, $\beta_{\mathrm{KL}}\in\{0,0.01\}$; $\eta\in\{5\!\cdot\!10^{-6},10^{-5},2\!\cdot\!10^{-5}\}$; $\lambda\in\{0.2,0.5,1,2\}$; $\tau\in\{0.01,0.05,0.1\}$; $\gamma\in\{5\!\cdot\!10^{-3},10^{-2},5\!\cdot\!10^{-2}\}$; 3 seeds.
+
+% =====================================================================
+\input{shared_eval}
+
+% =====================================================================
+\section{Required Baselines and Claim Criteria} \label{sec:baselines}
+
+\smallskip
+{\small\renewcommand{\arraystretch}{1.08}%
+\noindent\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{3.4cm} L L@{}}\toprule
+\sffamily\bfseries Baseline & \sffamily\bfseries Specification & \sffamily\bfseries Claim Isolated \\\midrule
+\textbf{B1. Correctness-only mGRPO} & Algorithm~1 with $\lambda=0$ on all of $\Dtr\setminus\Dval$ ($r=r^{\mathrm{cls}}$, no $q$) + vanilla split CP. & Primary: does conformal size training beat correctness-only RL? \\
+\textbf{B2. Fixed-threshold mGRPO} & Algorithm~1 with constant $q_{\mathrm{fix}}\in(0,1)$ tuned on $\Dval$ (no pinball update; $\lambda_{\mathrm{eff}}=\lambda$ on all traces) + vanilla split CP. & Non-conformal size baseline: value of learning the $(1-\alpha)$-quantile $q$ vs.\ fixed threshold. \\
+\textbf{B3. Temp.\ scaling (on B1)} & Tune $T_{\mathrm{temp}}>0$ on B1 step logits $\ell_\theta/T_{\mathrm{temp}}$ on $\Dval$ + split CP. & Can post-hoc sharpening replace conformal RL? \\
+\textbf{B4. Base LRM (zero-shot)} & Frozen Qwen3-8B with Step~1 prompt \& greedy readout + split CP. & Total gain from RL adaptation. \\
+\textbf{B5. WP1 \& Floors} & WP1 encoder (frozen Qwen3-8B) + calibrated random \& prior floors. & Gain of LRM reasoning adaptation over frozen encoder. \\\bottomrule
+\end{tabularx}}
+\medskip
+
+\begin{tcolorbox}[critbox,title={Claim Criteria (When WP2 Supports RQ1 \& RQ2)}]
+\small
+(1) $\widehat{\mathrm{Cov}}$ lies inside the $\mathrm{Beta}(k,m+1-k)$ interval on $\Dtest$ and recalibrated external splits.
+(2) $\widehat{\mathrm{Ineff}}_{\mathrm{rel}}$ and $\widehat{\mathrm{Ineff}}$ beat \textbf{B1}, \textbf{B2}, and \textbf{B3} at $\alpha=0.1$ without degrading at $\alpha\in\{0.05,0.2\}$.
+(3) Empty-set rates remain controlled and length-tercile coverage stays near $1-\alpha$.
+\end{tcolorbox}
+
+% =====================================================================
+\clearpage
+\appendix
+\section{Appendix: Derivations, Alternatives, and Caveats}
+
+\subsection{Derivation of the Hybrid Modified-GRPO Gradient} \label{app:wp2-grad}
+Minimizing $F(\theta) = \E_{z\sim p_\theta(\cdot\mid x)}[\mathcal{J}_\theta(x,Y,z;q,\lambda_{\mathrm{eff}})]$ via the product rule and log-derivative identity gives
+\[
+\nabla_\theta F(\theta) = \E_{z\sim p_\theta(\cdot\mid x)}\Big[\nabla_\theta \mathcal{J}_\theta(x,Y,z) - \big(r(x,Y,z) - b(x)\big)\,\nabla_\theta\log p_\theta(z\mid x)\Big],
+\]
+where $r=-\mathcal{J}_\theta$ and any $z$-independent baseline $b(x)$ has zero expectation. Replacing the score-function term with GRPO's group-standardized advantage $A_g$ and clipped token ratio $\rho_{g,l}$ yields \eqref{eq:wp2-obj}--\eqref{eq:wp2-grad}:
+\begin{itemize}
+\item \textbf{Scale factor $\omega_{\mathrm{pg}}$:} GRPO divides by $\operatorname{std}_g(r_g)$ and averages over $L_g$; $\omega_{\mathrm{pg}}=1$ balances both gradient terms, while $\omega_{\mathrm{pg}}=\operatorname{std}_g(r_g)\cdot L_g$ recovers the exact unnormalized REINFORCE scale at $\theta=\theta_{\mathrm{old}}$.
+\item \textbf{Unbiased pathwise term:} Using $\mu_{\mathrm{grpo}}=1$ ensures $\theta=\theta_{\mathrm{old}}$ when evaluating $\nabla_\theta\mathcal{J}_\theta$, keeping the pathwise gradient unbiased (for $\mu_{\mathrm{grpo}}>1$ it becomes a local on-policy approximation).
+\item \textbf{Step-logit derivatives \eqref{eq:wp2-lgrad}:} Follow immediately from $\frac{\partial\pi_t}{\partial\ell_k}=\pi_t(\delta_{tk}-\pi_k)$; both sum to $0$ over $k\in[T]$ and are computed automatically by autograd through \eqref{eq:wp2-obj}.
+\end{itemize}
+
+\subsection{Why $B^2$ Keeps $r^{\mathrm{cls}}$ and Why $r^{\mathrm{cls}}$ Uses Log-Probability} \label{app:wp2-split}
+\begin{itemize}
+\item \textbf{Avoiding $\lambda$-cancellation on $B^2$:} Because GRPO standardizes rewards \emph{within} each trajectory's group, a size-only reward $\lambda r^{\mathrm{size}}_{j,g}$ cancels $\lambda$ in $A_{j,g}=(\lambda r^{\mathrm{size}}_{j,g}-\operatorname{mean})/(\operatorname{std}+\epsilon)$ and drops all correctness signal on $B^2$. Keeping $r^{\mathrm{cls}}+\lambda r^{\mathrm{size}}$ on $B^2$ preserves the trade-off while updating $q$ solely on $B^1\subset D_1$ prevents in-sample bias in $q$.
+\item \textbf{Log-prob vs.\ linear correctness reward:} A linear reward $\sum_{t\in Y}\pi_t$ barely distinguishes $\pi_{t^*}=0.05$ from $10^{-5}$, letting GRPO over-sharpen $z$ into near one-hot $\pi$. When top-1 accuracy is $<50\%$, this pushes $\Smin\to 1$ and blows up test-time $\Qhat(0.1)$. Log-probability $\log(\sum_{t\in Y}\pi_t+\varepsilon)$ penalizes probability collapse sharply.
+\end{itemize}
+
+\subsection{Vanilla Split-CP Coverage Proof} \label{app:cp-proof}
+Greedy test decoding makes $z=z_\theta(x)$ a deterministic function of $x$ given fixed $\theta$, so $(x,Y)\mapsto \Smin_\theta(x,Y;z_\theta(x))$ preserves exchangeability of $\Dcal$ and $(x,Y)$. Since $\C_q(x)\cap Y\neq\emptyset \iff \Smin_\theta(x,Y;z_\theta(x))\le q$, split CP guarantees $1-\alpha \le \Prob(\C_\theta(x)\cap Y\neq\emptyset) < 1-\alpha+\frac{1}{m+1}$ (distinct scores) with calibration-conditional coverage $\mathrm{Beta}(\lceil(1-\alpha)(m+1)\rceil,\,m+1-\lceil(1-\alpha)(m+1)\rceil)$.
+
+\subsection{Alternative Design Choices}
+\begin{itemize}
+\item \textbf{Length-normalized log-prob score:} $S_\theta^{\mathrm{log}}(x,t;z)=-\log(T\pi_\theta(t\mid x,z)+\varepsilon)$ removes $O(1/T)$ softmax scaling and avoids $q\to 1$ compression; plugs directly into \eqref{eq:wp2-terms} and Algorithm~1 (without $[0,1]$ clipping on $q$).
+\item \textbf{Hard set-size reward:} $r^{\mathrm{size}}_{\mathrm{hard}}(x,z;q)=-\frac{1}{T}\sum_{t=1}^T \ind[S_\theta(x,t;z)\le q]$ eliminates $\tau$ and still drives the GRPO reasoning advantage $A_{i,g}$, but has zero derivative w.r.t.\ $\ell_\theta$ almost everywhere, removing set-size signal from the exact pathwise logit gradient.
+\end{itemize}
+
+\subsection{Implementation Caveats}
+\begin{itemize}
+\item \textbf{Batched KV-cached scoring:} Score all $T$ short index strings \texttt{"1"}--\texttt{"T"} against one shared $(x,z,\text{``<answer>''})$ KV cache; backprop passes through the shared prefix once per rollout.
+\item \textbf{Pinball step $\gamma$:} RL runs take fewer updates than WP1; monitor $q$ against the empirical $(1-\alpha)$-quantile of $D_1$ and adjust $\gamma$ on $\Dval$ if $q$ lags.
+\item \textbf{Duty-cycle check on B2:} B2 applies $\lambda$ on $100\%$ of $\Dtr\setminus\Dval$ whereas DPSM applies $\lambda$ on $D_2$ ($50\%$); if DPSM ties B2, check an ablation applying B2's size term on $D_2$ only.
+\item \textbf{Guardrails:} Monitor empty-set rates and length-tercile coverage; rely on recalibrated external splits when label semantics differ across benchmarks.
+\end{itemize}
+
+\end{document}

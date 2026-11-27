@@ -1,0 +1,73 @@
+% !TEX root = ../main.tex
+\section{Category II: Training-Based Methods (LLM Training Only)}\label{sec:training}
+
+\begin{summarybox}[s2]{Paradigm Summary \hfill \trainbadge}
+This category is restricted strictly to methods that \textbf{update LLM parameters} (via SFT, reinforcement learning such as GRPO, or preference optimization) to train specialized LLM failure attributors or verifiers. Methods that train non-LLM models (e.g., BiLSTMs, GNNs, Neural CDEs, VAEs, or linear/prototype heads atop frozen embeddings) are excluded here and surveyed in Section~\ref{sec:nonllm}. LLM-trained attributors distill expensive diagnostic reasoning into compact ($1.7\text{B}$--$14\text{B}$) single-pass models that rival or outperform much larger proprietary judges, at the upfront cost of automated failure-data synthesis and potential out-of-distribution generalization risk.
+\end{summarybox}
+
+\subsection{The Bottleneck: Automated Attribution Data Engines}
+Human annotation of MAS execution logs is prohibitively expensive---often requiring $30+$ expert hours for fewer than $200$ trajectories~\citep{yu2026correct,zhang2025who}. Consequently, every LLM-training attribution method relies on an \textbf{automated data synthesis engine} that converts cheap successful or failed rollouts into verifiable step-, agent-, or mode-level supervision:
+\begin{itemize}
+  \item \textbf{Counterfactual replay + programmatic fault injection} (\emph{AgenTracer / TracerTraj-2.5K}~\citep{zhang2026agentracer}): For naturally failed traces, an analyzer LLM (DeepSeek-R1) sequentially proposes corrected actions $a'_t$ and replays downstream steps until the earliest step flipping failure to success is found; for successful traces, a perturbation operator injects faults and retains trajectories that flip to failure.
+  \item \textbf{Graph-aware critical-node injection} (\emph{GraphTracer / GraphTraj-2.5K}~\citep{zhang2025graphtracer}): Rather than perturbing arbitrary steps, perturbations target structurally critical nodes in the Information Dependency Graph (high out-degree sources, high-centrality edges, and conflict-prone merge nodes), producing $2{,}147$ annotated IDGs with both root-cause nodes and ground-truth propagation paths.
+  \item \textbf{Taxonomy-grounded adaptive manipulation} (\emph{Aegis}~\citep{kong2026aegis}): Non-invasive monkey-patched wrappers intercept deterministic successful MAS runs (temperature $0$) across six frameworks (MacNet, DyLAN, Debate, AgentVerse, Magentic-One, SmolAgents) and six domains; an adaptive LLM manipulator injects $14$ MAST error modes via \emph{Prompt Injection} or \emph{Response Corruption}, validating that $Z(\tau_{\text{inj}})=1$ to yield $9{,}533$ trajectories with exact compositional labels $G(\tau) = \{(n_k^*, Y_k^*)\}$.
+  \item \textbf{Paired success--failure hypergraph search} (\emph{HPFA}~\citep{zhu2026hpfa}): To avoid $O(T)$ counterfactual rollouts on long reasoning traces, HPFA samples trajectories until obtaining a success--failure pair $(T^+, T^-)$ for the same query, builds a dependency hypergraph over semantically aligned atomic steps, and restricts counterfactual search to divergences between $T^+$ and $T^-$, drastically reducing synthesis cost.
+  \item \textbf{Large-scale replay-verified diagnosis harvesting} (\emph{AED / AET}~\citep{zhu2026aed}\,\webtag): Scales to $50{,}228$ error--diagnosis--correction pairs across $33$ environments, $19$ agent harnesses, and $23$ policy models via a five-stage Agentic Error-to-Training pipeline that verifies alternative corrections through replay.
+\end{itemize}
+
+\subsection{Reinforcement Learning (GRPO) for Specialized LLM Attributors}
+Online RL---predominantly Group Relative Policy Optimization (GRPO)---has emerged as the dominant paradigm for training reasoning-capable LLM failure tracers, because dense, multi-granular rewards avoid overfitting to brittle surface rationales while teaching models to locate exact steps within long contexts.
+
+\paragraph{AgenTracer-8B~\citep{zhang2026agentracer}}
+Initialized from \textbf{Qwen3-8B} and trained on TracerTraj-2.5K via KL-free GRPO with dynamic clipping $B_s$, AgenTracer-8B generates explicit reasoning inside \code{<think>} tags followed by \code{<agentID>|<stepID>}. Its multi-granular gated reward smooths sparse step-localization feedback using a Gaussian temporal kernel:
+\begin{equation}
+  R(\hat{p}_k) = \mathbb{I}_{\text{format}} \cdot \Big[ \lambda \exp\!\Big(-\frac{(\hat{t}_k - t^*)^2}{2\sigma^2}\Big) + (1-\lambda)\,\mathbb{I}(\hat{i}_k = i^*) \Big], \quad (\lambda=0.5,\; \sigma=1).
+\end{equation}
+On unseen Who\&When trajectories, AgenTracer-8B reaches $69.1\%/63.8\%$ HC and $69.6\%/63.7\%$ AG agent accuracy and $20.7\%$ HC / $42.9\%/37.3\%$ AG step accuracy (w/ G $\mid$ w/o G), outperforming proprietary Gemini-2.5-Pro and Claude-4-Sonnet by up to $+18.2\%$ in its evaluation suite. Crucially, injecting AgenTracer-8B's \code{<think>} critique into MetaGPT, OWL Workforce, and MaAS improves downstream task accuracy by $+4.8\%$ to $+14.2\%$, whereas GPT-4.1 CRITIC degrades performance.
+
+\paragraph{GraphTracer-8B~\citep{zhang2025graphtracer}}
+Addressing temporal methods' blindness to non-adjacent information reuse in multi-turn deep search, GraphTracer incrementally constructs an \textbf{Information Dependency Graph (IDG)} $G_\tau=(V,E)$ capturing explicit citations among prior outputs ($|V|\approx 0.5T$, $|E|\approx 2.5|V|$) plus pairwise conflict indicators. A \textbf{Qwen3-8B} backbone is trained with online RL on GraphTraj-2.5K using a graph-structural reward combining exact root-node accuracy and Graph Edit Distance (GED) path fidelity:
+\begin{equation}
+  R = \mathbb{I}_{\text{format}} \cdot \Big[ \lambda\,\mathbb{I}(\hat{v} \in V_{\text{root}}) + (1-\lambda)\,\exp\!\Big(-\frac{d_{\text{GED}}(\hat{\pi}, \pi^*)}{\sigma}\Big) \Big].
+\end{equation}
+GraphTracer-8B consistently improves over AgenTracer-8B on Who\&When---reaching $74.9\%/69.7\%$ HC and $76.6\%/67.4\%$ AG agent accuracy, and $28.6\%/28.0\%$ HC and $50.0\%/44.4\%$ AG step accuracy (w/ G $\mid$ w/o G)---confirming that explicit provenance structure boosts trained LLM tracers just as it boosts prompting frameworks.
+
+\paragraph{Aegis-GRPO~\citep{kong2026aegis}}
+Alongside SFT, Aegis trains \textbf{Qwen2.5-7B/14B-Instruct} and \textbf{Qwen3-8B} (Thinking and Non-Thinking) with GRPO on its $9{,}533$-trajectory multi-agent error dataset. Because Aegis trajectories can contain multiple injected \code{(agent, error\_mode)} pairs, it designs a \textbf{hierarchical, non-repeatable partial-credit reward}: exact \code{(agent, mode)} pairs earn $c_{\text{pair}}$, novel correct agents or modes earn partial credit $c_{\text{agent}}$ or $c_{\text{error}}$ (at most once each), false positives incur $-p_{\text{fp}}$, and malformed JSON, duplicates, or excessive predictions are penalized, normalized by example difficulty.
+
+\paragraph{HPFA Attributor (SFT + On-Policy Rollout GRPO)~\citep{zhu2026hpfa}}
+HPFA introduces a two-stage training recipe for a lightweight LLM attributor $\pi_\phi$ that outputs \code{(step, error\_type, mistaken\_content)} diagnoses: (1)~offline \textbf{SFT} on paired-hypergraph-verified repair traces from MATH, GSM8K, KodCode, and MBPP; followed by (2)~on-policy \textbf{GRPO} on live failures rolled out by the target reasoning model, directly optimizing \emph{downstream repair actionability}:
+\begin{equation}
+  R_i = R_i^{\text{fmt}} + \lambda\, \mathbf{1}\!\big(\tilde{T}_i\big),
+\end{equation}
+where $\tilde{T}_i$ is a new trajectory generated by conditioning the solver on $(Q, T_{\text{fail}}, o_i)$. This aligns the attributor's training objective directly with test-time recovery rather than static label matching alone.
+
+\subsection{Supervised Fine-Tuning, Verifier LLMs, and Post-Training Supervision}
+\paragraph{Aegis-SFT~\citep{kong2026aegis}}
+Formulates error attribution as sequence-to-sequence JSON generation conditioned on the taxonomy definitions and serialized MAS log. Notably, across Qwen2.5-14B-Instruct and Qwen3-8B on both in-domain Aegis-Bench and OOD Who\&When, Aegis-SFT achieves strong pair/agent/error F1 gains over prompting much larger frontier models (e.g., Qwen2.5-72B, GPT-4.1, o3, Claude-Sonnet-4), often outperforming Aegis-GRPO on strict exact-pair matching while GRPO excels on broader exploration. \emph{(Note: Aegis's third paradigm, Disentangled Contrastive Learning, trains a non-LLM MIL encoder and is discussed in Section~\ref{sec:nonllm}.)} Similarly, \textbf{CAEA}~\citep{feng2026caea} fine-tunes a compact \textbf{Qwen3-1.7B} scorer following Aegis to supply step-level error scores to its conformal prediction wrapper.
+
+\paragraph{VerifyMAS~\citep{qiao2026verifymas}\,\webtag and AgentLocate~\citep{xia2026agentlocate}\,\webtag}
+\textbf{VerifyMAS} (NeurIPS 2026) argues that predicting \code{(agent, error)} pairs directly induces a huge combinatorial search space and misses global coordination faults. Instead, it adopts an \textbf{error-first hypothesis verification} strategy: constructing structured taxonomy-derived hypothesis data and \textbf{SFT-training a specialized LLM verifier} that first validates trajectory-level error hypotheses globally before localizing the responsible agent(s), yielding broad gains on Aegis-Bench and Who\&When. \textbf{AgentLocate} (COLM 2026) pairs an LLM judge with multi-perspective verification, confidence-aware aggregation, and \textbf{lightweight fine-tuning} of the attribution judge to jointly pinpoint the responsible agent and earliest decisive step.
+
+\paragraph{Error-Aware Post-Training: AED~\citep{zhu2026aed}\,\webtag and ParaRecover~\citep{guan2026pararecover}}
+Two recent benchmarks bridge attribution and error-aware LLM post-training. \textbf{AED} ($50{,}228$ replay-verified error--diagnosis pairs) constructs both SFT and preference-optimization views to train models that diagnose failures and self-correct. \textbf{ParaRecover} ($10{,}626$ parallel tool-use DAG instances across $14$ error types) introduces the \textbf{SDE (Structural, Diagnostic, Evolutionary) Rubric}, demonstrating that process-level diagnostic rubrics provide effective supervision signals for training reflective recovery LLM agents.
+
+\begin{table}[htbp]
+\centering\footnotesize
+\caption{Comparison of LLM-trained failure attribution methods (Category~II). Only methods updating LLM weights are included.}
+\label{tab:llm_training}
+\fitbox{\begin{tabular}{@{}>{\RaggedRight\bfseries}p{2.4cm}>{\RaggedRight}p{2.3cm}>{\RaggedRight}p{2.65cm}>{\RaggedRight}p{2.3cm}>{\RaggedRight}p{3.45cm}>{\RaggedRight}p{2.55cm}@{}}
+\toprule
+Method & Trained LLM(s) & Data Engine & Training Alg. & Objective / Reward & Target Output \\
+\midrule
+AgenTracer~\citep{zhang2026agentracer} & Qwen3-8B & CF replay + FI (2.5K) & KL-free GRPO & Format $\cdot$ ($\lambda$ Gauss.\ step + $(1-\lambda)$ agent) & \code{<think>} + \code{(agent, step)} \\
+GraphTracer~\citep{zhang2025graphtracer} & Qwen3-8B & IDG-aware FI (2.1K) & Online RL & Format $\cdot$ ($\lambda$ root node + $(1-\lambda)$ GED path) & Root node + prop.\ path \\
+Aegis-SFT~\citep{kong2026aegis} & Qwen2.5-7B/14B, Qwen3-8B & Adaptive FI (9.5K) & SFT & Next-token CE on structured JSON & \code{[(agent, modes), ...]} \\
+Aegis-GRPO~\citep{kong2026aegis} & Qwen2.5-7B/14B, Qwen3-8B & Adaptive FI (9.5K) & GRPO & Hierarchical non-repeatable partial credit & \code{[(agent, modes), ...]} \\
+HPFA~\citep{zhu2026hpfa} & Lightweight LLM $\pi_\phi$ & Paired hypergraph CF & SFT $\to$ GRPO & CE then $R_{\text{fmt}} + \lambda\mathbf{1}(\text{repair success})$ & \code{(step, type, content)} \\
+VerifyMAS~\citep{qiao2026verifymas}\,\webtag & Specialized verifier LLM & Taxonomy hypotheses & SFT & Hypothesis validation + agent localization & Global mode $\to$ agent \\
+AgentLocate~\citep{xia2026agentlocate}\,\webtag & Fine-tuned judge LLM & Multi-persp.\ feedback & Lightweight SFT & Confidence-aggregated dual-target loss & \code{(agent, earliest step)} \\
+AED / AET~\citep{zhu2026aed}\,\webtag & Open policy/diag.\ LLMs & Replay-verified (50K) & SFT + Pref.\ opt. & Error-diagnosis \& correction alignment & Diagnosis + correction \\
+\bottomrule
+\end{tabular}}
+\end{table}

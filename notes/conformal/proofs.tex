@@ -1,0 +1,178 @@
+% Coverage guarantee of split conformal prediction for failure attribution with error-set labels.
+% Build (from notes/conformal/): pdflatex -output-directory=build proofs.tex (twice), then cp build/proofs.pdf .
+\documentclass[10pt,a4paper]{article}
+\usepackage[margin=2cm,top=1.7cm,bottom=1.8cm,footskip=0.8cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{times}  % Times text; mathptmx needs the rsfs font, which this TeX install lacks
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+
+\setlist{nosep,leftmargin=1.5em}
+\setlength{\parskip}{4pt}
+\setlength{\parindent}{0pt}
+\setlength{\emergencystretch}{2em}
+\pagestyle{plain}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}{Corollary}
+\theoremstyle{definition}
+\newtheorem{assumption}{Assumption}
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}
+
+% ---------- notation (same as pps06) ----------
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\ind}{\mathbf{1}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\C}{C}
+\newcommand{\Qhat}{\widehat Q}
+\newcommand{\Smin}{S^{\min}}
+\newcommand{\Dtr}{D_{\mathrm{train}}}
+\newcommand{\Dcal}{D_{\mathrm{cal}}}
+
+\begin{document}
+
+\begin{center}
+{\Large\bfseries Coverage of Split Conformal Prediction\\[2pt] for Failure Attribution with Error-Set Labels}\\[4pt]
+{\small Proof note for pps06 (conformal training), Section 2.1 \textperiodcentered\ November 2026}
+\end{center}
+
+This note proves the coverage guarantee (Eq.~6 of pps06) for the setting in which the label of a failed trajectory is a \emph{set} of error steps and the prediction set is required to contain at least one of them. With a single labelled step it reduces to the guarantee of Vanilla CP in Feng et al.\ \cite{feng2026conformal} (their Theorem~A.1). The argument is the standard rank argument of split conformal prediction \cite{angelopoulos2021gentle}; the only new ingredient is Lemma~\ref{lem:reduction}, which turns the set-valued event into a comparison of one scalar with the threshold.
+
+\section{Setup}
+
+\textbf{Data.} A failed trajectory is $x=(s_1,\dots,s_T)$ with a length $T=T(x)$ that varies between trajectories, and $[T]=\{1,\dots,T\}$. Its label is a \emph{non-empty} error set $Y\subseteq[T]$. A step scorer $f_\theta$ gives $f_\theta(x)=(\pi_1(x),\dots,\pi_T(x))$ with $\pi_t(x)\in[0,1]$, and the non-conformity score of step $t$ is $S_\theta(x,t)=1-\pi_t(x)$.
+
+\textbf{Procedure.} Let $(x_1,Y_1),\dots,(x_m,Y_m)$ be the calibration trajectories and $(x_{m+1},Y_{m+1})$ the test trajectory. Fix $\alpha\in(0,1)$ and put $k=\lceil(1-\alpha)(m+1)\rceil$, so that $1\le k\le m+1$.
+\begin{enumerate}
+\item \emph{Score.} For every trajectory compute
+\begin{equation}
+\Smin_i=\Smin_\theta(x_i,Y_i)=\min_{t\in Y_i}S_\theta(x_i,t),\qquad i=1,\dots,m+1. \label{eq:smin}
+\end{equation}
+The minimum exists because $Y_i$ is finite and non-empty. $\Smin_{m+1}$ is not observed; it appears only in the analysis.
+\item \emph{Calibrate.} $\Qhat$ is the $k$-th smallest of $\Smin_1,\dots,\Smin_m$, counted with multiplicity, if $k\le m$, and $\Qhat=+\infty$ if $k=m+1$.
+\item \emph{Predict.} $\C_\theta(x_{m+1})=\{t\in[T_{m+1}]:\ S_\theta(x_{m+1},t)\le\Qhat\}$.
+\end{enumerate}
+
+\begin{assumption}[fixed scorer] \label{as:fixed}
+The parameters $\theta$ do not depend on the $m+1$ trajectories above: $\theta$ is a function of $\Dtr$ and of training randomness, both independent of $(x_i,Y_i)_{i=1}^{m+1}$.
+\end{assumption}
+
+\begin{assumption}[exchangeability] \label{as:exch}
+The pairs $(x_1,Y_1),\dots,(x_{m+1},Y_{m+1})$ are exchangeable: their joint distribution is unchanged by any permutation of the indices. Independent draws from one distribution are a special case.
+\end{assumption}
+
+\section{Result}
+
+\begin{lemma}[reduction to one scalar] \label{lem:reduction}
+For any trajectory $x$ with non-empty label $Y\subseteq[T]$ and any threshold $q\in\R\cup\{+\infty\}$, let $\C_q(x)=\{t\in[T]:S_\theta(x,t)\le q\}$. Then
+\[
+\C_q(x)\cap Y\neq\emptyset\quad\Longleftrightarrow\quad\Smin_\theta(x,Y)\le q .
+\]
+\end{lemma}
+
+\begin{proof}
+($\Rightarrow$) Take $t\in\C_q(x)\cap Y$. Since $t\in Y$, $\Smin_\theta(x,Y)\le S_\theta(x,t)$, and since $t\in\C_q(x)$, $S_\theta(x,t)\le q$.
+($\Leftarrow$) Let $t^\circ\in Y$ attain the minimum in \eqref{eq:smin}. Then $S_\theta(x,t^\circ)=\Smin_\theta(x,Y)\le q$, so $t^\circ\in\C_q(x)$, and $t^\circ\in Y$.
+\end{proof}
+
+\begin{lemma}[rank of an exchangeable score] \label{lem:rank}
+Let $V_1,\dots,V_{m+1}$ be exchangeable real random variables and $1\le k\le m$. Let $A$ be the $k$-th smallest of $V_1,\dots,V_m$. Then
+\[
+\Prob\big(V_{m+1}\le A\big)\;\ge\;\frac{k}{m+1},
+\]
+with equality if $V_1,\dots,V_{m+1}$ are distinct with probability one.
+\end{lemma}
+
+\begin{proof}
+Let $B$ be the $k$-th smallest of all $m+1$ values $V_1,\dots,V_{m+1}$. We first show that the events $\{V_{m+1}\le A\}$ and $\{V_{m+1}\le B\}$ coincide.
+
+If $V_{m+1}>A$, at least $k$ of $V_1,\dots,V_m$ are at most $A$, hence strictly below $V_{m+1}$. Adding $V_{m+1}$ to the sample therefore leaves the $k$ smallest values unchanged, so $B=A<V_{m+1}$.
+
+If $V_{m+1}>B$, at least $k$ of the $m+1$ values are at most $B$, and $V_{m+1}$ is not one of them. So at least $k$ of $V_1,\dots,V_m$ are at most $B$, which gives $A\le B<V_{m+1}$.
+
+The two implications together give $\{V_{m+1}>A\}=\{V_{m+1}>B\}$.
+
+Now $B$ is a symmetric function of $(V_1,\dots,V_{m+1})$, so by exchangeability the pairs $(V_j,B)$ have the same distribution for all $j$, and $\Prob(V_j\le B)=\Prob(V_{m+1}\le B)$ for $j=1,\dots,m+1$. By the definition of the $k$-th smallest value, at least $k$ of the $m+1$ values are at most $B$, on every outcome. Hence
+\[
+(m+1)\,\Prob(V_{m+1}\le B)=\sum_{j=1}^{m+1}\Prob(V_j\le B)=\E\Big[\sum_{j=1}^{m+1}\ind[V_j\le B]\Big]\;\ge\;k .
+\]
+If the values are distinct with probability one, exactly $k$ of them are at most $B$, and the inequality is an equality.
+\end{proof}
+
+\begin{theorem}[coverage with error-set labels] \label{thm:coverage}
+Under Assumptions~\ref{as:fixed} and~\ref{as:exch}, for every $\alpha\in(0,1)$ and every $m\ge1$,
+\begin{equation}
+\Prob\big(\C_\theta(x_{m+1})\cap Y_{m+1}\neq\emptyset\big)\;\ge\;1-\alpha . \label{eq:lower}
+\end{equation}
+If, in addition, the scores $\Smin_1,\dots,\Smin_{m+1}$ are distinct with probability one, then
+\begin{equation}
+\Prob\big(\C_\theta(x_{m+1})\cap Y_{m+1}\neq\emptyset\big)=\frac{\lceil(1-\alpha)(m+1)\rceil}{m+1}\;<\;1-\alpha+\frac{1}{m+1}. \label{eq:upper}
+\end{equation}
+The probability is over the calibration trajectories, the test trajectory and the training of $\theta$.
+\end{theorem}
+
+\begin{proof}
+Condition on $\theta$. By Assumption~\ref{as:fixed}, the pairs $(x_i,Y_i)$ remain exchangeable given $\theta$, and $(x,Y)\mapsto\Smin_\theta(x,Y)$ is then a fixed measurable function. Applying one fixed function to each element of an exchangeable sequence gives an exchangeable sequence, so $\Smin_1,\dots,\Smin_{m+1}$ are exchangeable given $\theta$.
+
+By Lemma~\ref{lem:reduction} with $q=\Qhat$,
+\begin{equation}
+\C_\theta(x_{m+1})\cap Y_{m+1}\neq\emptyset\quad\Longleftrightarrow\quad\Smin_{m+1}\le\Qhat . \label{eq:event}
+\end{equation}
+
+\emph{Case $k\le m$.} $\Qhat$ is the $k$-th smallest of $\Smin_1,\dots,\Smin_m$, so Lemma~\ref{lem:rank} with $V_i=\Smin_i$ gives
+\[
+\Prob\big(\Smin_{m+1}\le\Qhat\,\big|\,\theta\big)\;\ge\;\frac{k}{m+1}=\frac{\lceil(1-\alpha)(m+1)\rceil}{m+1}\;\ge\;\frac{(1-\alpha)(m+1)}{m+1}=1-\alpha ,
+\]
+with equality in the first step when the scores are distinct with probability one.
+
+\emph{Case $k=m+1$.} $\Qhat=+\infty$, so $\Smin_{m+1}\le\Qhat$ always holds and the probability is $1=k/(m+1)$. (The set is the whole trajectory, and it meets $Y_{m+1}$ because $Y_{m+1}$ is non-empty.)
+
+In both cases the conditional probability is at least $1-\alpha$, and equals $k/(m+1)$ when the scores are distinct. Taking the expectation over $\theta$ and using \eqref{eq:event} gives \eqref{eq:lower} and the equality in \eqref{eq:upper}. The strict inequality in \eqref{eq:upper} is $\lceil a\rceil<a+1$ with $a=(1-\alpha)(m+1)$.
+\end{proof}
+
+\begin{corollary}[single labelled step] \label{cor:single}
+If $Y_i=\{t_i^{*}\}$ for all $i$, then $\Smin_i=S_\theta(x_i,t_i^{*})$, the event in \eqref{eq:lower} is $t^{*}_{m+1}\in\C_\theta(x_{m+1})$, and Theorem~\ref{thm:coverage} is the guarantee of Vanilla CP in \cite{feng2026conformal}.
+\end{corollary}
+
+\section{Remarks}
+
+\begin{remark}[what the proof does not use]
+The proof never refers to the length $T$, to the dependence between steps of one trajectory, to the scores of steps outside $Y$, to $\sum_t\pi_t=1$, or to the accuracy of $f_\theta$. Each trajectory contributes one scalar, so $m$ counts trajectories. The guarantee holds for a random scorer; the scorer decides the size of the set only.
+\end{remark}
+
+\begin{remark}[conformal training] \label{rem:training}
+Assumption~\ref{as:fixed} holds for a scorer trained with the DPSM term as long as the model, the learned threshold $q$, the checkpoint and the hyperparameters are all chosen from $\Dtr$ alone. The learned $q$ is discarded and $\Qhat$ is recomputed on $\Dcal$. Any use of $\Dcal$ or of test trajectories for model selection breaks the assumption.
+\end{remark}
+
+\begin{remark}[ties]
+The lower bound \eqref{eq:lower} needs no condition on ties. The upper bound does: if the scorer saturates, $\pi_t=1$ on many trajectories gives $\Smin=0$ repeatedly and coverage can exceed $1-\alpha+1/(m+1)$. Ties among the scores of steps within one trajectory are harmless; only ties among the $m+1$ values $\Smin_i$ matter.
+\end{remark}
+
+\begin{remark}[the guarantee is marginal]
+\eqref{eq:lower} averages over calibration sets and test trajectories. It does not hold within a group (long trajectories, one agent system, a given $|Y|$), and it does not hold for one given calibration set. For independent draws with distinct scores, the coverage conditional on the calibration set follows a $\mathrm{Beta}(k,\,m+1-k)$ distribution \cite{vovk2012conditional}, with mean $k/(m+1)$ and standard deviation of about $\sqrt{\alpha(1-\alpha)/m}$. An observed test coverage should be compared with this distribution, not with $1-\alpha$ alone.
+\end{remark}
+
+\begin{remark}[other coverage events]
+Lemma~\ref{lem:reduction} is the only place where ``at least one error step'' enters. To require that the set contains \emph{every} labelled step, replace the minimum in \eqref{eq:smin} by the maximum: $Y\subseteq\C_q(x)$ if and only if $\max_{t\in Y}S_\theta(x,t)\le q$, and the rest of the proof is unchanged. More generally, the $j$-th smallest score in $Y$ gives ``at least $j$ labelled steps'' (with the convention that it is the largest score when $|Y|<j$).
+\end{remark}
+
+\begin{remark}[where the assumptions can fail in pps06] \label{rem:fail}
+Both points concern Assumption~\ref{as:exch}.
+\begin{itemize}
+\item \emph{Labels verified on the test split only.} If verification removes steps, the verified label satisfies $Y'\subseteq Y$, hence $\Smin_\theta(x,Y')\ge\Smin_\theta(x,Y)$. With $\Qhat$ calibrated on unverified labels, Theorem~\ref{thm:coverage} covers the event $\C\cap Y\neq\emptyset$ only, and coverage against $Y'$ can only be lower. The guarantee for $Y'$ needs verified calibration labels.
+\item \emph{Several trajectories per task.} Each task is run on two agent systems, so calibration scores of the same task are dependent while the test trajectory comes from a different task. The pooled scores are then not exchangeable with the test score, and coverage can fall slightly below $1-\alpha$. Keeping one trajectory per task, drawn at random, in $\Dcal$ restores exchangeability when tasks are independent draws and the test trajectory is drawn in the same way from a new task.
+\end{itemize}
+\end{remark}
+
+\begin{thebibliography}{9}\small
+\bibitem{feng2026conformal} N.~Feng, Y.~Sui, S.~Hou, G.~Wu and J.~C.~Cresswell. Conformal agent error attribution. arXiv:2605.06788, 2026.
+\bibitem{angelopoulos2021gentle} A.~N.~Angelopoulos and S.~Bates. A gentle introduction to conformal prediction and distribution-free uncertainty quantification. arXiv:2107.07511, 2021.
+\bibitem{vovk2012conditional} V.~Vovk. Conditional validity of inductive conformal predictors. In \emph{Asian Conference on Machine Learning}, 2012.
+\end{thebibliography}
+
+\end{document}

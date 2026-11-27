@@ -1,0 +1,542 @@
+<title>Differentiable Coherent Factuality (DCF)</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Space+Grotesk:wght@500;600&display=swap">
+<script>
+window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},svg:{fontCache:'none'},
+  startup:{pageReady(){return MathJax.startup.defaultPageReady().then(()=>{window.MJ=true;if(window.renderAll)window.renderAll();});}}};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg.js" async></script>
+<style>
+/* Layout: one reading column; each part = paper-head, then a stage card split into numbered moves (text left, figure right). Same tokens as conftr.html and cp-pipelines.html. */
+:root{
+  --bg:#f5f7fa; --surface:#ffffff; --fg:#18202c; --muted:#5b6678; --line:#d8dee7; --bar:#c3cbd7;
+  --cp:#0d766f; --ct:#3a4db3; --err:#c4342a; --ok:#2c7a37; --no:#b0352a;
+  --display:"Space Grotesk",system-ui,sans-serif; --body:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#11151c; --surface:#181e27; --fg:#e4e8ef; --muted:#9aa5b6; --line:#2b3341; --bar:#475163;
+  --cp:#3dbdb1; --ct:#8d9cff; --err:#ff6a5c; --ok:#6cc47a; --no:#ff7b6e; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11151c; --surface:#181e27; --fg:#e4e8ef; --muted:#9aa5b6; --line:#2b3341; --bar:#475163;
+  --cp:#3dbdb1; --ct:#8d9cff; --err:#ff6a5c; --ok:#6cc47a; --no:#ff7b6e; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.55}
+.wrap{max-width:1040px;margin:0 auto;padding-block:32px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:36px}
+h1,h2,h3,h4{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.25}
+h1{font-size:2rem;font-weight:600} h2{font-size:1.45rem;font-weight:600} h3{font-size:1.05rem;font-weight:600} h4{font-size:.95rem;font-weight:600}
+p{margin:0}
+.lede{color:var(--muted)} .lede b{color:var(--fg)}
+.eyebrow{font-family:var(--mono);font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;color:var(--acc,var(--muted))}
+section.paper{--acc:var(--cp);display:grid;gap:18px}
+section.paper.ct{--acc:var(--ct)}
+.paper-head{display:grid;gap:6px;border-left:4px solid var(--acc);padding-left:14px}
+.paper-head p{color:var(--muted)}
+.stage{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;display:grid;gap:16px;min-width:0}
+.stage-title{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.tag{font-family:var(--mono);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;background:color-mix(in srgb,var(--acc) 14%,transparent);color:var(--acc);padding:2px 8px;border-radius:4px}
+.cpstep{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.25fr);gap:18px;padding-top:14px;border-top:1px solid var(--line);align-items:start}
+.cpstep.first{border-top:0;padding-top:0}
+.cpstep .txt{display:grid;gap:8px;min-width:0;align-content:start}
+.cpstep .fig{display:grid;gap:6px;min-width:0}
+.num{display:inline-grid;place-items:center;width:1.5em;height:1.5em;border-radius:50%;background:var(--acc);color:var(--surface);font-family:var(--mono);font-size:.8rem;margin-right:8px;vertical-align:1px}
+.cap{font-size:.85rem;color:var(--muted)}
+.eq{background:var(--bg);border:1px solid var(--line);border-left:3px solid var(--acc);border-radius:6px;padding:8px 12px;overflow-x:auto;font-size:.95rem}
+svg.chart{width:100%;height:auto;display:block}
+mjx-container svg{display:inline-block}
+mjx-container[display="true"]{margin:.3em 0!important}
+mjx-container{color:inherit}
+svg text{font-family:var(--mono);font-size:11px;fill:var(--muted)}
+svg .fg{fill:var(--fg)}
+.controls{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center;padding:10px 12px;border:1px dashed var(--line);border-radius:8px}
+.controls label,.controls .grp{display:flex;align-items:center;gap:8px;font-size:.9rem}
+input[type=range]{accent-color:var(--acc);width:150px;max-width:100%}
+input[type=checkbox]{accent-color:var(--acc)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;flex-wrap:wrap}
+.seg button{font:inherit;font-size:.85rem;border:0;background:transparent;color:var(--fg);padding:4px 10px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed=true]{background:var(--acc);color:var(--surface)}
+button.plain{font:inherit;font-size:.85rem;border:1px solid var(--line);background:transparent;color:var(--fg);padding:4px 10px;border-radius:6px;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.val{font-family:var(--mono);font-variant-numeric:tabular-nums;min-width:3.6em}
+.box{border-radius:8px;padding:12px 14px;display:grid;gap:6px;font-size:.92rem;align-content:start;min-width:0}
+.box .h{font-family:var(--mono);font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;font-weight:500}
+.box.n{background:var(--bg);border:1px solid var(--line)} .box.n .h{color:var(--muted)}
+.readout{font-size:.9rem;display:flex;flex-wrap:wrap;gap:4px 18px}
+.readout b{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:500}
+.readout .warn{color:var(--no)}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.8rem;color:var(--muted);align-items:center}
+.legend svg{vertical-align:-2px;margin-right:5px}
+.sw{display:inline-block;width:11px;height:11px;border-radius:2px;vertical-align:-1px;margin-right:5px}
+.note{font-size:.82rem;color:var(--muted)}
+.figwrap{overflow-x:auto} .figwrap svg.chart{min-width:760px}
+.grid2{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:16px;align-items:start}
+.algo{font-family:var(--mono);font-size:.8rem;line-height:1.75;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;overflow-x:auto;display:grid;gap:2px;align-content:start;min-width:0}
+.algo .ln{color:var(--muted);display:inline-block;width:2.2em;text-align:right;margin-right:6px}
+.algo .cm{color:var(--muted);font-style:italic}
+.algo .hd{font-family:var(--display);font-weight:600;font-size:.85rem;margin-bottom:4px}
+.algo>div:not(.hd){padding-left:calc(2.2em + 6px);text-indent:calc(-2.2em - 6px)}
+.algo>div.i1{padding-left:calc(3.6em + 6px)}
+.algo>div.i2{padding-left:calc(5em + 6px)}
+.algo>div *{text-indent:0}
+.algo .hl{background:color-mix(in srgb,var(--acc) 11%,transparent);border-radius:4px}
+ul.notes{margin:0;padding-left:1.25em;display:grid;gap:6px;font-size:.88rem;color:var(--muted)}
+ul.notes b{color:var(--fg);font-weight:500}
+@media (max-width:780px){.cpstep,.grid2{grid-template-columns:minmax(0,1fr)}}
+</style>
+
+<div class="wrap">
+<header style="display:grid;gap:10px">
+  <span class="eyebrow">Hittesdorf, Salzetta &amp; Cheng · arXiv 2604.20098 · Section 3 only</span>
+  <h1>How DCF trains a claim scorer through coherent factuality</h1>
+  <p class="lede">Coherent factuality (CF) filters an LLM's reasoning with discrete steps: threshold the claims, drop any claim missing an ancestor, take a supremum, take a quantile. None of them passes a useful gradient, so CF's claim scorer is hand-made. <b>DCF</b> swaps each step for a smooth stand-in, trains a scorer \(\pi_\theta\) through them to keep more true claims, then puts the trained scorer back into discrete CF. The diagram follows the paper's Fig. 5 and Algorithms 1–3. Every number below it is a <b>toy</b>.</p>
+</header>
+
+<!-- ======================= Part 1: one training update ======================= -->
+<section class="paper ct" id="update">
+  <div class="paper-head">
+    <span class="eyebrow">Part 1 · Sec. 3.5–3.6 · Alg. 3 · Fig. 5</span>
+    <h2>One training update</h2>
+    <p>Each epoch splits the training graphs into \(\mathcal D_{\rm cal}\) and \(\mathcal D_{\rm pred}\). Calibration turns \(\mathcal D_{\rm cal}\) into one threshold \(\hat\tau_\alpha\). Prediction turns \(\hat\tau_\alpha\) and each graph of \(\mathcal D_{\rm pred}\) into retention probabilities \(q_v\). The loss rewards true claims that are retained.</p>
+  </div>
+  <div class="stage">
+    <div class="stage-title"><span class="tag">Fig. 5</span><h3>The forward pass, and the two routes the gradient takes back to \(\theta\)</h3></div>
+    <div class="controls">
+      <span class="grp">Show
+        <span class="seg" id="dg-mode"><button type="button" data-v="soft" aria-pressed="false">training, forward only</button><button type="button" data-v="grad" aria-pressed="true">training, with gradient</button><button type="button" data-v="hard" aria-pressed="false">test time (discrete CF)</button></span></span>
+    </div>
+    <div class="figwrap"><svg class="chart" id="dg" viewBox="0 0 1000 430" role="img" aria-label="Diagram of one DCF training update: scorer, risks, a calibration lane ending in the threshold, a prediction lane ending in the retention loss, and two gradient routes back to the scorer"></svg></div>
+    <p class="cap">Solid grey arrows: forward pass. Dashed: the gradient of the loss. Route ① reaches \(\theta\) through the risks of the prediction graphs. Route ② reaches it through \(\hat\tau_\alpha\), and from there through the risks of the calibration graphs. Switch to <i>test time</i> to see the discrete operation each box stands in for (the paper's Table 1).</p>
+    <div class="grid2">
+      <div class="algo">
+        <div class="hd">DCF training: Algorithms 1–3 merged, in this page's notation</div>
+        <div><span class="ln">1:</span><b>Input:</b> graphs \(\mathcal D=\{(G_i,\{x_v\},\{y_v\})\}\), scorer \(\pi_\theta\), miscoverage \(\alpha\), learning rate \(\eta\), and \(C,m,T_p,\gamma,\tau_s,\lambda,\beta,\rho,\tau_z\)</div>
+        <div><span class="ln">2:</span>split \(\mathcal D\) into \(\mathcal D_{\rm train}\) and \(\mathcal D_{\rm val}\); initialise \(\theta\)</div>
+        <div><span class="ln">3:</span><b>for</b> epoch \(e\leftarrow1:E\) <b>do</b></div>
+        <div class="i1"><span class="ln">4:</span>split \(\mathcal D_{\rm train}\) into disjoint \(\mathcal D_{\rm cal},\ \mathcal D_{\rm pred}\)</div>
+        <div class="i1"><span class="ln">5:</span><b>for</b> each graph \(i\) of \(\mathcal D_{\rm cal}\) <b>do</b> <span class="cm">{Alg. 1}</span></div>
+        <div class="i2"><span class="ln">6:</span>\(r_v\leftarrow C-\pi_\theta(x_v)\); \(\ \mathcal T\leftarrow\{\min_v r_v-m,\ \{r_v\},\ \max_v r_v+m\}\)</div>
+        <div class="i2 hl"><span class="ln">7:</span>\(p_{v,\tau}\leftarrow\sigma\big((\tau-r_v)/T_p\big)\) for all \((v,\tau)\)</div>
+        <div class="i2 hl"><span class="ln">8:</span>\(q_{v,\tau}\leftarrow\exp\big(\sum_u w_u\log p_{u,\tau}\,/\,\sum_u w_u\big)\), \(u\in\mathrm{Anc}(v)\cup\{v\}\)</div>
+        <div class="i2 hl"><span class="ln">9:</span>\(V_\tau\leftarrow1-Q_\tau^{1/\tau_s}\), \(\ \log Q_\tau=\tfrac{1}{|V^-|}\sum_{v\in V^-}\log(1-q_{v,\tau})\)</div>
+        <div class="i2 hl"><span class="ln">10:</span>\(s_\tau\leftarrow\tau^{\rm norm}-\lambda\,\widehat V_\tau\); \(\ w^{\rm cal}\leftarrow\mathrm{softmax}(\beta s)\); \(\ \tilde\tau_i\leftarrow\sum_\tau w^{\rm cal}_\tau\,\tau\)</div>
+        <div class="i1 hl"><span class="ln">11:</span>\(\hat\tau_\alpha\leftarrow\mathrm{SoftQuantile}\big(\{\tilde\tau_i\}_{i=1}^n,\ \lceil(n+1)(1-\alpha)\rceil/n,\ \rho\big)\)</div>
+        <div class="i1"><span class="ln">12:</span><b>for</b> each graph of \(\mathcal D_{\rm pred}\) <b>do</b> <span class="cm">{Alg. 2}</span></div>
+        <div class="i2"><span class="ln">13:</span>\(r_v,\ \mathcal T,\ p_{v,\tau},\ q_{v,\tau}\) as in lines 6–8</div>
+        <div class="i2 hl"><span class="ln">14:</span>\(w_\tau\leftarrow e^{\beta\tau}\,\sigma\big((\hat\tau_\alpha-\tau)/\tau_z\big)\), then normalise over \(\mathcal T\)</div>
+        <div class="i2 hl"><span class="ln">15:</span>\(q_v\leftarrow\sum_{\tau\in\mathcal T}w_\tau\,q_{v,\tau}\)</div>
+        <div class="i1"><span class="ln">16:</span>\(\mathcal L\leftarrow-\tfrac{1}{|\mathcal D_{\rm pred}|}\sum_{i\in\mathcal D_{\rm pred}}\sum_{v\in V_i}y_{i,v}\,q_{i,v}\)</div>
+        <div class="i1"><span class="ln">17:</span>\(\theta\leftarrow\theta-\eta\,\nabla_\theta\mathcal L\) <span class="cm">{Adam}</span></div>
+        <div><span class="ln">18:</span><b>end for</b></div>
+        <div><span class="ln">19:</span><b>Output:</b> the trained scorer \(\pi_\theta\)</div>
+      </div>
+      <ul class="notes">
+        <li><b>Highlighted lines</b> are the smooth stand-ins. Each replaces one discrete operation of CF: lines 7–8 the subgraph \(U_\tau\), line 9 the test "is \(U_\tau\) coherently factual", line 10 the supremum, line 11 the order statistic, lines 14–15 the choice of the largest threshold below \(\hat\tau_\alpha\).</li>
+        <li><b>Gradients.</b> Lines 6–16 are differentiable in \(\theta\), so \(\nabla_\theta\mathcal L\) arrives by two routes: through the risks of \(\mathcal D_{\rm pred}\) (lines 13–15), and through \(\hat\tau_\alpha\) into the risks of \(\mathcal D_{\rm cal}\) (lines 6–11).</li>
+        <li><b>Data.</b> \(\mathcal D_{\rm cal}\) and \(\mathcal D_{\rm pred}\) are split again from \(\mathcal D_{\rm train}\) at every epoch (line 4), and Alg. 3 writes one update per epoch. Labels are used twice: on \(\mathcal D_{\rm cal}\) to find the false claims \(V^-\) (line 9), and on \(\mathcal D_{\rm pred}\) in the loss (line 16). \(\mathcal D_{\rm val}\) is for early stopping (Sec. 4.1.3).</li>
+        <li><b>Notation.</b> Line 10 follows Alg. 1: \(\tau\) and \(V_\tau\) are min-max scaled over the grid and \(\lambda\) sits on the violation, where Eq. 5 writes \(\lambda\tau-V_\tau\). Alg. 3 calls the retention probabilities \(p\); this page keeps \(q_v\) as in Eq. 8–9. The \(\epsilon\) the paper adds inside each logarithm is left out.</li>
+        <li><b>Output</b> is \(\pi_\theta\) alone. The \(\hat\tau_\alpha\) found during training is discarded, and discrete CF is calibrated and applied with the trained scorer.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= Part 2: calibration ======================= -->
+<section class="paper" id="cal">
+  <div class="paper-head">
+    <span class="eyebrow">Part 2 · Sec. 3.2–3.3 · Eq. 1–6 · Alg. 1</span>
+    <h2>Differentiable calibration: from one graph to \(\hat\tau_\alpha\)</h2>
+    <p>Each calibration graph is reduced to one number, the largest threshold that keeps none of its false claims. A quantile of those numbers is the threshold.</p>
+  </div>
+  <div class="stage">
+    <div class="stage-title"><span class="tag">Toy</span><h3>Nine calibration graphs; graph \(G_1\) step by step</h3></div>
+    <div class="controls">
+      <span class="grp">Temperatures
+        <button class="plain" id="h-def" type="button">Toy defaults</button><button class="plain" id="h-lim" type="button">Near the limit</button></span>
+      <label for="h-margin"><input id="h-margin" type="checkbox"> \(\sqrt{T_p}\) margin (Thm. 3.1)</label>
+      <span class="grp">\(\alpha\)
+        <span class="seg" id="h-alpha"><button type="button" data-v="0.1" aria-pressed="false">0.1</button><button type="button" data-v="0.2" aria-pressed="true">0.2</button><button type="button" data-v="0.3" aria-pressed="false">0.3</button></span></span>
+    </div>
+    <p class="note">These controls apply to Parts 2 and 3. Toy risks lie in [0, 1] with \(C=1\) and margin \(m=0.3\), so the temperatures here are not on the scale of the paper's grid-searched values (App. D.3). In every figure, a dark outline or ring marks what discrete CF does with the same risks.</p>
+
+    <div class="cpstep first">
+      <div class="txt">
+        <h4><span class="num">1</span>Score every claim, build the grid</h4>
+        <p>The scorer gives each claim a confidence \(\pi_\theta(x_v)\). Its risk is \(r_v=C-\pi_\theta(x_v)\). The candidate thresholds are the risks themselves, plus one margin point at each end.</p>
+        <div class="eq">\[ \begin{aligned}\mathcal T&=\{\tau_{\min},\,r_{v_1},\dots,r_{v_n},\,\tau_{\max}\}\\ \tau_{\min}&=\min_v r_v-m,\quad \tau_{\max}=\max_v r_v+m\end{aligned} \]</div>
+        <p class="note">Claims c3 and c5 are false. c5 has a low risk of its own, but it is built on c3.</p>
+      </div>
+      <div class="fig">
+        <svg class="chart" id="cal-graph" viewBox="0 0 520 244" role="img" aria-label="The toy deducibility graph of six claims with their risks, and its threshold grid on an axis"></svg>
+        <div class="legend"><span style="color:var(--ok)">✓ true claim</span><span style="color:var(--no)">✗ false claim</span><span>arrows: a claim depends on its parent</span><span>axis: the threshold grid \(\mathcal T\)</span></div>
+      </div>
+    </div>
+
+    <div class="cpstep">
+      <div class="txt">
+        <h4><span class="num">2</span>Soft keep, then ancestor coherence</h4>
+        <p>CF keeps claim \(v\) at threshold \(\tau\) if \(r_v\le\tau\) and every ancestor is kept too. DCF turns the first test into a sigmoid and the "and" into a weighted geometric mean over the claim and its ancestors.</p>
+        <div class="eq">\[ p_{v,\tau}=\sigma\Big(\frac{\tau-r_v}{T_p}\Big) \]</div>
+        <div class="eq">\[ \log q_{v,\tau}=\frac{\sum_{u\in\mathrm{Anc}(v)\cup\{v\}}w_u\log p_{u,\tau}}{\sum_{u\in\mathrm{Anc}(v)\cup\{v\}}w_u} \]\(w_u=\gamma\) for an ancestor, \(w_v=1\) for the claim itself.</div>
+        <div class="controls">
+          <label for="h-Tp">\(T_p\) <input id="h-Tp" type="range" min="-3.301" max="-0.699" step="0.01" value="-1.523"><span class="val" id="h-Tp-v"></span></label>
+          <label for="h-gamma">\(\gamma\) <input id="h-gamma" type="range" min="0.25" max="6" step="0.25" value="1"><span class="val" id="h-gamma-v"></span></label>
+          <span class="grp">Show
+            <span class="seg" id="heat-mode"><button type="button" data-v="p" aria-pressed="false">\(p\) soft keep</button><button type="button" data-v="q" aria-pressed="true">\(q\) with ancestors</button></span></span>
+        </div>
+        <p class="note">Switch between \(p\) and \(q\) on row c5. Its own sigmoid opens at 0.30, but its false ancestor c3 holds it back until 0.62. A geometric mean is a weaker "and" than a product (the paper chose it so that long chains are not punished for their length), so \(q\) stays a little above zero where CF gives a hard 0.</p>
+      </div>
+      <div class="fig">
+        <svg class="chart" id="cal-heat" viewBox="0 0 520 214" role="img" aria-label="Heat map of soft membership: one row per claim, one column per threshold"></svg>
+        <div class="legend"><span><i class="sw" style="background:var(--acc)"></i>soft membership, 0 to 1</span><span><svg width="13" height="11" viewBox="0 0 13 11"><rect x="1" y="1" width="11" height="9" rx="2" fill="var(--surface)" stroke="var(--fg)" stroke-width="1.8"/></svg>kept by discrete CF</span><span><svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="2.8" fill="var(--err)"/></svg>lowered by an ancestor (\(p-q&gt;0.2\))</span></div>
+      </div>
+    </div>
+
+    <div class="cpstep">
+      <div class="txt">
+        <h4><span class="num">3</span>Violation: do the false claims get through?</h4>
+        <p>For each threshold, \(Q_\tau\) is the geometric mean, over the false claims \(V^-\), of the probability that each one is filtered out. The violation \(V_\tau\) is near 0 when they are all gone and near 1 when one gets through.</p>
+        <div class="eq">\[ \begin{aligned}\log Q_\tau&=\frac{1}{|V^-|}\sum_{v\in V^-}\log(1-q_{v,\tau})\\ V_\tau&=1-Q_\tau^{1/\tau_s}\end{aligned} \]</div>
+        <div class="controls">
+          <label for="h-ts">\(\tau_s\) <input id="h-ts" type="range" min="-1.699" max="0.477" step="0.01" value="0.301"><span class="val" id="h-ts-v"></span></label>
+        </div>
+        <p class="note">This step needs the labels \(y_v\), so it exists only in calibration. In the toy, a graph with no false claim gets \(V_\tau=0\) at every threshold. Lower \(\tau_s\) while \(T_p\) is still large and every threshold looks like a violation: Theorem 3.1 sends \(T_p\to0\) first for that reason.</p>
+      </div>
+      <div class="fig">
+        <svg class="chart" id="cal-viol" viewBox="0 0 520 136" role="img" aria-label="Violation score at each threshold, with the discrete violations outlined"></svg>
+        <div class="legend"><span><i class="sw" style="background:var(--acc)"></i>\(V_\tau\)</span><span><svg width="13" height="11" viewBox="0 0 13 11"><rect x="1" y="1" width="11" height="9" rx="2" fill="var(--surface)" stroke="var(--fg)" stroke-width="1.5"/></svg>discrete CF: the subgraph \(U_\tau\) holds a false claim</span></div>
+      </div>
+    </div>
+
+    <div class="cpstep">
+      <div class="txt">
+        <h4><span class="num">4</span>Soft supremum: one score per graph</h4>
+        <p>CF's nonconformity score is the largest threshold whose subgraph, and every smaller one, holds no false claim. DCF gives each threshold a utility, its size minus its violation, and takes a softmax-weighted average of the thresholds.</p>
+        <div class="eq">\[ \begin{aligned}s_\tau&=\lambda\,\tau-V_\tau\\ w^{\rm cal}_\tau&=\frac{e^{\beta s_\tau}}{\sum_{\tau'\in\mathcal T}e^{\beta s_{\tau'}}}\\ \tilde\tau&=\sum_{\tau\in\mathcal T}w^{\rm cal}_\tau\,\tau\end{aligned} \]</div>
+        <div class="controls">
+          <label for="h-beta">\(\beta\) <input id="h-beta" type="range" min="0.699" max="2.602" step="0.01" value="1.903"><span class="val" id="h-beta-v"></span></label>
+        </div>
+        <div class="readout" id="cal-sup-read"></div>
+        <p class="note">Both \(\tau\) and \(V_\tau\) are min-max scaled to [0, 1] before the utility is computed (the paper's footnote 5), and the toy fixes \(\lambda=1\). Appendix Alg. 1 writes the utility as \(\tau-\lambda V_\tau\); the two forms agree at \(\lambda=1\).</p>
+      </div>
+      <div class="fig">
+        <svg class="chart" id="cal-sup" viewBox="0 0 520 222" role="img" aria-label="Utility of each threshold and the softmax weight it receives"></svg>
+        <div class="legend"><span><i class="sw" style="background:var(--bar)"></i>utility \(s_\tau\)</span><span><i class="sw" style="background:var(--acc)"></i>weight \(w^{\rm cal}_\tau\)</span><span><svg width="13" height="11" viewBox="0 0 13 11"><rect x="1" y="1" width="11" height="9" rx="2" fill="var(--surface)" stroke="var(--fg)" stroke-width="1.5" stroke-dasharray="3 2"/></svg>discrete score \(\nu\)</span></div>
+      </div>
+    </div>
+
+    <div class="cpstep">
+      <div class="txt">
+        <h4><span class="num">5</span>Soft quantile over the calibration set</h4>
+        <p>Moves 1–4 run on every calibration graph. The threshold has to be one that at least a \(1-\alpha\) share of them tolerate, so it is the \(k\)-th largest score with \(k=\lceil(1-\alpha)(n+1)\rceil\). DCF reads that position from a soft sort.</p>
+        <div class="eq">\[ \begin{aligned}\hat\tau_\alpha&=\mathrm{SoftQuantile}\big(\{\tilde\tau_i\}_{i=1}^n,\,q,\,\rho\big)\\ q&=\lceil(1-\alpha)(n+1)\rceil/n\end{aligned} \]</div>
+        <div class="controls">
+          <label for="h-rho">\(\rho\) <input id="h-rho" type="range" min="0.301" max="2.602" step="0.01" value="1.778"><span class="val" id="h-rho-v"></span></label>
+        </div>
+        <div class="readout" id="cal-q-read"></div>
+        <p class="note">The paper names the operator (Grover et al., 2019) and its sharpness \(\rho\) but gives no formula, so the toy uses that paper's NeuralSort relaxation with temperature \(1/\rho\). Counting from the largest score is this page's reading of the quantile. It is the direction in which the coverage guarantee holds, and it fits the paper's remark that thresholds saturate at \(\tau_{\max}\) once \(\alpha\) exceeds the share of graphs with errors.</p>
+      </div>
+      <div class="fig">
+        <svg class="chart" id="cal-q" viewBox="0 0 520 170" role="img" aria-label="Soft and discrete nonconformity scores of the nine calibration graphs on an axis, with the threshold"></svg>
+        <div class="legend"><span><svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.5" fill="var(--acc)"/></svg>soft score \(\tilde\tau_i\)</span><span><svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.5" fill="var(--no)"/></svg>below \(\hat\tau_\alpha\)</span><span><svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4" fill="var(--surface)" stroke="var(--fg)" stroke-width="1.6"/></svg>discrete score \(\nu_i\)</span><span><svg width="12" height="10" viewBox="0 0 12 10"><path d="M1 9 L6 1 L11 9z" fill="var(--fg)"/></svg>discrete threshold</span></div>
+        <p class="cap">Graphs 6–9 have no false claim, so their score is their own \(\tau_{\max}\). The larger dot is \(G_1\).</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= Part 3: prediction and loss ======================= -->
+<section class="paper ct" id="pred">
+  <div class="paper-head">
+    <span class="eyebrow">Part 3 · Sec. 3.4–3.5 · Eq. 7–9 · Alg. 2</span>
+    <h2>Differentiable prediction and the retention loss</h2>
+    <p>The threshold from Part 2 filters each prediction graph. The result is one retention probability per claim, and the loss counts how many true claims survive.</p>
+  </div>
+  <div class="stage">
+    <div class="stage-title"><span class="tag">Toy</span><h3>One prediction graph, filtered at \(\hat\tau_\alpha\)</h3></div>
+
+    <div class="cpstep first">
+      <div class="txt">
+        <h4><span class="num">6</span>Gated soft argmax</h4>
+        <p>Moves 1–2 run again on the prediction graph, on its own grid. CF then picks the largest threshold below \(\hat\tau_\alpha\). DCF weights every threshold by \(e^{\beta\tau}\), which favours large ones, times a sigmoid gate that closes above \(\hat\tau_\alpha\).</p>
+        <div class="eq">\[ w_\tau\ \propto\ e^{\beta\tau}\cdot\sigma\Big(\frac{\hat\tau_\alpha-\tau}{\tau_z}\Big) \]</div>
+        <div class="controls">
+          <label for="h-tz">\(\tau_z\) <input id="h-tz" type="range" min="-3.699" max="-1" step="0.01" value="-2.398"><span class="val" id="h-tz-v"></span></label>
+        </div>
+        <div class="readout" id="pr-gate-read"></div>
+        <p class="note">\(\beta\) is the same one as in move 4. Read off the formula: above \(\hat\tau_\alpha\) the gate decays like \(e^{-\tau/\tau_z}\) while the first factor grows like \(e^{\beta\tau}\). So the gate can only win when \(\beta\,\tau_z&lt;1\), and it needs to be well below 1. Raise \(\tau_z\) and watch the weight escape to \(\tau_{\max}\).</p>
+      </div>
+      <div class="fig">
+        <svg class="chart" id="pr-gate" viewBox="0 0 520 190" role="img" aria-label="The sigmoid gate around the threshold and the weight each grid threshold receives"></svg>
+        <div class="legend"><span><svg width="16" height="8" viewBox="0 0 16 8"><path d="M0 2 H7 C10 2 9 6 16 6" fill="none" stroke="var(--muted)" stroke-width="1.5"/></svg>gate</span><span><i class="sw" style="background:var(--acc)"></i>weight \(w_\tau\)</span><span><svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.5" fill="var(--surface)" stroke="var(--fg)" stroke-width="1.6"/></svg>discrete choice \(\tau_*\)</span></div>
+      </div>
+    </div>
+
+    <div class="cpstep">
+      <div class="txt">
+        <h4><span class="num">7</span>Retention probabilities and the loss</h4>
+        <p>Each claim's retention probability averages its membership \(q_{v,\tau}\) over the thresholds, with those weights. The loss is minus the number of true claims retained, averaged over the prediction graphs.</p>
+        <div class="eq">\[ \begin{aligned}q_v&=\sum_{\tau\in\mathcal T}w_\tau\,q_{v,\tau}\\ \mathcal L_{\rm retention}&=-\frac{1}{|\mathcal D_{\rm pred}|}\sum_{i\in\mathcal D_{\rm pred}}\sum_{v\in V_i}y_{i,v}\,q_{i,v}\end{aligned} \]</div>
+        <div class="readout" id="pr-read"></div>
+        <p class="note">The claim whose risk equals the selected threshold has \(p=0.5\) at every temperature under Eq. 1, so its \(q\) stays below 1. Theorem 3.1 shifts the sigmoid by \(\sqrt{T_p}\) to remove this, and the paper notes that in practice a margin of 0 gives similar probabilities. Press <i>Near the limit</i> to see the soft and discrete outputs coincide.</p>
+      </div>
+      <div class="fig">
+        <svg class="chart" id="pr-graph" viewBox="0 0 520 176" role="img" aria-label="The prediction graph with each claim shaded by its retention probability and ringed if discrete CF keeps it"></svg>
+        <div class="legend"><span><i class="sw" style="background:var(--acc)"></i>shade: \(q_v\)</span><span><svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.5" fill="var(--surface)" stroke="var(--fg)" stroke-width="2"/></svg>kept by discrete CF</span><span><svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.5" fill="var(--surface)" stroke="var(--bar)" stroke-width="1.4" stroke-dasharray="2 2"/></svg>removed by discrete CF</span></div>
+      </div>
+    </div>
+
+    <div class="box n"><span class="h">After training</span>
+      <span>The smooth pipeline is thrown away. The trained \(\pi_\theta\) supplies the risks, and discrete CF is calibrated and applied as usual, so the coverage guarantee is the one CF already had (Sec. 3.6). Theorem 3.1 says the smooth score \(\tilde\tau\) converges to CF's score when the limits are taken in order: \(T_p\to0^+\) first, then \(\tau_s\to0\), then \(\beta\to\infty\). Theorem 3.2 states the matching result for prediction, with \(T_p\to0^+\), \(\tau_z\to0^+\) and \(\beta\to\infty\).</span></div>
+  </div>
+</section>
+</div>
+
+<script>
+// ---------- helpers (same as conftr.html) ----------
+const $=id=>document.getElementById(id);
+const sum=a=>a.reduce((x,y)=>x+y,0);
+const f2=x=>x.toFixed(2), f3=x=>x.toFixed(3);
+const mn=s=>String(s).replace(/^-/,'−');
+// LaTeX inside SVG: MathJax SVG placed at baseline (x,y); falls back to plain text before MathJax loads.
+function tex(t,x,y,o={}){const size=o.size||12,anchor=o.anchor||'start',color=o.color||'var(--muted)';
+  if(!window.MJ)return `<text x="${x}" y="${y}" text-anchor="${anchor}" style="fill:${color}">${o.alt||t.replace(/\\(text|rm|mathrm|mathbf|mathcal|textstyle|tfrac|big|hat|tilde|,|;|quad|\s)/g,' ').replace(/[\\{}^_]/g,'')}</text>`;
+  const s=MathJax.tex2svg(t,{display:false}).querySelector('svg');const vb=s.getAttribute('viewBox').split(/\s+/).map(Number);
+  const w=vb[2]/1000*size,h=vb[3]/1000*size;let x0=anchor==='end'?x-w:anchor==='middle'?x-w/2:x;
+  s.setAttribute('x',x0);s.setAttribute('y',y+vb[1]/1000*size);s.setAttribute('width',w);s.setAttribute('height',h);
+  s.removeAttribute('style');s.setAttribute('style',`color:${color};overflow:visible`);return s.outerHTML;}
+function hAxis(x0,x1,y,vmin,vmax,X,step,dec){let s=`<line x1="${x0}" y1="${y}" x2="${x1}" y2="${y}" stroke="var(--muted)"/>`;
+  for(let v=Math.ceil(vmin/step-1e-9)*step;v<=vmax+1e-9;v+=step){const x=X(v);s+=`<line x1="${x}" y1="${y}" x2="${x}" y2="${y+4}" stroke="var(--muted)"/><text x="${x}" y="${y+16}" text-anchor="middle">${mn((Math.abs(v)<1e-9?0:v).toFixed(dec))}</text>`;}return s;}
+function segCtl(id,cb){$(id).addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  $(id).querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));cb(b.dataset.v);});}
+// Polyline with a triangular head on its last segment.
+function arrow(pts,o={}){const c=o.color||'var(--muted)',w=o.w||1.4,n=pts.length,[x1,y1]=pts[n-2],[x2,y2]=pts[n-1];
+  const L=Math.hypot(x2-x1,y2-y1)||1,ux=(x2-x1)/L,uy=(y2-y1)/L,h=o.head||6.5,bx=x2-ux*h,by=y2-uy*h;
+  const body=pts.slice(0,-1).concat([[bx+ux*0.5,by+uy*0.5]]);
+  return `<polyline points="${body.map(p=>p.map(v=>v.toFixed(1)).join(',')).join(' ')}" fill="none" stroke="${c}" stroke-width="${w}"${o.dash?` stroke-dasharray="${o.dash}"`:''}/>`+
+    `<path d="M${x2.toFixed(1)} ${y2.toFixed(1)} L${(bx-uy*h*0.45).toFixed(1)} ${(by+ux*h*0.45).toFixed(1)} L${(bx+uy*h*0.45).toFixed(1)} ${(by-ux*h*0.45).toFixed(1)}z" fill="${c}"/>`;}
+
+// ---------- DCF, Sec. 3 of the paper, as plain functions ----------
+const EPS=1e-9;
+const lsig=z=>z>=0?-Math.log1p(Math.exp(-z)):z-Math.log1p(Math.exp(z));
+function softmax(z){const m=Math.max(...z);const e=z.map(v=>Math.exp(v-m));const s=sum(e);return e.map(v=>v/s);}
+function minmax(a){const lo=Math.min(...a),hi=Math.max(...a);return hi-lo<1e-12?a.map(()=>0):a.map(v=>(v-lo)/(hi-lo));}
+function ancestors(par){const A=par.map(()=>new Set());par.forEach((ps,v)=>ps.forEach(u=>{A[v].add(u);A[u].forEach(w=>A[v].add(w));}));return A.map(s=>[...s]);}
+function mkGraph(r,par,y){return {r,par,y,anc:ancestors(par)};}
+const grid=(r,m)=>{const s=[...r].sort((a,b)=>a-b);return [s[0]-m,...s,s[s.length-1]+m];};
+// Eq. 1-2: soft keep p[v][t] and coherence-adjusted membership q[v][t] on the graph's own grid.
+function member(G,H){const T=grid(G.r,H.m),d=H.margin?Math.sqrt(H.Tp):0;
+  const lp=G.r.map(rv=>T.map(t=>lsig((t-rv+d)/H.Tp)));
+  const q=G.r.map((_,v)=>T.map((_,t)=>{let num=Math.log(Math.exp(lp[v][t])+EPS),den=1;
+    G.anc[v].forEach(u=>{num+=H.gamma*Math.log(Math.exp(lp[u][t])+EPS);den+=H.gamma;});return Math.min(1,Math.exp(num/den));}));
+  return {T,p:lp.map(row=>row.map(Math.exp)),q};}
+// Eq. 3-6: violation, utility (lambda = 1, both terms min-max scaled), soft supremum, for one calibration graph.
+function calibOne(G,H){const M=member(G,H),T=M.T,neg=G.y.map((y,v)=>y?-1:v).filter(v=>v>=0);
+  const V=T.map((_,t)=>{if(!neg.length)return 0;let lQ=0;neg.forEach(v=>lQ+=Math.log(1-M.q[v][t]+EPS));
+    return Math.min(1,Math.max(0,1-Math.exp(lQ/neg.length/H.ts)));});
+  const tn=minmax(T),Vn=minmax(V),s=T.map((_,t)=>tn[t]-Vn[t]),w=softmax(s.map(x=>H.beta*x));
+  return Object.assign(M,{V,s,w,tt:sum(w.map((x,t)=>x*T[t]))});}
+// NeuralSort relaxation (Grover et al., 2019): soft k-th largest of s, temperature 1/rho.
+function softKth(s,k,rho){const n=s.length,a=s.map(x=>sum(s.map(y=>Math.abs(x-y))));
+  const w=softmax(s.map((x,j)=>rho*((n+1-2*k)*x-a[j])));return sum(w.map((x,j)=>x*s[j]));}
+const kIndex=(alpha,n)=>Math.min(n,Math.ceil((1-alpha)*(n+1)-1e-9));
+function calibrate(Gs,H){const per=Gs.map(G=>calibOne(G,H)),tts=per.map(c=>c.tt),k=kIndex(H.alpha,Gs.length);
+  return {per,tts,k,tauHat:softKth(tts,k,H.rho)};}
+// Eq. 7-8: gated soft argmax and retention probabilities, for one prediction graph.
+function predictOne(G,H,tauHat){const M=member(G,H),T=M.T,w=softmax(T.map(t=>H.beta*t+lsig((tauHat-t)/H.tz)));
+  const qv=G.r.map((_,v)=>sum(w.map((x,t)=>x*M.q[v][t])));
+  return Object.assign(M,{w,qv,R:sum(qv.map((x,v)=>x*G.y[v]))});}
+// Discrete CF on the same risks.
+function hardOne(G,m){const T=grid(G.r,m),U=T.map(t=>G.r.map((rv,v)=>rv<=t+1e-12&&G.anc[v].every(u=>G.r[u]<=t+1e-12)));
+  const bad=U.map(row=>row.some((inU,v)=>inU&&!G.y[v]));let k=0;while(k+1<T.length&&!bad[k+1])k++;return {T,U,bad,k,nu:T[k]};}
+function hardCalibrate(Gs,H){const nus=Gs.map(G=>hardOne(G,H.m).nu),k=kIndex(H.alpha,Gs.length);
+  return {nus,k,tauHat:[...nus].sort((a,b)=>b-a)[k-1]};}
+function hardPredict(G,m,tauHat){const h=hardOne(G,m);let k=0;h.T.forEach((t,i)=>{if(t<tauHat)k=i;});return {T:h.T,k,U:h.U[k]};}
+
+// ---------- toy data: risks, parents, labels (1 = true claim) ----------
+const CAL=[
+  mkGraph([0.08,0.22,0.62,0.35,0.30,0.75],[[],[0],[0],[1],[2],[3]],[1,1,0,1,0,1]),
+  mkGraph([0.10,0.18,0.34,0.46],[[],[0],[0],[2]],[1,1,0,1]),
+  mkGraph([0.06,0.30,0.52,0.66,0.20],[[],[0],[1],[1],[3]],[1,1,1,0,0]),
+  mkGraph([0.12,0.33,0.60,0.71],[[],[0],[0],[1]],[1,1,1,0]),
+  mkGraph([0.09,0.27,0.44,0.70,0.83],[[],[0],[1],[0],[3]],[1,1,1,1,0]),
+  mkGraph([0.07,0.21,0.55],[[],[0],[1]],[1,1,1]),
+  mkGraph([0.11,0.16,0.38,0.62],[[],[0],[0],[2]],[1,1,1,1]),
+  mkGraph([0.04,0.29,0.48],[[],[0],[0]],[1,1,1]),
+  mkGraph([0.13,0.26,0.41,0.52,0.71],[[],[0],[1],[1],[2]],[1,1,1,1,1])];
+const PRED=mkGraph([0.05,0.15,0.28,0.48,0.55,0.20],[[],[0],[1],[0],[2],[3]],[1,1,1,1,0,1]);
+const POS_CAL=[[50,80],[160,40],[160,120],[270,40],[270,120],[380,40]];
+const POS_PRED=[[50,80],[160,40],[270,40],[160,120],[380,40],[270,120]];
+const DEF={Tp:0.03,gamma:1,ts:2,beta:80,tz:0.004,rho:60,margin:false};
+const LIM={Tp:0.0005,gamma:1,ts:0.022,beta:400,tz:0.0002,rho:400,margin:true};
+const H=Object.assign({m:0.3,alpha:0.2},DEF), UI={heat:'q'};
+let S={};
+
+// ---------- Part 1: the diagram ----------
+const DG={mode:'grad'};
+const CALB=[
+  ['soft keep','p_{v,\\tau}=\\sigma\\big(\\tfrac{\\tau-r_v}{T_p}\\big)','\\mathbf 1\\{r_v\\le\\tau\\}','threshold filter'],
+  ['ancestor coherence','q_{v,\\tau}=\\mathrm{GeoMean}_\\gamma(p_{u,\\tau})','\\text{and every ancestor kept}','ancestor coherence'],
+  ['violation','V_\\tau=1-Q_\\tau^{1/\\tau_s}','U_\\tau\\text{ is CF, or not}','violation check'],
+  ['soft supremum','\\tilde\\tau=\\textstyle\\sum_\\tau w^{\\rm cal}_\\tau\\,\\tau',"\\sup\\{\\tau:\\,U_{\\tau'\\le\\tau}\\text{ all CF}\\}",'supremum'],
+  ['soft quantile','\\mathrm{SoftQuantile}(\\{\\tilde\\tau_i\\},\\rho)','\\text{order statistic of }\\{\\nu_i\\}','quantile']];
+const PREDB=[CALB[0],CALB[1],
+  ['gated soft argmax','w_\\tau\\propto e^{\\beta\\tau}\\,\\sigma\\big(\\tfrac{\\hat\\tau_\\alpha-\\tau}{\\tau_z}\\big)','\\arg\\max_{\\tau<\\hat\\tau_\\alpha}\\tau','bounded argmax'],
+  ['retention','q_v=\\textstyle\\sum_\\tau w_\\tau\\,q_{v,\\tau}','U_{\\rm filtered}','prediction set'],
+  ['retention loss','\\mathcal L=-\\tfrac{1}{|\\mathcal D_{\\rm pred}|}\\textstyle\\sum y_v\\,q_v','\\text{training only}','retention loss']];
+function dgRender(){
+  const hard=DG.mode==='hard',grad=DG.mode==='grad',X0=190,ST=160,BW=142,BH=56,YC=70,YP=330;
+  const box=(x,y,w,h,st,op)=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6" fill="var(--surface)" stroke="${st||'var(--line)'}" stroke-width="1.3"${op?` opacity="${op}"`:''}/>`;
+  const Tx=(t,x,y,o)=>tex(t,x,y,Object.assign({anchor:'middle',color:'var(--fg)',size:10},o||{}));
+  const txt=(s,x,y,o='class="fg"')=>`<text x="${x}" y="${y}" text-anchor="middle" ${o}>${s}</text>`;
+  const F=pts=>arrow(pts,{color:'var(--muted)',w:1.4});
+  let s='';
+  // lanes
+  s+=`<rect x="180" y="44" width="802" height="92" rx="8" fill="color-mix(in srgb, var(--cp) 6%, transparent)" stroke="var(--cp)" stroke-dasharray="2 3"/>`;
+  s+=`<text x="188" y="60" style="fill:var(--cp)">${hard?'Calibration · discrete CF on held-out graphs':'Calibration · Alg. 1 · one score per graph of D_cal, then one threshold'}</text>`;
+  s+=`<rect x="180" y="304" width="802" height="92" rx="8" fill="color-mix(in srgb, var(--ct) 6%, transparent)" stroke="var(--ct)" stroke-dasharray="2 3"/>`;
+  s+=`<text x="188" y="320" style="fill:var(--ct)">${hard?'Prediction · discrete CF on the test graph':'Prediction · Alg. 2 · every graph of D_pred'}</text>`;
+  // scorer column
+  s+=box(12,120,140,44)+txt('claim features',82,138)+Tx('x_v',82,156,{size:11.5});
+  s+=box(12,186,140,60,'var(--fg)')+txt(hard?'trained scorer':'scorer',82,204)+Tx('\\pi_\\theta',82,226,{size:14})+txt(hard?'θ frozen':'weights θ',82,240,'');
+  s+=box(12,268,140,48)+txt('risk',82,286)+Tx('r_v=C-\\pi_\\theta(x_v)',82,305,{size:11});
+  s+=txt(hard?'held-out graphs go up,':'each epoch: split the graphs',82,336,'')+txt(hard?'the test graph goes down':'into D_cal and D_pred',82,350,'');
+  // forward arrows
+  s+=F([[82,164],[82,185]])+F([[66,246],[66,267]]);
+  s+=F([[152,286],[170,286],[170,91],[X0-1,91]])+F([[170,286],[170,351],[X0-1,351]]);
+  for(let i=0;i<4;i++){const xa=X0+i*ST+BW,xb=X0+(i+1)*ST-1;s+=F([[xa,91],[xb,91]]);if(!(hard&&i===3))s+=F([[xa,351],[xb,351]]);}
+  s+=F([[901,126],[901,194]])+F([[880,216],[581,216],[581,329]]);
+  // boxes
+  CALB.forEach((b,i)=>{const x=X0+i*ST;s+=box(x,YC,BW,BH,'var(--cp)')+txt(hard?b[3]:b[0],x+BW/2,YC+20)+Tx(hard?b[2]:b[1],x+BW/2,YC+42);});
+  PREDB.forEach((b,i)=>{const x=X0+i*ST,off=hard&&i===4;
+    s+=box(x,YP,BW,BH,'var(--ct)',off?0.4:0)+txt(hard?b[3]:b[0],x+BW/2,YP+20,off?'':'class="fg"')+Tx(hard?b[2]:b[1],x+BW/2,YP+42,off?{color:'var(--muted)'}:{});});
+  s+=`<circle cx="901" cy="216" r="21" fill="var(--surface)" stroke="var(--cp)" stroke-width="1.5"/>`+Tx('\\hat\\tau_\\alpha',901,221,{size:14});
+  // gradient routes
+  if(grad){const g1={color:'var(--ct)',w:1.8,dash:'5 3'},g2={color:'var(--cp)',w:1.8,dash:'5 3'};
+    for(let i=4;i>0;i--)s+=arrow([[X0+i*ST-1,367],[X0+(i-1)*ST+BW+1,367]],g1);
+    s+=arrow([[X0-1,367],[162,367],[162,304],[153,304]],g1)+arrow([[92,267],[92,247]],g1);
+    for(let i=4;i>2;i--)s+=arrow([[X0+i*ST-1,377],[X0+(i-1)*ST+BW+1,377]],g2);
+    s+=arrow([[597,329],[597,230],[884,230]],g2)+arrow([[915,199],[915,127]],g2);
+    for(let i=4;i>0;i--)s+=arrow([[X0+i*ST-1,107],[X0+(i-1)*ST+BW+1,107]],g2);
+    s+=arrow([[X0-1,107],[162,107],[162,278],[153,278]],g2)+arrow([[108,267],[108,247]],g2);
+    s+=`<text x="606" y="254" style="fill:var(--cp)">② through the threshold, into the risks of D_cal</text>`;
+    s+=`<text x="188" y="416" style="fill:var(--ct)">① through the risks of the D_pred graphs themselves</text>`;}
+  if(hard)s+=`<text x="606" y="254">no gradient: split CP on the discrete pipeline, as in CF</text>`;
+  $('dg').innerHTML=s;}
+segCtl('dg-mode',v=>{DG.mode=v;dgRender();});
+
+// ---------- figures for Parts 2 and 3 ----------
+const AX={x0:22,x1:498,lo:-0.3,hi:1.15};
+const XA=v=>AX.x0+(Math.min(AX.hi,Math.max(AX.lo,v))-AX.lo)/(AX.hi-AX.lo)*(AX.x1-AX.x0);
+const HM={L:92,R:8,W:520};
+const cw=n=>(HM.W-HM.L-HM.R)/n, cx=(j,n)=>HM.L+j*cw(n);
+const colHeads=(T,y)=>T.map((t,j)=>`<text x="${(cx(j,T.length)+cw(T.length)/2).toFixed(1)}" y="${y}" text-anchor="middle" class="fg">${mn(f2(t))}</text>`).join('');
+
+function drawGraph(G,pos,name,o={}){const R=17;let s='';
+  G.par.forEach((ps,v)=>ps.forEach(u=>{const [x1,y1]=pos[u],[x2,y2]=pos[v],L=Math.hypot(x2-x1,y2-y1),ux=(x2-x1)/L,uy=(y2-y1)/L;
+    s+=arrow([[x1+ux*(R+2),y1+uy*(R+2)],[x2-ux*(R+3),y2-uy*(R+3)]],{w:1.3});}));
+  G.r.forEach((rv,v)=>{const [x,y]=pos[v],c=G.y[v]?'var(--ok)':'var(--no)',fo=o.fill?o.fill(v):0,kept=o.kept?o.kept(v):null;
+    s+=`<circle cx="${x}" cy="${y}" r="${R}" fill="var(--surface)"/>`;
+    if(o.fill)s+=`<circle cx="${x}" cy="${y}" r="${R}" fill="var(--acc)" fill-opacity="${(0.9*fo).toFixed(3)}"/>`;
+    s+=`<circle cx="${x}" cy="${y}" r="${R}" fill="none" stroke="${kept===null?c:kept?'var(--fg)':'var(--bar)'}" stroke-width="${kept===false?1.4:2.2}"${kept===false?' stroke-dasharray="3 3"':''}/>`;
+    s+=`<text x="${x}" y="${y+4}" text-anchor="middle" style="font-size:12px;fill:${fo>0.55?'var(--surface)':'var(--fg)'}">${name}${v+1}</text>`;
+    s+=`<text x="${x+R+1}" y="${y-R+6}" style="font-size:12px;fill:${c}">${G.y[v]?'✓':'✗'}</text>`;
+    (o.sub?o.sub(v):[]).forEach((t,i)=>{s+=`<text x="${x}" y="${y+R+14+i*13}" text-anchor="middle"${i===0?' class="fg"':''}>${t}</text>`;});});
+  return s;}
+
+function figGraph(){const G=CAL[0],T=S.cal.per[0].T,y=206;
+  let s=drawGraph(G,POS_CAL,'c',{sub:v=>['r = '+f2(G.r[v])]});
+  const order=G.r.map((_,v)=>v).sort((a,b)=>G.r[a]-G.r[b]);
+  s+=`<line x1="${AX.x0}" y1="${y}" x2="${AX.x1}" y2="${y}" stroke="var(--muted)"/>`;
+  T.forEach((t,j)=>{const x=XA(t).toFixed(1),end=j===0||j===T.length-1,v=end?-1:order[j-1],c=end?'var(--muted)':G.y[v]?'var(--ok)':'var(--no)';
+    s+=end?`<rect x="${x-3.5}" y="${y-3.5}" width="7" height="7" fill="var(--surface)" stroke="var(--muted)" stroke-width="1.4"/>`:`<circle cx="${x}" cy="${y}" r="4" fill="${c}"/>`;
+    s+=`<text x="${x}" y="${y+16+(j%2)*13}" text-anchor="middle" class="fg">${mn(f2(t))}</text>`;
+    s+=`<text x="${x}" y="${y-9-(j%2)*12}" text-anchor="middle" style="fill:${c}">${end?(j===0?'τmin':'τmax'):'c'+(v+1)}</text>`;});
+  $('cal-graph').innerHTML=s;}
+
+function figHeat(){const g=S.cal.per[0],G=CAL[0],h=S.hard1,T=g.T,n=T.length,w=cw(n),rh=31,y0=24,M=UI.heat==='p'?g.p:g.q;
+  let s=`<text x="${HM.L-8}" y="14" text-anchor="end">τ</text>`+colHeads(T,14);
+  G.r.forEach((rv,v)=>{const y=y0+v*rh,c=G.y[v]?'var(--ok)':'var(--no)',ty=y+rh/2+4;
+    s+=`<text x="6" y="${ty}" class="fg" style="font-size:12px">c${v+1}</text><text x="28" y="${ty}" style="fill:${c};font-size:12px">${G.y[v]?'✓':'✗'}</text><text x="${HM.L-8}" y="${ty}" text-anchor="end">r ${f2(rv)}</text>`;
+    T.forEach((t,j)=>{const val=M[v][j],x=cx(j,n),kept=h.U[j][v];
+      s+=`<rect x="${(x+2).toFixed(1)}" y="${y+2}" width="${(w-4).toFixed(1)}" height="${rh-4}" rx="3" fill="var(--surface)"/>`;
+      s+=`<rect x="${(x+2).toFixed(1)}" y="${y+2}" width="${(w-4).toFixed(1)}" height="${rh-4}" rx="3" fill="var(--acc)" fill-opacity="${(0.04+0.86*val).toFixed(3)}" stroke="${kept?'var(--fg)':'var(--line)'}" stroke-width="${kept?1.8:1}"/>`;
+      s+=`<text x="${(x+w/2).toFixed(1)}" y="${ty}" text-anchor="middle" style="fill:${val>0.55?'var(--surface)':'var(--fg)'}">${f2(val)}</text>`;
+      if(UI.heat==='q'&&g.p[v][j]-g.q[v][j]>0.2)s+=`<circle cx="${(x+w-9).toFixed(1)}" cy="${y+9}" r="2.8" fill="var(--err)"/>`;});});
+  $('cal-heat').innerHTML=s;}
+
+function figViol(){const g=S.cal.per[0],h=S.hard1,T=g.T,n=T.length,w=cw(n),base=112,H0=76;
+  let s=`<line x1="${HM.L}" y1="${base}" x2="${HM.W-HM.R}" y2="${base}" stroke="var(--muted)"/>`;
+  s+=`<text x="${HM.L-8}" y="${base+4}" text-anchor="end">0</text><text x="${HM.L-8}" y="${base-H0+4}" text-anchor="end">1</text>`+tex('V_\\tau',6,base-H0/2+4,{color:'var(--fg)',alt:'V'});
+  T.forEach((t,j)=>{const x=cx(j,n),bh=Math.max(1,g.V[j]*H0);
+    s+=`<rect x="${(x+13).toFixed(1)}" y="${(base-bh).toFixed(1)}" width="${(w-26).toFixed(1)}" height="${bh.toFixed(1)}" rx="2" fill="var(--acc)"/>`;
+    if(h.bad[j])s+=`<rect x="${(x+7).toFixed(1)}" y="${base-H0}" width="${(w-14).toFixed(1)}" height="${H0}" rx="2" fill="none" stroke="var(--fg)" stroke-width="1.5"/>`;
+    s+=`<text x="${(x+w/2).toFixed(1)}" y="${(base-Math.max(bh,h.bad[j]?H0:0)-5).toFixed(1)}" text-anchor="middle" class="fg">${f2(g.V[j])}</text>`;});
+  $('cal-viol').innerHTML=s+colHeads(T,base+17);}
+
+function figSup(){const g=S.cal.per[0],h=S.hard1,T=g.T,n=T.length,w=cw(n),z=58,sc=40,b2=198,H2=64;
+  let s=`<line x1="${HM.L}" y1="${z}" x2="${HM.W-HM.R}" y2="${z}" stroke="var(--muted)"/>`+tex('s_\\tau',6,z+4,{color:'var(--fg)',alt:'s'})+`<text x="${HM.L-8}" y="${z+4}" text-anchor="end">0</text>`;
+  T.forEach((t,j)=>{const x=cx(j,n),v=g.s[j],bh=Math.max(1,Math.abs(v)*sc);
+    s+=`<rect x="${(x+15).toFixed(1)}" y="${(v>=0?z-bh:z).toFixed(1)}" width="${(w-30).toFixed(1)}" height="${bh.toFixed(1)}" rx="2" fill="var(--bar)"/>`;
+    s+=`<text x="${(x+w/2).toFixed(1)}" y="${(v>=0?z-bh-5:z+bh+13).toFixed(1)}" text-anchor="middle">${mn(f2(v))}</text>`;});
+  s+=`<line x1="${HM.L}" y1="${b2}" x2="${HM.W-HM.R}" y2="${b2}" stroke="var(--muted)"/>`+tex('w^{\\rm cal}_\\tau',6,b2-H2/2+4,{color:'var(--fg)',alt:'w'});
+  s+=`<text x="${HM.L-8}" y="${b2+4}" text-anchor="end">0</text><text x="${HM.L-8}" y="${b2-H2+4}" text-anchor="end">1</text>`;
+  T.forEach((t,j)=>{const x=cx(j,n),bh=Math.max(1,g.w[j]*H2);
+    if(j===h.k)s+=`<rect x="${(x+6).toFixed(1)}" y="${b2-H2-3}" width="${(w-12).toFixed(1)}" height="${H2+3}" rx="3" fill="none" stroke="var(--fg)" stroke-width="1.5" stroke-dasharray="4 3"/>`;
+    s+=`<rect x="${(x+13).toFixed(1)}" y="${(b2-bh).toFixed(1)}" width="${(w-26).toFixed(1)}" height="${bh.toFixed(1)}" rx="2" fill="var(--acc)"/>`;
+    s+=`<text x="${(x+w/2).toFixed(1)}" y="${(b2-bh-6).toFixed(1)}" text-anchor="middle" class="fg">${f2(g.w[j])}</text>`;});
+  $('cal-sup').innerHTML=s+colHeads(T,b2+17);
+  $('cal-sup-read').innerHTML=`<span>soft score of G₁: <b>${f3(g.tt)}</b></span><span>discrete score: <b>${f3(h.nu)}</b></span>`;}
+
+function figQuant(){const c=S.cal,hc=S.hcal,n=CAL.length,ys=66,yh=98,ya=130;let s='';
+  const ord=c.tts.map((_,i)=>i).sort((a,b)=>c.tts[a]-c.tts[b]),below=[];
+  ord.forEach((i,rank)=>{const xs=XA(c.tts[i]).toFixed(1),xh=XA(hc.nus[i]).toFixed(1),low=c.tts[i]<c.tauHat-1e-6;if(low)below.push('G'+(i+1));
+    s+=`<line x1="${xs}" y1="${ys}" x2="${xh}" y2="${yh}" stroke="var(--bar)"/>`;
+    s+=`<circle cx="${xs}" cy="${ys}" r="${i===0?6.5:4.5}" fill="${low?'var(--no)':'var(--acc)'}"/>`;
+    s+=`<circle cx="${xh}" cy="${yh}" r="4.5" fill="var(--surface)" stroke="var(--fg)" stroke-width="1.6"/>`;
+    s+=`<text x="${xs}" y="${ys-12-(rank%2)*12}" text-anchor="middle"${i===0?' class="fg"':''}>G${i+1}</text>`;});
+  s+=hAxis(AX.x0,AX.x1,ya,AX.lo,AX.hi,XA,0.2,1);
+  const xt=XA(c.tauHat),xH=XA(hc.tauHat),left=xt>380;
+  s+=`<line x1="${xt.toFixed(1)}" y1="10" x2="${xt.toFixed(1)}" y2="${ya}" stroke="var(--acc)" stroke-width="1.6" stroke-dasharray="5 3"/>`;
+  s+=`<path d="M${(xH-5).toFixed(1)} ${ya} l5 -9 l5 9z" fill="var(--fg)"/>`;
+  s+=tex(`\\hat\\tau_\\alpha=${f3(c.tauHat)}`,left?xt-6:xt+6,20,{anchor:left?'end':'start',color:'var(--acc)',alt:`threshold = ${f3(c.tauHat)}`});
+  s+=`<text x="${(AX.x0+AX.x1)/2}" y="${ya+34}" text-anchor="middle" class="fg">nonconformity score of each calibration graph</text>`;
+  $('cal-q').innerHTML=s;
+  $('cal-q-read').innerHTML=`<span>n = ${n}, k = ⌈${(1-H.alpha).toFixed(1)} × ${n+1}⌉ = <b>${c.k}</b>, the ${c.k}th largest</span><span>soft threshold: <b>${f3(c.tauHat)}</b></span><span>discrete: <b>${f3(hc.tauHat)}</b></span><span>graphs below it: <b>${below.length?below.join(', '):'none'}</b></span>`;}
+
+function figGate(){const p=S.pred,hp=S.hpred,T=p.T,base=142,H0=100,th=S.cal.tauHat;
+  let s=`<text x="${AX.x0-5}" y="${base+4}" text-anchor="end">0</text><text x="${AX.x0-5}" y="${base-H0+4}" text-anchor="end">1</text>`,d='';
+  for(let i=0;i<=240;i++){const t=AX.lo+(AX.hi-AX.lo)*i/240;d+=(i?'L':'M')+XA(t).toFixed(1)+' '+(base-H0*Math.exp(lsig((th-t)/H.tz))).toFixed(1);}
+  s+=`<path d="${d}" fill="none" stroke="var(--muted)" stroke-width="1.5"/>`;
+  const xt=XA(th),left=xt>420;
+  s+=`<line x1="${xt.toFixed(1)}" y1="12" x2="${xt.toFixed(1)}" y2="${base}" stroke="var(--fg)" stroke-width="1.3" stroke-dasharray="4 3"/>`+tex('\\hat\\tau_\\alpha',left?xt-5:xt+5,22,{anchor:left?'end':'start',color:'var(--fg)',alt:'threshold'});
+  s+=`<line x1="${AX.x0}" y1="${base}" x2="${AX.x1}" y2="${base}" stroke="var(--muted)"/>`;
+  T.forEach((t,j)=>{const x=XA(t),bh=Math.max(1,p.w[j]*H0);
+    s+=`<rect x="${(x-5).toFixed(1)}" y="${(base-bh).toFixed(1)}" width="10" height="${bh.toFixed(1)}" rx="2" fill="var(--acc)"/>`;
+    if(p.w[j]>0.005)s+=`<text x="${(x+8).toFixed(1)}" y="${(base-bh+9).toFixed(1)}" class="fg">${f2(p.w[j])}</text>`;
+    s+=`<line x1="${x.toFixed(1)}" y1="${base}" x2="${x.toFixed(1)}" y2="${base+4}" stroke="var(--muted)"/><text x="${x.toFixed(1)}" y="${base+17+(j%2)*13}" text-anchor="middle">${mn(f2(t))}</text>`;
+    if(j===hp.k)s+=`<circle cx="${x.toFixed(1)}" cy="${base}" r="7.5" fill="none" stroke="var(--fg)" stroke-width="1.6"/>`;});
+  $('pr-gate').innerHTML=s;
+  const bt=H.beta*H.tz,jm=p.w.indexOf(Math.max(...p.w));
+  $('pr-gate-read').innerHTML=`<span${bt>=0.6?' class="warn"':''}>β·τ_z = <b>${bt<0.1?bt.toFixed(3):f2(bt)}</b></span><span>most weight: <b>${f2(p.w[jm])}</b> on τ = ${mn(f2(T[jm]))}</span><span>discrete choice: τ = <b>${mn(f2(hp.T[hp.k]))}</b></span>`;}
+
+function figPred(){const p=S.pred,hp=S.hpred,G=PRED,nt=sum(G.y);
+  $('pr-graph').innerHTML=drawGraph(G,POS_PRED,'a',{fill:v=>p.qv[v],kept:v=>hp.U[v],sub:v=>['q '+f2(p.qv[v]),'r '+f2(G.r[v])]});
+  const hk=sum(G.y.map((y,v)=>y&&hp.U[v]?1:0)),fq=G.y.map((y,v)=>y?null:`a${v+1}: q = ${f2(p.qv[v])}${hp.U[v]?' (kept by discrete CF)':''}`).filter(Boolean);
+  $('pr-read').innerHTML=`<span>true claims retained, soft: <b>${f2(p.R)}</b> of ${nt}</span><span>discrete CF: <b>${hk}</b> of ${nt}</span><span>false claim ${fq.join(', ')}</span><span>this graph's term in the loss: <b>${mn(f2(-p.R))}</b></span>`;}
+
+// ---------- state, controls ----------
+const SL={Tp:{log:1,fmt:v=>v<0.01?v.toFixed(4):v.toFixed(3)},gamma:{log:0,fmt:f2},ts:{log:1,fmt:v=>v<0.1?v.toFixed(3):f2(v)},
+  beta:{log:1,fmt:v=>v.toFixed(0)},tz:{log:1,fmt:v=>v.toFixed(4)},rho:{log:1,fmt:v=>v.toFixed(0)}};
+function syncControls(){Object.keys(SL).forEach(k=>{$('h-'+k).value=SL[k].log?Math.log10(H[k]):H[k];$('h-'+k+'-v').textContent=SL[k].fmt(H[k]);});$('h-margin').checked=H.margin;}
+function render(){const cal=calibrate(CAL,H),hcal=hardCalibrate(CAL,H);
+  S={cal,hcal,hard1:hardOne(CAL[0],H.m),pred:predictOne(PRED,H,cal.tauHat),hpred:hardPredict(PRED,H.m,hcal.tauHat)};
+  figGraph();figHeat();figViol();figSup();figQuant();figGate();figPred();}
+Object.keys(SL).forEach(k=>$('h-'+k).addEventListener('input',e=>{H[k]=SL[k].log?Math.pow(10,+e.target.value):+e.target.value;$('h-'+k+'-v').textContent=SL[k].fmt(H[k]);render();}));
+$('h-margin').addEventListener('change',e=>{H.margin=e.target.checked;render();});
+$('h-def').addEventListener('click',()=>{Object.assign(H,DEF);syncControls();render();});
+$('h-lim').addEventListener('click',()=>{Object.assign(H,LIM);syncControls();render();});
+segCtl('h-alpha',v=>{H.alpha=+v;render();});
+segCtl('heat-mode',v=>{UI.heat=v;figHeat();});
+window.renderAll=()=>{dgRender();render();};
+syncControls();window.renderAll();
+</script>

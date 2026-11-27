@@ -1,0 +1,112 @@
+% Shared clean typography and visual layout for WP1 & WP2
+\usepackage[margin=1.85cm,top=1.5cm,bottom=1.55cm,footskip=0.75cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{enumitem}
+\usepackage{booktabs,tabularx,array}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage[skins]{tcolorbox}
+\usepackage[font=small,labelfont={bf,sf},skip=4pt]{caption}
+\usepackage[hidelinks]{hyperref}
+
+% ---------- calm palette ----------
+\definecolor{ink}{HTML}{1F2937}
+\definecolor{muted}{HTML}{52606D}
+\definecolor{navy}{HTML}{1E3A5F}
+\definecolor{teal}{HTML}{1F6E7A}
+\definecolor{tint}{HTML}{F6F8FA}
+\definecolor{tint2}{HTML}{EEF4F6}
+\definecolor{rulegray}{HTML}{CBD5E1}
+
+\color{ink}
+\linespread{1.13}
+\setlength{\parskip}{3.5pt}
+\setlength{\parindent}{0pt}
+\setlength{\textfloatsep}{8pt plus 2pt}
+\setlength{\floatsep}{6pt plus 2pt}
+\setlength{\intextsep}{7pt plus 2pt}
+\setlength{\abovedisplayskip}{5pt plus 1pt}
+\setlength{\belowdisplayskip}{5pt plus 1pt}
+\setlength{\emergencystretch}{2em}
+\setlist{nosep,leftmargin=1.35em,itemsep=2pt}
+\pagestyle{plain}
+
+% ---------- section headings ----------
+\titleformat{\section}
+  {\sffamily\bfseries\large\color{navy}}
+  {\thesection}{0.55em}{}
+  [\vspace{-6pt}\textcolor{rulegray}{\rule{\linewidth}{0.5pt}}]
+\titlespacing*{\section}{0pt}{8pt plus 1.5pt minus 1pt}{3pt}
+
+\titleformat{\subsection}
+  {\sffamily\bfseries\normalsize\color{ink}}
+  {\thesubsection}{0.5em}{}
+\titlespacing*{\subsection}{0pt}{5.5pt plus 1pt minus 1pt}{2pt}
+
+\newcolumntype{L}{>{\raggedright\arraybackslash}X}
+
+% ---------- reusable visual blocks ----------
+\newcommand{\wpheader}[4]{%
+  \begin{tcolorbox}[
+    enhanced, colback=navy, colframe=navy, arc=3pt, boxrule=0pt,
+    left=10pt, right=10pt, top=8pt, bottom=8pt
+  ]
+  {\sffamily\footnotesize\color{white!75}\MakeUppercase{#1}}\\[2pt]
+  {\sffamily\bfseries\Large\color{white}#2}\\[3pt]
+  {\sffamily\small\color{white!88}#3}
+  \end{tcolorbox}
+  \vspace{-3pt}
+  \begin{tcolorbox}[
+    enhanced, colback=tint, colframe=rulegray, arc=2pt, boxrule=0.5pt,
+    left=8pt, right=8pt, top=5pt, bottom=5pt
+  ]
+  \small\sffamily #4
+  \end{tcolorbox}
+  \vspace{2pt}
+}
+
+\tcbset{
+  algbox/.style={
+    enhanced,
+    colback=tint,
+    colframe=rulegray,
+    borderline west={2.5pt}{0pt}{navy},
+    boxrule=0.5pt,
+    arc=2pt,
+    left=8pt,right=7pt,top=6pt,bottom=6pt,
+    fonttitle=\sffamily\bfseries\small\color{navy},
+    colbacktitle=tint,
+    coltitle=navy,
+    boxed title style={empty},
+    title style={left=0pt}
+  },
+  critbox/.style={
+    enhanced,
+    colback=tint2,
+    colframe=teal!35,
+    borderline west={2.5pt}{0pt}{teal},
+    boxrule=0.5pt,
+    arc=2pt,
+    left=8pt,right=7pt,top=5pt,bottom=5pt,
+    fonttitle=\sffamily\bfseries\small\color{teal},
+    colbacktitle=tint2
+  }
+}
+
+% ---------- shared math macros ----------
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\ind}{\mathbf{1}}
+\newcommand{\C}{C}
+\newcommand{\Qhat}{\widehat Q}
+\newcommand{\Smin}{S^{\min}}
+\newcommand{\Dtr}{D_{\mathrm{train}}}
+\newcommand{\Dcal}{D_{\mathrm{cal}}}
+\newcommand{\Dtest}{D_{\mathrm{test}}}
+\newcommand{\Dval}{D_{\mathrm{val}}}
+\newcommand{\tagpill}[1]{\textcolor{navy}{\sffamily\bfseries #1}}

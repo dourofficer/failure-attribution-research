@@ -1,0 +1,170 @@
+% Work Package 1: Conformal Training with an Encoder on Frozen Step Embeddings
+\documentclass[10pt,a4paper]{article}
+\input{wp_style}
+
+\newcommand{\Lcls}{\widehat{\mathcal L}_{\mathrm{cls}}}
+\newcommand{\Lsize}{\widehat{\mathcal L}_{\mathrm{size}}}
+
+\begin{document}
+
+\wpheader
+  {Work Package 1 \textperiodcentered\ Implementation Spec}
+  {Conformal Training with an Encoder on Frozen Step Embeddings}
+  {Supervised DPSM conformal training over frozen LLM step representations, evaluated with vanilla split CP}
+  {\tagpill{Backbone:} Qwen3-8B (frozen) \ \textcolor{rulegray}{|}\ 
+   \tagpill{Scorer:} 2-layer Transformer \ \textcolor{rulegray}{|}\ 
+   \tagpill{Score:} $S=1-\pi_t$ \ \textcolor{rulegray}{|}\ 
+   \tagpill{Train:} DPSM ($\alpha=0.1$) \ \textcolor{rulegray}{|}\ 
+   \tagpill{Eval:} $\alpha\in\{0.05,0.1,0.2\}$}
+
+% =====================================================================
+\section{Implementation Steps}
+
+\subsection{Step 1: Cache Frozen Step Embeddings}
+\begin{enumerate}
+\item Load frozen \textbf{Qwen3-8B} (\texttt{bfloat16}, \texttt{eval()}, no grad). Format each trace $x=(s_1,\dots,s_T)$ as task + ordered steps and record token spans $I_t$.
+\item Run one forward pass per trace (for traces exceeding context length, use $50\%$-overlapping windows and take each step from the window with the longest left context).
+\item Extract hidden states at candidate layers $\ell\in\{25\%,50\%,75\%,100\%\}$ depth (pick $\ell$ on $\Dval$) and mean-pool per step:
+\[
+h_t = \frac{1}{|I_t|}\sum_{j\in I_t} H_j^{(\ell)} \in \R^{d_{\mathrm{llm}}}, \qquad t\in[T].
+\]
+\item Save $\{h_1,\dots,h_T\}$, $T$, and $Y$ to disk for all splits and benchmarks.
+\end{enumerate}
+
+\subsection{Step 2: Step-Scorer Architecture}
+Define $f_\theta$ with trainable parameters $\theta=(W, \phi, w)$ and hidden width $d_{\mathrm{enc}}=256$:
+\begin{equation}
+u_t = \mathrm{LN}(W h_t), \qquad
+(v_1,\dots,v_T) = \mathrm{Enc}_\phi(u_1,\dots,u_T), \qquad
+\pi_t(x) = \frac{\exp(w^\top v_t)}{\sum_{t'=1}^{T}\exp(w^\top v_{t'})}. \label{eq:wp1-arch}
+\end{equation}
+Here $\mathrm{Enc}_\phi$ is a 2-layer bidirectional Transformer encoder (4 heads, FFN $1024$, dropout $0.1$, key-padding mask over valid steps $t\in[T]$) applying the backbone's positional encoding over step positions $1,\dots,T$ (RoPE for Qwen3).
+
+\subsection{Step 3: Conformal Training}
+Split $\Dtr\setminus\Dval$ once by task into disjoint halves $D_1, D_2$ and run Algorithm~1 (see Appendix~\ref{app:conftr} for a ConfTr alternative).
+
+\begin{tcolorbox}[algbox,title={Algorithm 1 \textperiodcentered\ DPSM Conformal Training for Step-Embedding Encoder}]
+\small
+\textbf{Inputs:} $D_1, D_2$; target $\alpha=0.1$; weights/rates $\lambda, \tau, \eta, \gamma$; batch size $b$; steps $K$; $\varepsilon=10^{-6}$. \quad \textbf{Init:} random $\theta_0$, $q_0=0.5$.
+\begin{enumerate}[leftmargin=1.4em,itemsep=2pt]
+\item \textbf{For} $k=1,\dots,K$:
+  \begin{enumerate}[label=\arabic{enumi}.\arabic*.,leftmargin=1.6em,itemsep=1.5pt]
+  \item Sample batches $B^1\subset D_1$ and $B^2\subset D_2$ of size $b$.
+  \item \textbf{Classification loss ($B^1$):} $\displaystyle \Lcls(\theta) = \frac{1}{|B^1|}\sum_{i\in B^1} -\log\!\Big(\sum_{t\in Y_i}\pi_t(x_i)+\varepsilon\Big)$.
+  \item \textbf{Relative soft set-size loss ($B^2$, \texttt{stop\_grad($q$)}):} $\displaystyle \Lsize(\theta,q) = \frac{1}{|B^2|}\sum_{j\in B^2}\frac{1}{T_j}\sum_{t=1}^{T_j}\sigma\!\left(\frac{q - 1 + \pi_t(x_j)}{\tau}\right)$.
+  \item \textbf{Encoder step:} $\theta \leftarrow \mathrm{AdamW}\big(\theta,\; \nabla_\theta[\Lcls(\theta)+\lambda\Lsize(\theta,q)],\; \eta\big)$.
+  \item \textbf{Threshold step ($B^1$, no grad to $\theta$):} with pre-update $\Smin_i = 1 - \max_{t\in Y_i}\pi_t(x_i)$,
+  \[
+  q \leftarrow \mathrm{clip}_{[0,1]}\!\left(q - \gamma\left(\alpha - \frac{\#\{i\in B^1 : \Smin_i \ge q\}}{|B^1|}\right)\right).
+  \]
+  \end{enumerate}
+\item \textbf{Output:} Discard $q$; select best checkpoint $\theta^\star$ on $\Dval$ and calibrate $\Qhat(\alpha)$ on $\Dcal$ (Section~\ref{sec:vanilla-cp}).
+\end{enumerate}
+\end{tcolorbox}
+
+\textbf{Sweep grid (select on $\Dval$):} AdamW ($b=32$, 50 epochs, weight decay $10^{-2}$, cosine schedule); $\eta\in\{10^{-4},3\!\cdot\!10^{-4},10^{-3}\}$; $\lambda\in\{0.1,0.5,1,2,5\}$; $\tau\in\{0.01,0.05,0.1\}$; $\gamma\in\{10^{-3},5\!\cdot\!10^{-3},10^{-2},5\!\cdot\!10^{-2}\}$; 5 seeds at best config.
+
+% =====================================================================
+\newpage
+\input{shared_eval}
+
+% =====================================================================
+\section{Required Baselines and Claim Criteria} \label{sec:baselines}
+
+\smallskip
+{\small\renewcommand{\arraystretch}{1.04}%
+\noindent\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{3.1cm} L L@{}}\toprule
+\sffamily\bfseries Baseline & \sffamily\bfseries Specification & \sffamily\bfseries Claim Isolated \\\midrule
+\textbf{B1. CE (full $\Dtr$)} & Encoder trained with $\Lcls$ on all of $\Dtr\setminus\Dval$ + vanilla split CP. & Primary: does DPSM beat standard full-data CE? \\
+\textbf{B2. CE ($D_1$ only)} & Same as B1, trained on $D_1$ only. & Equal-label control for halving $\Lcls$ to $D_1$. \\
+\textbf{B3. CE + fixed $q_{\mathrm{fix}}$} & Train with $\Lcls+\lambda\Lsize(\theta,q_{\mathrm{fix}})$; constant $q_{\mathrm{fix}}$ tuned on $\Dval$. & Value of learning $(1-\alpha)$-quantile $q$ vs.\ fixed threshold. \\
+\textbf{B4. Temp.\ scaling} & Tune $T_{\mathrm{temp}}>0$ on B1 logits ($\mathrm{softmax}(\ell/T_{\mathrm{temp}})$) on $\Dval$ + split CP. & Can post-hoc sharpening match conformal retraining? \\
+\textbf{B5. Post-hoc scores} & Apply APS, RAPS, and $-\log(T\pi_t)$ to B1 without retraining. & Can post-hoc score design close the gap? \\
+\textbf{B6. Floors} & Uniform random scores; empirical (agent, position-bin) error prior in $\Dtr$. & Confirms encoder beats trivial priors. \\
+\textbf{B7. External (opt.)} & Who\&When step-by-step LLM judge and OAT scores + vanilla split CP. & Context against published attributors. \\\bottomrule
+\end{tabularx}}
+\medskip
+
+\begin{tcolorbox}[critbox,title={Claim Criteria (When WP1 Supports RQ1)}]
+\small
+(1) $\widehat{\mathrm{Cov}}$ lies inside the $\mathrm{Beta}(k,m+1-k)$ calibration interval on $\Dtest$ and recalibrated external splits.
+(2) $\widehat{\mathrm{Ineff}}_{\mathrm{rel}}$ and $\widehat{\mathrm{Ineff}}$ are statistically lower than \textbf{B1--B5} at $\alpha=0.1$ without degrading at $\alpha\in\{0.05,0.2\}$.
+(3) Gains are not driven by empty-set spikes or systematic under-coverage on long trajectories.
+\end{tcolorbox}
+
+% =====================================================================
+\clearpage
+\appendix
+\section{Ablations}
+
+\subsection{Alternative Conformal Training: ConfTr} \label{app:conftr}
+As an alternative to DPSM's persistent threshold $q$ and fixed $D_1/D_2$ split, ConfTr (Stutz et al., ICLR 2022) simulates split CP inside every mini-batch via a differentiable quantile operator.
+
+\begin{tcolorbox}[algbox,title={Algorithm 2 \textperiodcentered\ ConfTr Alternative (Differentiable In-Batch Calibration)}]
+\small
+\textbf{Inputs:} Full $\Dtr\setminus\Dval$; target $\alpha=0.1$; $\lambda, \tau, \varepsilon_{\mathrm{sort}}, \eta$; hinge $\kappa\in\{0,1\}$; batch size $b\in\{64,128\}$; steps $K$; $\varepsilon=10^{-6}$.
+\begin{enumerate}[leftmargin=1.4em,itemsep=2pt]
+\item \textbf{For} $k=1,\dots,K$:
+  \begin{enumerate}[label=\arabic{enumi}.\arabic*.,leftmargin=1.6em,itemsep=1.5pt]
+  \item Sample batch $B\subset\Dtr\setminus\Dval$ of size $b$ and split randomly into disjoint halves $B_{\mathrm{cal}}, B_{\mathrm{pred}}$ ($|B_{\mathrm{cal}}|=|B_{\mathrm{pred}}|=b/2$).
+  \item \textbf{Differentiable calibration ($B_{\mathrm{cal}}$):} compute $\Smin_i(\theta)=1-\max_{t\in Y_i}\pi_t(x_i)$ for $i\in B_{\mathrm{cal}}$ and
+  \[
+  \tilde{q}_\theta = \mathrm{SoftQuantile}_{1-\alpha}\!\big(\{\Smin_i(\theta)\}_{i\in B_{\mathrm{cal}}};\,\varepsilon_{\mathrm{sort}}\big)
+  \]
+  via differentiable sorting (Blondel et al., 2020), keeping gradients through $\tilde{q}_\theta$.
+  \item \textbf{Classification and relative soft set-size losses ($B_{\mathrm{pred}}$):} compute $\Lcls(\theta; B_{\mathrm{pred}})$ as in Algorithm~1 and
+  \[
+  \Lsize^{\mathrm{ConfTr}}(\theta) = \frac{1}{|B_{\mathrm{pred}}|}\sum_{j\in B_{\mathrm{pred}}}\frac{1}{T_j}\max\!\left(0,\; \sum_{t=1}^{T_j}\sigma\!\left(\frac{\tilde{q}_\theta - 1 + \pi_t(x_j)}{\tau}\right) - \kappa\right).
+  \]
+  \item \textbf{Encoder step:} $\theta \leftarrow \mathrm{AdamW}\big(\theta,\; \nabla_\theta[\Lcls(\theta; B_{\mathrm{pred}}) + \lambda\Lsize^{\mathrm{ConfTr}}(\theta)],\; \eta\big)$.
+  \end{enumerate}
+\item \textbf{Output:} Discard $\tilde{q}_\theta$; select best checkpoint $\theta^\star$ on $\Dval$ and calibrate $\Qhat(\alpha)$ on $\Dcal$ (Section~\ref{sec:vanilla-cp}).
+\end{enumerate}
+\end{tcolorbox}
+\noindent Here $\kappa=0$ matches Algorithm~1 directly, while $\kappa=1$ is ConfTr's standard hinge discouraging empty sets. Compared to DPSM, ConfTr uses all of $\Dtr\setminus\Dval$ without a static split and eliminates $q$ and $\gamma$ (no pinball lag), at the cost of requiring larger batches ($|B_{\mathrm{cal}}|\ge 32$ at $\alpha=0.1$) and tuning $\varepsilon_{\mathrm{sort}}$.
+
+\subsection{Score and Objective Alternatives}
+\begin{itemize}
+\item \textbf{Length-normalized log-prob score:} $S_\theta^{\mathrm{log}}(x,t) = -\log(T\pi_t(x)+\varepsilon)$ (or $-\log(\pi_t+\varepsilon)$). Removes $O(1/T)$ softmax scaling across variable $T$ and avoids $q\to 1$ compression when top-1 accuracy is $<50\%$ (analogous to ConfTr \texttt{THR LP}). Evaluated post-hoc in B5; directly swappable into Algorithm~1 (removing $[0,1]$ clipping on $q$) and Algorithm~2.
+\item \textbf{Hard set-size objective:} $\frac{1}{|B^2|}\sum_{j}\frac{1}{T_j}\sum_{t}\ind[S_\theta(x_j,t)\le q]$. Eliminates $\tau$ and matches the exact metric, but has zero gradient w.r.t.\ $\pi_t$ almost everywhere, requiring straight-through or black-box gradient estimators for supervised training.
+\end{itemize}
+
+\subsection{Architecture and Backbone Ablations}
+All ablations use activations from a single selected layer $\ell$ directly and keep the conformal training loop unchanged:
+\begin{itemize}
+\item \textbf{Step pooling:} Compare default mean pooling against \texttt{last\_token} pooling ($H_{\max I_t}^{(\ell)}$) and concatenated \texttt{[mean, last\_token]} pooling per step span $I_t$.
+\item \textbf{Step-transition input:} Feed step deltas into the input projection, $u_t = \mathrm{LN}\big(W[h_t;\, h_t - h_{t-1}]\big)$ (with $h_0 = h_1$), to expose where the trace first diverges.
+\item \textbf{Off-track auxiliary supervision:} Add a linear BCE head on $v_t$ predicting $z_t = \ind[t \ge \min Y]$ (whether the trajectory is already off-track at step $t$), trained on $B^1$ (or $B_{\mathrm{pred}}$) alongside $\Lcls$ with weight $\beta_{\mathrm{aux}}$ (no change to $B^2$ or $q$).
+\item \textbf{Embedding backbones:} Swap frozen Qwen3-8B for \textbf{Qwen3-Embedding-\{0.6B, 4B, 8B\}} using the same Step~1 activation extraction to test dedicated embedding models and backbone scaling.
+\end{itemize}
+
+% =====================================================================
+\clearpage
+\section{Derivations and Caveats}
+
+\subsection{Exact Gradients of the DPSM Objective}
+Write $\ell_k=w^\top v_k$, $P_Y=\sum_{s\in Y}\pi_s$, $\tilde c_t=\sigma((q-1+\pi_t)/\tau)$, and $\tilde c'_t=\frac{1}{\tau}\tilde c_t(1-\tilde c_t)$. Using $\frac{\partial\pi_t}{\partial\ell_k}=\pi_t(\delta_{tk}-\pi_k)$:
+\begin{align}
+\frac{\partial \mathcal{L}^{\mathrm{cls}}}{\partial \ell_k} &= \frac{P_Y}{P_Y+\varepsilon}\,\pi_k - \frac{\ind[k\in Y]}{P_Y+\varepsilon}\,\pi_k, &
+\frac{\partial \mathcal{L}^{\mathrm{size}}}{\partial \ell_k} &= \frac{\pi_k}{T}\Big(\tilde c'_k - \sum_{t=1}^T \pi_t\tilde c'_t\Big), &
+\partial_q \rho_\alpha(q,S) &= \alpha - \ind[S\ge q]. \label{eq:wp1-grads}
+\end{align}
+$\tilde c'_k$ peaks near $\pi_k \approx 1-q$, focusing size gradients on borderline steps. The pinball step pushes $q$ up when batch miss rate exceeds $\alpha$ and down otherwise.
+
+\subsection{Vanilla Split-CP Coverage Proof (Error-Set Labels)} \label{app:cp-proof}
+For non-empty $Y\subseteq[T]$ and any $q\in\R\cup\{+\infty\}$, $\C_q(x)\cap Y\neq\emptyset \iff \exists t\in Y: S_\theta(x,t)\le q \iff \Smin_\theta(x,Y)\le q$. Conditioned on $\theta$ (independent of $\Dcal$ and test $(x,Y)$), applying $(x,Y)\mapsto\Smin_\theta(x,Y)$ preserves exchangeability. By the split-CP rank lemma with $k=\lceil(1-\alpha)(m+1)\rceil$,
+\[
+1-\alpha \le \frac{k}{m+1} \le \Prob\big(\C_\theta(x)\cap Y\neq\emptyset\big) < 1-\alpha + \frac{1}{m+1},
+\]
+(upper bound requires distinct scores). Conditional on $\Dcal$, test coverage follows $\mathrm{Beta}(k,m+1-k)$ (std $\approx\sqrt{\alpha(1-\alpha)/m}$). The proof makes no assumption on $T$, step dependence, or scorer accuracy.
+
+\subsection{Caveats and Diagnostics}
+\begin{itemize}
+\item \textbf{Empty-set gaming:} HPS allows $\C(x)=\emptyset$, so marginal size minimization can drop the hardest/longest $\alpha$ traces. Check empty-set rate and length-tercile coverage.
+\item \textbf{Pinball lag:} Starting at $q_0=0.5$ without warm-up causes early lag; log $q$ vs.\ exact $D_1$ quantile each epoch to verify $\gamma$ tracks $\theta$.
+\item \textbf{Sample-size split:} Compare DPSM against both B1 (full $\Dtr$) and B2 ($D_1$ only) to separate loss benefits from the $50\%$ label split.
+\item \textbf{Frozen-feature ceiling:} ConfTr reported modest THR gains ($2$--$3\%$) on frozen features; comparing WP1 vs.\ WP2 isolates the gain of adapting representations.
+\item \textbf{Transfer shift:} Benchmarks differ in label semantics ($|Y|=1$ vs.\ multi-step sets); zero-shot transfer coverage reflects $P_{Y|X}$ shift, so use recalibrated splits for efficiency comparisons.
+\end{itemize}
+
+\end{document}

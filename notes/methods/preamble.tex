@@ -1,0 +1,118 @@
+% !TEX root = main.tex
+% Shared preamble for the Failure Attribution Methods Literature Survey.
+\usepackage[margin=1.5cm,top=1.5cm,bottom=1.6cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb}
+\usepackage{mathptmx}
+\usepackage{microtype}
+\usepackage{enumitem}
+\usepackage{booktabs,tabularx,longtable,multirow,makecell,array}
+\usepackage{xcolor,graphicx,ragged2e}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,calc,shapes,fit,backgrounds,trees}
+\usepackage[font=small,labelfont=bf,skip=4pt]{caption}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[colorlinks=true,linkcolor=linkc,citecolor=linkc,urlcolor=linkc]{hyperref}
+\urlstyle{same}
+\usepackage[scaled=0.82]{sourcecodepro}
+\usepackage{tcolorbox}
+\tcbuselibrary{skins,breakable,theorems}
+\usepackage{fontawesome5}
+
+\setlist{nosep,leftmargin=1.25em}
+\setlength{\parskip}{3pt}
+\setlength{\parindent}{0pt}
+\setlength{\emergencystretch}{3em}
+\renewcommand{\arraystretch}{1.14}
+
+% ---------- palette (consistent with notes/datasets) ----------
+\definecolor{s1}{HTML}{2a78d6} % blue   - Prompting-based
+\definecolor{s2}{HTML}{eb6834} % orange - Training-based (LLM)
+\definecolor{s3}{HTML}{1baf7a} % teal   - Non-LLM Learned
+\definecolor{s4}{HTML}{c98600} % amber  - Execution / Replay / Spectrum
+\definecolor{s5}{HTML}{b54078} % rose   - Causal / Graph
+\definecolor{s6}{HTML}{008300} % green  - Conformal / Uncertainty
+\definecolor{s7}{HTML}{6250d6} % indigo - White-box / Phase-wise
+\definecolor{s8}{HTML}{d03b3b} % red    - Alerts / Critical
+\definecolor{ink}{HTML}{141414}
+\definecolor{ink2}{HTML}{4a4a48}
+\definecolor{ink3}{HTML}{7c7b77}
+\definecolor{surface}{HTML}{f6f5f2}
+\definecolor{rulec}{HTML}{d6d5cf}
+\definecolor{linkc}{HTML}{1c5cab}
+
+% ---------- page headers / footers (built-in, no fancyhdr needed) ----------
+\makeatletter
+\def\ps@survey{%
+  \def\sectionmark##1{\markboth{\thesection\quad ##1}{}}%
+  \def\@oddhead{\footnotesize\color{ink3}\textit{Failure Attribution Methods for LLM Agent Systems --- Literature Survey}\hfill\leftmark}%
+  \def\@evenhead{\@oddhead}%
+  \def\@oddfoot{\hfill\footnotesize\color{ink2}\thepage\hfill}%
+  \def\@evenfoot{\@oddfoot}%
+}
+\makeatother
+\pagestyle{survey}
+
+% ---------- section typography ----------
+\makeatletter
+\renewcommand\section{\@startsection{section}{1}{\z@}{10pt plus 2pt minus 2pt}{4pt}{\large\bfseries\color{ink}}}
+\renewcommand\subsection{\@startsection{subsection}{2}{\z@}{7pt plus 1.5pt minus 1.5pt}{2.5pt}{\normalsize\bfseries\color{s1!65!black}}}
+\renewcommand\subsubsection{\@startsection{subsubsection}{3}{\z@}{5pt plus 1pt minus 1pt}{1.5pt}{\small\bfseries\itshape\color{ink2}}}
+\newcommand\@runinperiod[1]{#1.}
+\renewcommand\paragraph{\@startsection{paragraph}{4}{\z@}{3.5pt plus 1pt}{-0.5em}{\small\bfseries\color{ink}\@runinperiod}}
+\let\oldbib\thebibliography
+\renewcommand\thebibliography[1]{\oldbib{#1}\setlength{\itemsep}{1pt}\setlength{\parskip}{0pt}\fontsize{7.5}{8.6}\selectfont}
+\renewcommand\refname{\large References}
+\makeatother
+
+% ---------- table of contents ----------
+\usepackage{titletoc}
+\setcounter{tocdepth}{2}
+\contentsmargin{2.4em}
+\titlecontents{section}[1.8em]{\addvspace{4pt}\small\bfseries\color{ink}}
+  {\contentslabel[\textcolor{s1!70!black}{\thecontentslabel}]{1.8em}}{\hspace*{-1.8em}}
+  {\hfill\contentspage}[\addvspace{1pt}]
+\titlecontents{subsection}[4.0em]{\footnotesize\color{ink2}}
+  {\contentslabel[\textcolor{ink3}{\thecontentslabel}]{2.2em}}{\hspace*{-2.2em}}
+  {\hspace{0.4em}\titlerule*[0.55em]{\textcolor{ink3}{.}}\hspace{0.4em}\textcolor{ink2}{\contentspage}}
+\makeatletter
+\newcommand\tochairline{\par{\color{rulec}\hrule height 0.5pt}}
+\renewcommand\tableofcontents{\par\addvspace{4pt}\noindent{\normalsize\bfseries\color{ink}\contentsname}\par\vspace{2pt}\tochairline
+  {\setlength{\parskip}{0pt}\@starttoc{toc}}\par\vspace{3pt}\tochairline\vspace{6pt}}
+\makeatother
+
+% ---------- helper macros ----------
+\DeclareRobustCommand{\code}[1]{\texttt{\small\spaceskip=\fontdimen2\font plus .5\fontdimen2\font minus .2\fontdimen2\font\def\_{\textunderscore\allowbreak}#1}}
+\DeclareRobustCommand{\chip}[2]{\tikz[baseline=(t.base)]\node[fill=#1!16,text=#1!65!black,rounded corners=2pt,inner xsep=3.5pt,inner ysep=1.5pt,font=\scriptsize\bfseries](t){#2};}
+\newcommand{\promptbadge}{\chip{s1}{Prompting-Based}}
+\newcommand{\trainbadge}{\chip{s2}{LLM-Trained}}
+\newcommand{\nonllmbadge}{\chip{s3}{Non-LLM Learned}}
+\newcommand{\replaybadge}{\chip{s4}{Replay / Spectrum}}
+\newcommand{\causalbadge}{\chip{s5}{Formal Causal / Graph}}
+\newcommand{\cpbadge}{\chip{s6}{Conformal / UQ}}
+\newcommand{\whiteboxbadge}{\chip{s7}{White-Box / Phase}}
+\newcommand{\webtag}{\chip{ink3}{web}}
+\newcommand{\lbl}[1]{\chip{ink3}{#1}}
+
+\newsavebox{\fitboxsb}
+\newcommand{\fitbox}[1]{\sbox{\fitboxsb}{#1}\ifdim\wd\fitboxsb>\linewidth\resizebox{\linewidth}{!}{\usebox{\fitboxsb}}\else\usebox{\fitboxsb}\fi}
+
+\newtcolorbox{summarybox}[2][s1]{%
+  enhanced,breakable,colback=#1!4,colframe=#1!65!black,boxrule=0.45pt,leftrule=2.4pt,
+  arc=1.5pt,left=6pt,right=6pt,top=4pt,bottom=4pt,fontupper=\small,
+  title={\small\bfseries #2},coltitle=#1!55!black,colbacktitle=#1!12,
+  toptitle=2pt,bottomtitle=2pt,before skip=5pt,after skip=5pt
+}
+
+\newtcolorbox{methodcard}[3][s1]{%
+  enhanced,breakable,colback=surface,colframe=rulec,leftrule=2.4pt,colframe=#1!70!black,
+  boxrule=0.35pt,arc=1.5pt,left=6pt,right=6pt,top=3.5pt,bottom=3.5pt,fontupper=\small,
+  before skip=4pt,after skip=4pt,
+  title={\small\bfseries #2 \hfill \normalfont\scriptsize #3},
+  coltitle=ink,colbacktitle=#1!10,toptitle=2pt,bottomtitle=2pt
+}
+
+\newcommand{\yes}{\textcolor{s6!85!black}{\textbf{\checkmark}}}
+\newcommand{\no}{\textcolor{ink3}{--}}
+\newcommand{\partmark}{\textcolor{s4}{\textbf{$\circ$}}}

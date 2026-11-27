@@ -1,0 +1,32 @@
+\documentclass[10pt,a4paper]{article}
+\input{preamble}
+
+\title{\vspace{-8mm}\LARGE Failure Attribution Methods for LLM Agent Systems\\[4pt]\large A Literature Survey: Prompting-Based, LLM-Training-Based, and Alternative Paradigms}
+\author{\normalsize Literature Survey Compiled from \code{papers/methods/} and Recent 2025--2026 Research}
+\date{\normalsize November 2026}
+
+\begin{document}
+\maketitle\vspace{-6mm}
+
+\begin{tcolorbox}[enhanced,colback=surface,colframe=rulec,boxrule=0.4pt,arc=2pt,left=7pt,right=7pt,top=5pt,bottom=5pt,fontupper=\small]
+\textbf{Scope and Taxonomy.} This survey reviews \textbf{55+ methods and empirical studies} for \emph{automated failure attribution} in LLM single-agent, multi-agent (MAS), memory-augmented, and vision-language-action (VLA) systems, synthesizing all 35 external research papers in \code{papers/methods/} alongside 20+ additional 2025--2026 papers identified via literature search (tagged \webtag{}). Methods are grouped strictly into three primary families:
+\textbf{(I) Prompting-Based Methods} (Section~\ref{sec:prompting}), which keep LLM parameters frozen and structure inference via log scanning, taxonomies, constraints, causal/dependency graphs, or multi-agent adjudication;
+\textbf{(II) Training-Based Methods --- LLM Training Only} (Section~\ref{sec:training}), which update LLM weights via SFT, RL/GRPO, or preference optimization to produce dedicated neural attributors; and
+\textbf{(III) Other Paradigms} (Section~\ref{sec:other}), comprising non-LLM learned neural/representation-space models, execution/spectrum/counterfactual replay, formal causal discovery and zero-LLM structural graphs, conformal set-valued attribution, and white-box phase-wise attribution.
+Companion benchmark statistics reside in \code{notes/datasets/main.pdf}.
+\end{tcolorbox}
+
+\tableofcontents
+
+\input{sections/01_intro}
+\input{sections/02_overview}
+\input{sections/03_prompting}
+\input{sections/04_llm_training}
+\input{sections/05_other_methods}
+\input{sections/06_discussion}
+
+\vspace{6pt}
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\end{document}

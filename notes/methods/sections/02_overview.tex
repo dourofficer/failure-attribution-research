@@ -1,0 +1,121 @@
+% !TEX root = ../main.tex
+\section{Landscape Overview and Comparative Benchmarks}\label{sec:overview}
+
+Before examining each paradigm in detail, Table~\ref{tab:master} provides a unified side-by-side matrix of representative methods across all three categories, comparing their core attribution mechanism, supervision requirements, target granularity, online vs.\ offline timing, and whether they support downstream repair or rollback. Table~\ref{tab:whowhen} then compiles published benchmark performance on \textbf{Who\&When}~\citep{zhang2025who}---the de facto common testbed across paradigms---while explicitly surfacing backbone and ground-truth (\code{w/ G} vs.\ \code{w/o G}) differences.
+
+\begin{center}
+\scriptsize
+\setlength{\tabcolsep}{3.5pt}
+\begin{longtable}{@{}>{\RaggedRight\bfseries}p{2.55cm}>{\RaggedRight}p{1.55cm}>{\RaggedRight}p{4.4cm}>{\RaggedRight}p{2.45cm}>{\RaggedRight}p{2.1cm}p{0.8cm}p{0.65cm}@{}}
+\caption{Master taxonomy of failure attribution methods across Prompting-Based (I), LLM Training-Based (II), and Other Paradigms (III). \emph{Timing}: Off = post-hoc offline, On = online/real-time. \emph{Rep}: \yes{} = explicitly evaluated on downstream repair/rollback, \no{} = localization only. \webtag{} marks papers identified via extended literature search beyond \code{papers/methods/}.}\label{tab:master}\\
+\toprule
+Method & Venue/Yr & Core Mechanism & Supervision & Granularity & Time & Rep \\
+\midrule
+\endfirsthead
+\toprule
+Method & Venue/Yr & Core Mechanism & Supervision & Granularity & Time & Rep \\
+\midrule
+\endhead
+\midrule
+\multicolumn{7}{r}{\scriptsize\itshape Continued on next page}\\
+\endfoot
+\bottomrule
+\endlastfoot
+
+% --- Category I ---
+\multicolumn{7}{@{}l}{\textbf{\color{s1!70!black}Category I: Prompting-Based Methods (Frozen LLMs)}}\\
+\midrule
+Who\&When~\citep{zhang2025who} & ICML'25 & All-at-Once, Step-by-Step, Binary Search judges & Zero-shot & Agent + Step & Off & \no \\
+MAST~\citep{cemri2025mast} & NeurIPS'25 & 14-mode grounded taxonomy + calibrated o1 judge & Taxonomy prompt & Mode (trace) & Off & \yes \\
+TRAIL~\citep{deshpande2025trail} & arXiv'25 & OpenTelemetry span-level judge + 3-way taxonomy & Taxonomy prompt & Span + Mode & Off & \no \\
+AgentFail~\citep{ma2025agentfail} & arXiv'25 & Taxonomy-guided scanning for workflow platforms & Taxonomy prompt & Node + Mode & Off & \no \\
+SDBL~\citep{sun2026sdbl}\,\webtag & AAAI'26 & Scope delineation (narrowing) $\to$ fine localization & Zero-shot & Agent + Step & Off & \no \\
+ECHO~\citep{banerjee2025echo} & NeurIPS'25 & 4-layer regex hierarchy ($L_1$--$L_4$) + 6-persona voting & Zero-shot & Agent + Step & Off & \no \\
+AgentDebug~\citep{zhu2026agentdebug} & ICML'26 & 4-module taxonomy scan $\to$ critical step $\to$ feedback & Taxonomy prompt & Step + Mod + Mode & Off & \yes \\
+AgentRx~\citep{barke2026agentrx} & EMNLP'26F & Synthesize guarded constraints $\to$ violation log $\to$ judge & Policy / schema & Step + Mode (9) & Off & \no \\
+AgentScope~\citep{bi2026agentscope} & arXiv'26 & Neuro-symbolic ReAG graph + neural invariants & Invariant specs & Step + Mode (10) & Off & \no \\
+CORRECT~\citep{yu2026correct} & ICML'26 & Online cache of distilled error schemata $\langle\Sigma,C,H\rangle$ & Seed error logs & Agent + Step & Both & \no \\
+DRIFT~\citep{wang2026drift} & arXiv'26 & Claim Keeper $\to$ Support Seeker $\to$ Dependency Tracer & Zero-shot & Error spans & Off & \no \\
+SearchAuditor~\citep{liang2026searchauditor} & arXiv'26 & 3 parallel audit branches + grounded adjudication & Zero-shot & Step + Mode + Fix & Off & \yes \\
+TrajDebug~\citep{qi2026trajdebug}\,\webtag & EMNLP'26F & Multi-granularity compression + error-lifecycle tracking & Zero-shot & Step + Lifecycle & Off & \yes \\
+A2P~\citep{weng2025a2p} & arXiv'25 & Single-pass Abduct--Act--Predict causal scaffolding & Zero-shot & Agent + Step & Off & \no \\
+CHIEF~\citep{wang2026chief} & arXiv'26 & RAG Hierarchical Causal Graph $\to$ oracle backtrack $\to$ CF & RAG exemplars & Agent + Step & Off & \no \\
+EMFA~\citep{liao2026emfa} & arXiv'26 & Symptom anchor + cascade/loop dual-branch + CF check & Zero-shot & Agent + Step & Off & \no \\
+DeFA~\citep{anonymous2027defa} & ICLR'27sub & Protocol+semantic EDG $\to$ segmented FPG $\to$ adjudicator & Zero-shot & Agent + Step + Mode & Off & \yes \\
+BLADE~\citep{guo2026blade} & arXiv'26 & Probabilistic Jev dep.\ graph $\to$ handoff contract audit & Zero-shot & Agent + Step & Off & \no \\
+MemTrace~\citep{deng2026memtrace} & arXiv'26 & Instrumented memory var--op graph + graph/regex agent & Code instrum. & Operation + Mode & Off & \yes \\
+FALAT~\citep{rafi2026falat}\,\webtag & arXiv'26 & Task prior + typed dep.\ pruning + CF sufficiency & Zero-shot & Agent + Step & Off & \no \\
+AIG~\citep{bakish2026aig}\,\webtag & arXiv'26 & Adaptive influence graph + agent-directed traversal & Zero-shot & Agent + Step & Off & \no \\
+EDGE~\citep{hou2026edge}\,\webtag & EMNLP'26F & CF-validated Error Dependency Graph $\to$ 2-stage judge & CF rollouts & Multi-error modes & Off & \yes \\
+RAFFLES~\citep{zhu2026raffles} & UIST'26 & Central Judge + Evaluator critiques in iterative loop & Zero-shot & Agent + Step & Off & \no \\
+ErrorProbe~\citep{li2026errorprobe} & ACL'26F & MAST cues + backward trace + 3-agent team + verified mem. & Exec.\ feedback & Agent + Step & Off & \no \\
+MegaRCA~\citep{raj2026megarca}\,\webtag & arXiv'26 & Continual iterative search nudging unexamined evidence & Zero-shot & Step + Mode & Off & \no \\
+\midrule
+% --- Category II ---
+\multicolumn{7}{@{}l}{\textbf{\color{s2!70!black}Category II: Training-Based Methods (LLM Training Only)}}\\
+\midrule
+AgenTracer~\citep{zhang2026agentracer} & ICLR'26 & KL-free GRPO on Qwen3-8B; Gaussian step + agent reward & CF replay + FI & Agent + Step & Off & \yes \\
+GraphTracer~\citep{zhang2025graphtracer} & arXiv'25 & RL on Qwen3-8B over IDGs; source + GED path reward & IDG-aware FI & Node + Path & Off & \yes \\
+Aegis-SFT/GRPO~\citep{kong2026aegis} & ICLR'26 & SFT \& GRPO (Qwen2.5/3) w/ partial-credit pair rewards & Adaptive FI (9.5k) & Agent + Mode(s) & Off & \no \\
+HPFA~\citep{zhu2026hpfa} & COLM'26 & Paired hypergraph data $\to$ SFT + on-policy rollout GRPO & Success/fail pairs & Step + Type + Desc & Off & \yes \\
+VerifyMAS~\citep{qiao2026verifymas}\,\webtag & NeurIPS'26 & Error-first hypothesis verification via SFT LLM verifier & Taxonomy hyp.\ data & Mode + Agent & Off & \no \\
+AgentLocate~\citep{xia2026agentlocate}\,\webtag & COLM'26 & Multi-perspective verification + lightweight LLM SFT & Annotated traces & Agent + Step & Off & \no \\
+AED / AET~\citep{zhu2026aed}\,\webtag & arXiv'26 & 50k replay-verified error--diagnosis pairs for SFT/DPO & Replay-verified & Step + Diag + Fix & Off & \yes \\
+\midrule
+% --- Category III ---
+\multicolumn{7}{@{}l}{\textbf{\color{s3!65!black}Category III: Other Paradigms (Non-Prompting \& Non-LLM-Training)}}\\
+\midrule
+StepFinder~\citep{zhu2026stepfinder} & KDD'26 & Frozen Qwen3 embeds $\to$ BiLSTM + agent-aware attn & Labeled fail logs & Step (ranked) & Off & \no \\
+OAT~\citep{yeh2026oat} & NeurIPS'26 & One-class Neural CDE on frozen LLM hidden states & Success logs only & Error step set & Off & \no \\
+MASC~\citep{shen2026masc} & arXiv'26 & Frozen LLM + trainable head + normal prototype prior & Normal logs only & Step (online) & On & \yes \\
+AFANet~\citep{li2026afanet}\,\webtag & arXiv'26 & Lightweight GNN over semantic-structural trace graphs & Labeled fail logs & Agent + Mode & Off & \no \\
+DuoTrace~\citep{zhang2026duotrace}\,\webtag & arXiv'26 & VAE + Tree-LSTM anomaly pre-filter before attribution & Normal + replay & Agent + Step & Off & \no \\
+ProMAS~\citep{zhao2026promas}\,\webtag & arXiv'26 & Causal Delta Features $\to$ quantized Vector Markov Space & Normal/fail logs & Step forecast & On & \no \\
+Aegis-DCL~\citep{kong2026aegis} & ICLR'26 & Text encoder + MIL attention + agent/error prototypes & Paired pos/neg & Agent + Mode(s) & Off & \no \\
+FAMAS~\citep{ge2025famas} & arXiv'25 & Repeated replay + hierarchical clustering + MAS SBFL & Env.\ replay & Agent + Action & Off & \no \\
+SymTrace~\citep{luan2026symtrace} & arXiv'26 & Deterministic prefix-hash replay + suspicious-node fix & Env.\ replay & Actionable node & Off & \yes \\
+DoVer~\citep{ma2025dover}\,\webtag & arXiv'25 & Active message/plan interventions + outcome replay & Env.\ replay & Agent + Step & Off & \yes \\
+CausalFlow~\citep{bonagiri2026causalflow}\,\webtag & arXiv'26 & Step-level interventions $\to$ Causal Resp.\ Scores (CRS) & Env.\ replay & Step + Min.\ fix & Off & \yes \\
+CAR / MRFR~\citep{shah2026car,li2026mrfr}\,\webtag & arXiv'26 & SCM $\text{do}(\cdot)$ replay / Graph-Constrained Joint Replay & Env.\ replay & Step / Repair set & Off & \yes \\
+EPV~\citep{shen2026epv}\,\webtag & arXiv'26 & Monte Carlo prefix value $V(h_t)$ to certify PNR & Env.\ replay & PNR step & Off & \no \\
+CDC-MAS~\citep{ma2025cdcmas}\,\webtag & arXiv'25 & Causal inversion + Shapley values + causal discovery & Execution logs & Agent + Step & Off & \yes \\
+AgentTrace~\citep{wang2026agenttrace}\,\webtag & arXiv'26 & Zero-LLM causal graph backward traversal + ranking & Execution logs & Root-cause step & Off & \no \\
+CAEA~\citep{feng2026caea} & arXiv'26 & Sequential filtration CP (LF/RF/TWF) + rollback sets & Calib.\ set ($n$) & Contiguous set & Off & \yes \\
+STAGE~\citep{anonymous2027stage} & ICLR'27sub & White-box VLA stage readers + entropy decomposition & Episode fail label & Phase (A/R/D) & On & \no \\
+\end{longtable}
+\end{center}
+
+\begin{table}[h!]
+\centering\footnotesize
+\caption{Reported top-1 accuracy (\%) on \textbf{Who\&When}~\citep{zhang2025who} (Hand-Crafted: $58$ logs; Algorithm-Generated: $126$ logs) compiled from original papers. \textbf{Caution:} methods use different base LLMs, prompt interfaces, and ground-truth access (\code{w/ G} = task answer given; \code{w/o G} = trajectory only), so rows are not strictly apples-to-apples.}
+\label{tab:whowhen}
+\fitbox{\begin{tabular}{@{}l l l c c c c@{}}
+\toprule
+& & & \multicolumn{2}{c}{\textbf{Hand-Crafted (HC)}} & \multicolumn{2}{c}{\textbf{Algorithm-Generated (AG)}} \\
+\cmidrule(lr){4-5}\cmidrule(lr){6-7}
+Method & Category & Backbone / Setup & Agent (\%) & Step (\%) & Agent (\%) & Step (\%) \\
+\midrule
+Random~\citep{zhang2025who} & Baseline & Uniform heuristic & 12.00 & 4.20 & 29.10 & 19.10 \\
+All-at-Once~\citep{zhang2025who,wang2026chief} & I (Prompt) & GPT-4o (w/ G $\mid$ w/o G) & 50.00 $\mid$ 48.28 & 5.17 $\mid$ 5.17 & 54.33 $\mid$ 59.52 & 12.50 $\mid$ 15.87 \\
+Step-by-Step~\citep{zhang2025who,liao2026emfa} & I (Prompt) & GPT-4o (w/ G $\mid$ w/o G) & 36.00 $\mid$ 34.30 & 6.90 $\mid$ 6.90 & 35.20 $\mid$ 28.30 & 25.51 $\mid$ 17.80 \\
+Binary Search~\citep{zhang2025who,liao2026emfa} & I (Prompt) & GPT-4o (w/ G $\mid$ w/o G) & 51.70 $\mid$ 36.20 & 6.90 $\mid$ 6.90 & 44.13 $\mid$ 30.10 & 23.98 $\mid$ 16.60 \\
+A2P~\citep{weng2025a2p} & I (Prompt) & Single-pass causal scaffold & 58.62 & 29.31 & 65.40 & 47.46 \\
+ECHO~\citep{banerjee2025echo} & I (Prompt) & Claude-3.5-Sonnet (w/ G $\mid$ w/o G) & 68.40 $\mid$ 67.90 & 28.10 $\mid$ 26.80 & 68.80 $\mid$ 67.20 & 28.80 $\mid$ 27.20 \\
+RAFFLES~\citep{zhu2026raffles} & I (Prompt) & Claude-Sonnet-4 (Table~1 / Intro) & --- & 20.69 / 27.59 & --- & 51.59 \\
+SDBL~\citep{sun2026sdbl,liao2026emfa} & I (Prompt) & Two-stage scope (w/o G) & 68.52 & 27.78 & 63.49 & 39.68 \\
+CHIEF~\citep{wang2026chief} & I (Prompt) & DeepSeek-V3.2 think (w/ G $\mid$ w/o G) & \textbf{77.59} $\mid$ 72.41 & 29.31 $\mid$ 29.31 & \textbf{76.80} $\mid$ 68.80 & \textbf{52.00} $\mid$ 45.60 \\
+FALAT~\citep{rafi2026falat,liao2026emfa} & I (Prompt) & Dep.-guided search (w/o G) & 73.00 & 29.10 & 59.70 & 38.00 \\
+EMFA~\citep{liao2026emfa} & I (Prompt) & GPT-4o (w/o G) & 74.14 & 32.76 & 66.67 & 50.00 \\
+BLADE~\citep{guo2026blade} & I (Prompt) & Jev interface (w/o G) & 58.60 & 31.00 & 66.70 & \textbf{54.00} \\
+DeFA~\citep{anonymous2027defa} & I (Prompt) & GLM-5.2 (w/o G, \emph{combined} 184) & \multicolumn{4}{c}{Combined HC+AG: Agent \textbf{72.3\%}, Step \textbf{52.7\%} (Step$\pm$1: 57.1\%)} \\
+\midrule
+AgenTracer-8B~\citep{zhang2026agentracer} & II (LLM RL) & Qwen3-8B GRPO (w/ G $\mid$ w/o G) & 69.10 $\mid$ 63.82 & 20.68 $\mid$ 20.68 & 69.62 $\mid$ 63.73 & 42.86 $\mid$ 37.30 \\
+GraphTracer-8B~\citep{zhang2025graphtracer} & II (LLM RL) & Qwen3-8B IDG-RL (w/ G $\mid$ w/o G) & 74.91 $\mid$ 69.74 & 28.63 $\mid$ 27.97 & 76.64 $\mid$ 67.42 & 49.97 $\mid$ 44.35 \\
+\midrule
+StepFinder~\citep{zhu2026stepfinder} & III (Non-LLM) & Qwen3-Emb + BiLSTM+Attn (w/o G) & --- & 22.99 & --- & 29.63 \\
+FAMAS~\citep{ge2025famas} & III (Spectrum) & Qwen2.5-72B replay + SBFL (w/ G) & 62.07 & \textbf{41.38} & 55.56 & 23.81 \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+Two macro-patterns immediately stand out from Table~\ref{tab:whowhen}. First, \textbf{step-level localization remains dramatically harder than agent-level attribution}: even strong graph-guided prompting methods exceeding $70\%$ agent accuracy typically achieve $29\%$--$33\%$ exact step accuracy on the longer, realistic Hand-Crafted subset. Second, \textbf{structured prompting over frontier models has largely caught up to or surpassed first-generation 8B RL-trained tracers on Who\&When}, yet at $2.5\times$--$10\times$ higher inference token cost and latency---whereas lightweight non-LLM models (StepFinder, OAT, MASC, AFANet) trade peak exact-step accuracy for $5\times$--$5000\times$ speedups and online deployability.

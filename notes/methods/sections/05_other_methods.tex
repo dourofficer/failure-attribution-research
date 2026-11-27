@@ -1,0 +1,89 @@
+% !TEX root = ../main.tex
+\section{Category III: Other Paradigms}\label{sec:other}
+
+Beyond prompting frozen LLMs (Category~I) and fine-tuning LLMs (Category~II), a vibrant body of 2025--2026 research attacks failure attribution using fundamentally different computational primitives: lightweight non-LLM neural networks and latent dynamical models, active environment execution and fault spectra, formal statistical causal inference, conformal uncertainty quantification, and white-box model-internal probing.
+
+\subsection{Non-LLM Learned Neural and Representation-Space Models}\label{sec:nonllm}
+\begin{summarybox}[s3]{Sub-Paradigm Summary \hfill \nonllmbadge}
+These methods \textbf{never update LLM weights} and avoid autoregressive text generation at attribution time. Instead, they extract frozen embeddings or internal LLM hidden states and train lightweight neural scorers---BiLSTMs, attention blocks, GNNs, Neural CDEs, VAEs, Markov transition heads, or prototype classifiers---achieving $5\times$--$5000\times$ inference speedups and often requiring \emph{no step-level failure labels} (unsupervised one-class learning).
+\end{summarybox}
+
+\paragraph{StepFinder~\citep{zhu2026stepfinder}}
+StepFinder (KDD 2026) decouples semantic feature extraction from temporal fault reasoning. A frozen \textbf{Qwen3 Embedding} model encodes each step's action content $c_t$ and agent identity $r_t$ into temporal semantic matrices $\mathbf{C}, \mathbf{R}$. A parameter-efficient neural network then processes $\mathbf{C}$ through: (1)~LayerNorm + \textbf{BiLSTM} to capture bidirectional execution context (past accumulation and future consequences); (2)~an \textbf{Agent-Aware Multi-Head Attention} module adding a structural bias $B_{ij} = \cos(\mathbf{r}_i, \mathbf{r}_j)$ to prioritize intra-agent behavior chains; and (3)~multi-scale score differencing plus learnable position bias. Trained with supervised step classification plus a self-supervised future-step embedding prediction loss, StepFinder attains $29.63\%$ AG and $22.99\%$ HC top-1 step accuracy on Who\&When (and $45.24\%$ AG Acc@2) while cutting inference latency by $79\%$ ($0.61\text{s}$ vs.\ $2.92\text{s}$) with zero token generation.
+
+\paragraph{OAT: One-Class Attribution of Trajectories~\citep{yeh2026oat}}
+OAT (NeurIPS 2026) eliminates step-level failure supervision altogether by formalizing \textbf{unsupervised failure attribution}: training \emph{exclusively} on a small set of successful trajectories ($\sim 100$ runs) with no failure logs or step annotations. Extracting intermediate frozen LLM hidden states $h_t^{(\ell)}$ for each step and normalizing step indices to $u_t = t/T_\tau \in [0,1]$, OAT fits a lightweight \textbf{Neural Controlled Differential Equation (Neural CDE)} driven by a cubic-spline interpolation $X(u)$ of the latent trajectory:
+\begin{equation}
+  z(u) = z(0) + \int_0^u f(v, z(v); \theta_f)\, dX(v), \qquad \mathcal{L}(\theta) = \mathbb{E}_{\tau \sim \mathcal{D}_{\text{succ}}}\!\left[\sum_{t=1}^{T_\tau} \|h_t - \hat{h}(u_t)\|_2^2\right].
+\end{equation}
+Unlike Neural ODEs (which map a query to one deterministic path), conditioning on $dX(v)$ handles multiple valid solution paths. At test time, steps in a failed trace whose hidden states deviate from the learned flow of success receive high anomaly scores. OAT is $200$--$5000\times$ faster than prompting baselines and improves F1 by $+20\%$ in-domain (MCP-Atlas) and $+7\%$ OOD (Who\&When).
+
+\paragraph{MASC: Metacognitive Self-Correction~\citep{shen2026masc}}
+MASC enables \textbf{real-time, online, unsupervised} step-level error detection during execution. Trained solely on normal trajectories, it concatenates pretrained embeddings of agent role $r_j$ and output $O_j$, feeds them through a \textbf{frozen LLM} plus a \textbf{trainable linear projection head} $f_\theta$ for \textbf{Next-Execution Reconstruction} $\hat{x}_t = f_\theta(\text{LLM}(\tilde{q}, \tilde{h}_1, \dots, \tilde{h}_{t-1}))$, and regularizes reconstructions toward a \textbf{learnable normal prototype vector} $p$ refined via single-head attention ($\mathcal{L} = \mathcal{L}_{\text{recon}} + \lambda \mathcal{L}_{\text{proto}}$) to stabilize scoring under sparse early context. When a step's residual exceeds a threshold online, MASC invokes a correction agent \emph{before} the error propagates downstream, yielding up to $+8.47\%$ AUC-ROC on Who\&When (w/o G) and consistent end-to-end gains across six benchmarks.
+
+\paragraph{Graph, Autoencoder, Markov, and Contrastive Non-LLM Models}
+Several complementary lightweight architectures have recently emerged:
+\textbf{AFANet}~\citep{li2026afanet}\,\webtag replaces generative LLM reasoning with a lightweight \textbf{Graph Neural Network (GNN)} over step-semantic and agent-interaction graphs, rivaling heavy LLM judges at near-zero inference cost;
+\textbf{DuoTrace}~\citep{zhang2026duotrace}\,\webtag acts as a plug-and-play \emph{detect-before-attribute} pre-filter, training a \textbf{VAE + Tree-LSTM} anomaly detector on dual-view semantic-structural nodes (augmented with outcome-verified replay) to compress long traces before downstream attribution;
+\textbf{ProMAS}~\citep{zhao2026promas}\,\webtag forecasts errors proactively mid-flight by mapping Causal Delta Features into a quantized \textbf{Vector Markov Space} with jump detection over risk acceleration;
+\textbf{Trajectory Guard}~\citep{advani2026trajguard}\,\webtag uses a sequence-aware autoencoder for low-latency trajectory anomaly scoring; and
+\textbf{Aegis-DCL}~\citep{kong2026aegis} (the third, non-LLM branch of Aegis) trains a text encoder with Multiple Instance Learning (MIL) attention aligned to agent and error-mode prototype banks $B_A, B_E$ via multi-label BCE, supervised contrastive loss over paired correct/faulty traces, and a hierarchical consistency hinge loss.
+
+\subsection{Execution-Based, Spectrum-Based, and Counterfactual Replay Methods}\label{sec:replay}
+\begin{summarybox}[s4]{Sub-Paradigm Summary \hfill \replaybadge}
+Rather than guessing causality from static logs, execution-based methods re-run the MAS or intervene live inside a replayable environment---adapting software Spectrum-Based Fault Localization (SBFL), deterministic snapshot replay, or structural $\text{do}(\cdot)$ counterfactual rollouts. They provide strong empirical grounding and recoverability verification, at the cost of environment reproducibility and high replay token budgets.
+\end{summarybox}
+
+\paragraph{FAMAS: Spectrum-Based Fault Localization~\citep{ge2025famas}}
+FAMAS is the first SBFL method for LLM MAS. Given a failing query, it repeatedly replays the MAS to gather a diverse suite of passing and failing trajectories, chunks logs via an LLM to extract primitive $\langle\text{agent}, \text{action}, \text{state}\rangle$ triples, and applies \textbf{hierarchical clustering} to canonicalize semantically equivalent natural-language steps. Recognizing that classical SBFL formulas (Ochiai, Tarantula, Jaccard, Dstar2) fail under heterogeneous agent activity and self-retry loops, FAMAS introduces a MAS-tailored suspiciousness formula combining \emph{Agent Behavior} factors (Agent-Action Coverage Ratio $\gamma$, Frequency Proportion $\beta$) and \emph{Action Behavior} factors (Local Frequency Enhancement $\alpha$, $\lambda$-Decay Kulczynski2 coefficient). On Who\&When (w/ G), FAMAS achieves the highest reported Hand-Crafted exact step accuracy ($41.38\%$, $62.07\%$ agent; $23.81\%$ AG step), though at $6$--$8\times$ the token cost of one-pass graph prompting~\citep{wang2026chief}.
+
+\paragraph{SymTrace~\citep{luan2026symtrace}}
+SymTrace exposes a foundational methodological flaw in naive MAS debugging: full-trajectory reruns resample upstream stochastic decisions, exhibiting only $67.97\%$ per-run failure reproduction ($41.42\%$ consistent across $3$ runs) and $6.90\%$ repair rate on its $536$-trace \textbf{SymFail} benchmark (AG2, CrewAI, Magentic-One). SymTrace records model/tool boundary snapshots into an event-dependency replay bundle, deterministically replays the exact pre-intervention prefix ($100\%$ content-hash prefix exactness), and applies live \textbf{Suspicious-Node Intervention} at localized anchors---raising failure reproduction to $80.78\%$ and single-intervention repair rate to $20.15\%$ ($2.92\times$ stronger than task-level resampling).
+
+\paragraph{Active Counterfactual Replay: DoVer, CausalFlow, CAR, MRFR, and EPV}
+A wave of 2025--2026 replay frameworks operationalizes counterfactual attribution directly:
+\textbf{DoVer}~\citep{ma2025dover}\,\webtag treats log-based diagnoses as unverified hypotheses and actively validates them by editing messages or plans during execution and measuring outcome flips;
+\textbf{CausalFlow}~\citep{bonagiri2026causalflow}\,\webtag executes step-level interventions to compute \textbf{Causal Responsibility Scores (CRS)} and synthesize minimal outcome-flipping repairs (yielding contrastive pairs for offline optimization);
+\textbf{CAR (Causal Agent Replay)}~\citep{shah2026car}\,\webtag casts agent trajectories as Structural Causal Models (SCMs) and performs $\text{do}(\cdot)$ interventions under stochastic policies;
+\textbf{MRFR / GCJR}~\citep{li2026mrfr}\,\webtag addresses \emph{emergent} multi-agent failures where no single-step fix succeeds, introducing Graph-Constrained Joint Replay to recover inclusion-minimal \emph{sets} of events whose joint intervention restores task success; and
+\textbf{Executable Prefix Values (EPV)}~\citep{shen2026epv}\,\webtag estimates the value $V(h_t)$ of intermediate prefixes via Monte Carlo restarts from reconstructed states to locate the certified \textbf{Point of No Return (PNR)}, showing that surface ``first mistake'' labels often disagree with the true PNR.
+
+\paragraph{Critical Methodological Warning: Evaluator--Executor Mismatch~\citep{liao2026repairs}}
+\textbf{Repairs for Whom?}~\citep{liao2026repairs} rigorously audits replay- and judge-based attribution/repair selection on ALFWorld, WebShop, and $\tau^2$-bench, holding failed trajectories and candidate single-step repairs fixed while measuring true net deployment gain $R_{e_0}(r) = p_{e_0}(h_t, a') - p_{e_0}(h_t, a_t)$ under the deployed policy $e_0$. The findings are sobering: greedy replay of $e_0$ loses $0.08$--$0.13$ net success/reward; evaluating repairs for Qwen2.5-7B with a stronger substitute (Qwen2.5-14B) loses $0.25$ on ALFWorld ($20$ rollouts of 14B are worth no more than $2$ of 7B's own, and the two models prefer \emph{opposite} repairs on disagreement cases); even $e_0$'s own fine-tuned successor loses $0.55$--$0.60$. Overall, substitute evaluators forgo $11\%$--$53\%$ of selection value, demonstrating that \textbf{counterfactual attribution labels are executor-dependent} and must name and match the deployed policy.
+
+\subsection{Formal Causal Discovery, Game-Theoretic, and Zero-LLM Structural Methods}\label{sec:causal}
+\begin{summarybox}[s5]{Sub-Paradigm Summary \hfill \causalbadge}
+These methods ground blame assignment in formal causal discovery, cooperative game theory (Shapley values), SCM effect decomposition, or deterministic graph heuristics---requiring \textbf{no LLM-as-a-judge calls} at attribution time.
+\end{summarybox}
+
+\paragraph{CDC-MAS~\citep{ma2025cdcmas}\,\webtag}
+Proposes a multi-granularity statistical causal inference framework: at the agent level, a \textbf{Performance Causal Inversion Principle} reverses execution data flow and applies \textbf{Shapley values} to fairly allocate blame across interacting agents; at the step level, the non-stationary \textbf{CDC-MAS causal discovery algorithm} identifies critical failure steps ($36.2\%$ step accuracy on Who\&When and TRAIL), feeding validated counterfactual optimization suggestions that raise task success by $+22.4\%$ on average.
+
+\paragraph{AgentTrace~\citep{wang2026agenttrace}\,\webtag}
+Designed for zero-LLM-cost production RCA in deployed MAS, AgentTrace deterministically parses execution logs into a directed causal graph encoding sequential, communication, and data dependencies, walks backward from observed error manifestations, and ranks candidate root causes purely via structural and positional graph features.
+
+\paragraph{Theoretical Multi-Agent Causal Foundations}
+Underpinning modern LLM-MAS causal attribution are three formal multi-agent MDP/SCM frameworks: \textbf{Agent-Specific Effects}~\citep{triantafyllou2023ase}\,\webtag formalizes how one agent's action propagates through subsequent peer responses; \textbf{MMDP-SCM Counterfactual Effect Decomposition}~\citep{triantafyllou2024mmdpscm}\,\webtag splits total counterfactual effect into peer-interaction versus environment-transition pathways; and \textbf{Chen et al.}~\citep{chen2025importance}\,\webtag (AAAI 2025) estimates individual agent importance via counterfactual action randomization and masking.
+
+\subsection{Uncertainty-Aware and Conformal Set-Valued Attribution}\label{sec:conformal}
+\begin{summarybox}[s6]{Sub-Paradigm Summary \hfill \cpbadge}
+Because point-prediction step accuracy remains low ($20\%$--$55\%$), uncertainty-aware methods abandon single-step guesses in favor of \textbf{statistically calibrated prediction sets} with finite-sample coverage guarantees.
+\end{summarybox}
+
+\paragraph{CAEA: Conformal Agent Error Attribution~\citep{feng2026caea}}
+CAEA introduces a model-agnostic \textbf{Conformal Prediction (CP)} layer over any step-level error scorer $g$ (whether a naive LLM judge, an ECHO-style multi-role ensemble, or a fine-tuned Qwen3-1.7B model). Standard split CP (VCP) yields scattered, non-contiguous step subsets that are awkward to debug or roll back. CAEA instead derives sequential \textbf{filtration-based CP} algorithms---\textbf{Left Filtration (LF)}, \textbf{Right Filtration (RF)}, and \textbf{Two-Way Filtration (TWF)}---that progressively trim steps from trajectory boundaries until the remaining contiguous subinterval $c_{j:k}$ falls below a calibrated quantile $\hat{q}$. For any monotonic subinterval score (e.g., length-normalized sum $g(c_{j:k}) = \frac{1}{\ell}\sum_{i=j}^k \text{LLM}(c_i)$), LF/RF/TWF guarantee finite-sample distribution-free coverage:
+\begin{equation}
+  1 - \alpha \;\le\; \mathbb{P}\!\big[y^*_{n+1} \in C(x_{n+1}; \hat{q})\big] \;<\; 1 - \alpha + \frac{1}{n+1},
+\end{equation}
+while requiring only $\approx \frac{1}{2}(\ell+1)$ score evaluations on average for LF/RF. Downstream, contiguity directly enables \textbf{Conformal Agent Rollbacks}: resetting the MAS state to the earliest step of $C(x)$ guarantees with probability $\ge 1-\alpha$ that the rollback precedes the decisive error without needlessly discarding valid prefixes.
+
+\subsection{White-Box, Model-Internal, and Phase-Wise Attribution}\label{sec:whitebox}
+\begin{summarybox}[s7]{Sub-Paradigm Summary \hfill \whiteboxbadge}
+Rather than treating the agent as a black-box text emitter, white-box methods inspect internal representations, attention/entropy decompositions, or resampling sensitivities inside the policy itself to localize \emph{where in the model's computation} failure predictability arises.
+\end{summarybox}
+
+\paragraph{STAGE: Phase-Wise Attribution in Vision-Language-Action Models~\citep{anonymous2027stage}}
+Extending failure attribution to embodied robotic \textbf{Vision-Language-Action (VLA)} policies (OpenVLA, $\pi_0$, $\pi_0$-FAST), STAGE models each decision step as three sequential internal phases: \textbf{Alignment} ($Z^t$, vision--instruction grounding), \textbf{Reasoning} ($f_{L-1}^t$, backbone hidden states), and \textbf{Decoding} ($\pi_h^t$, action token distribution). Theoretically, STAGE proves an exact nonnegative decomposition of predictive action entropy across nested probe families $\mathcal{V}_0 \subseteq \mathcal{V}_1 \subseteq \mathcal{V}_2$ and shows that failure predictability decomposes into nonnegative phase-restricted gains. Computationally, lightweight stage readers extract alignment and reasoning scores from the frozen VLA while decoding uncertainty is read directly from the action head, trained end-to-end using \emph{only episode-level failure labels} (no phase annotations) and running in a \textbf{single VLA forward pass}. Across four LIBERO suites, SimplerEnv, and real-robot Agilex rollouts, STAGE outperforms prior detectors by up to $+10.6$ AUROC, and stage-targeted perturbations verify causal selectivity (pixel noise shifts only the alignment score; internal layer noise shifts reasoning with $<0.1\%$ alignment drift).
+
+\paragraph{Bridging to Representation-Space and Mechanistic Reasoning Attribution}
+Within text-based LLMs, \textbf{OAT}~\citep{yeh2026oat} already demonstrates the power of reading frozen intermediate hidden states $h_t^{(\ell)}$ rather than output text alone. Complementary mechanistic studies of chain-of-thought reasoning---such as \textbf{Thought Anchors}~\citep{bogdan2025thoughtanchors}\,\webtag (identifying pivotal reasoning sentences via resampling and attention patterns) and \textbf{Hidden Error Awareness}~\citep{yuan2026hiddenerror}\,\webtag (showing internal representations carry diagnostic error awareness that is not always causally acted upon)---point toward a largely untapped frontier of white-box, model-internal attribution for multi-agent LLM systems.

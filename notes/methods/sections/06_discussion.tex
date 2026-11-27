@@ -1,0 +1,45 @@
+% !TEX root = ../main.tex
+\section{Synthesis, Trade-Offs, and Open Research Challenges}\label{sec:discussion}
+
+\subsection{Cross-Paradigm Trade-Off Analysis}
+No single attribution paradigm dominates across all operational constraints. Table~\ref{tab:tradeoffs} summarizes the fundamental engineering and scientific trade-offs across the seven methodological families surveyed in Sections~\ref{sec:prompting}--\ref{sec:other}.
+
+\begin{table}[h]
+\centering\footnotesize
+\caption{Qualitative comparison of failure attribution paradigms across seven practical deployment dimensions.}
+\label{tab:tradeoffs}
+\fitbox{\begin{tabular}{@{}>{\RaggedRight\bfseries}p{2.95cm}>{\RaggedRight}p{1.85cm}>{\RaggedRight}p{2.0cm}>{\RaggedRight}p{1.95cm}>{\RaggedRight}p{1.9cm}>{\RaggedRight}p{1.95cm}>{\RaggedRight}p{2.25cm}>{\RaggedRight}p{2.15cm}@{}}
+\toprule
+Paradigm & Exact Step Acc. & Inference Cost & Training / Data Cost & Observability & White-Box / Replay & OOD Generalization & Interpretability / UQ \\
+\midrule
+I.1 Direct Prompting & Low & Low--Mod. & Zero & Text log & None & High & Text rationale \\
+I.2--4 Struct./Graph Prompt & High (SOTA) & Mod.--High & Zero & Full log/schema & None (opt.\ tool) & High & High (graphs, logs) \\
+II. LLM Training (SFT/RL) & Mod.--High & Low (8B 1-pass) & Very High & Text / IDG & Offline replay (data) & Mod.\ (domain shift) & \code{<think>} / JSON \\
+III.1 Non-LLM Neural/CDE & Moderate & Very Low & Low--Mod. & Embeds / hidden & Optional hidden & Mod.--High (1-class) & Score only (opaque) \\
+III.2 Replay / Spectrum & High (HC) & Very High & Zero & Replayable env. & Live env.\ replay & High & Statistical / causal \\
+III.3 Formal Causal / Graph & Moderate & Very Low & Zero & Structured logs & None & High & High (graph/Shapley) \\
+III.4 Conformal UQ & Set-valued & Same as scorer & Small calib.\ set & Any scorer & None & Exchangeability req. & Provable $1-\alpha$ cov. \\
+III.5 White-Box / Phase & High (VLA) & Ultra Low & Episode labels & Internal states & White-box access & Moderate & Phase attribution \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\subsection{Six Key Takeaways and Open Challenges}
+
+\paragraph{1. Structure beats scale, yet step-level localization remains the core bottleneck}
+Across both prompting (CHIEF, EMFA, DeFA, BLADE, AgentScope, AgentRx) and LLM training (GraphTracer vs.\ AgenTracer), explicitly modeling \textbf{information dependencies, semantic contracts, and propagation loops} yields larger accuracy gains than scaling raw model size alone. Nevertheless, exact step-level accuracy on complex, naturally failing trajectories (Who\&When Hand-Crafted, SearchAuditBench, TRAIL) still hovers around $30\%$--$45\%$. Bridging the gap between local anomaly detection (``this step looks odd'') and global causal sufficiency (``fixing this step resolves the downstream failure'') remains an unsolved core problem.
+
+\paragraph{2. Evaluator--executor mismatch and stochasticity threaten static ground-truth definitions}
+Most benchmarks treat the decisive error $(i^*, t^*)$ as an intrinsic, executor-independent property of a text log. Yet \textbf{SymTrace}~\citep{luan2026symtrace} shows unguided reruns reproduce failures only $68\%$ of the time, \textbf{EPV}~\citep{shen2026epv} shows first-mistake labels diverge from the executable Point of No Return, and \textbf{Repairs for Whom?}~\citep{liao2026repairs} proves that substituting a stronger model or greedy replay forfeits $11\%$--$53\%$ of real repair value. Future attribution methods and benchmarks must explicitly condition attribution on the \emph{deployed executor policy} and distinguish deterministic prefix replay from stochastic resampling.
+
+\paragraph{3. Partial observability and benchmark saturation}
+\textbf{TraceElephant}~\citep{chen2026traceelephant} demonstrates that output-only logs hide up to $76\%$ of recoverable attribution signal compared to full developer-facing traces (inputs, system prompts, architecture specs). Meanwhile, \textbf{Who\&When} ($184$ traces) is small enough to risk prompt overfitting and data contamination across frontier models, motivating migration toward larger, multi-framework, multimodal, and multi-perspective benchmarks such as \textbf{Who\&When Pro}~\citep{liu2026whowhenpro}, \textbf{MP-Bench}~\citep{in2026mpbench}, \textbf{SearchAuditBench}~\citep{liang2026searchauditor}, \textbf{TELBench}~\citep{wang2026drift}, \textbf{SymFail}~\citep{luan2026symtrace}, and \textbf{LongRCA}~\citep{zhang2026longrca}.
+
+\paragraph{4. Moving beyond the single-root-cause assumption}
+Real long-horizon failures frequently involve \textbf{compound or emergent errors}---multiple interacting slips, missed recovery opportunities by downstream verifiers, or multiple equally valid repair perspectives~\citep{in2026mpbench,yeh2026oat,hou2026edge,li2026mrfr}. Emerging formulations---such as error-contributing sets (OAT), span-level claim propagation (DRIFT), multi-error dependency graphs (EDGE), and Minimal Repair Families (MRFR)---better reflect production failures than single-step argmin labels, but lack standardized evaluation protocols.
+
+\paragraph{5. Untapped synergy between white-box internal signals, lightweight scorers, and conformal UQ}
+Category~I graph-prompting methods are accurate but slow and expensive; Category~III non-LLM models (OAT, StepFinder, MASC, AFANet) and white-box phase detectors (STAGE) are orders of magnitude faster and tap internal signals invisible in text logs, yet lack semantic explanations. Combining \textbf{fast internal/representation-space pre-screening} (as pioneered by DuoTrace and OAT) with \textbf{targeted graph/contract auditing} (as in BLADE/DeFA) and \textbf{conformal contiguous intervals} (CAEA) offers a compelling route to fast, interpretable, and statistically calibrated attribution.
+
+\paragraph{6. Closing the loop from attribution to safe online recovery and policy evolution}
+Ultimately, attribution matters only insofar as it improves agent reliability. Early closed-loop demonstrations---AgenTracer/GraphTracer critique injection ($+4.8\%$--$14.2\%$), AgentDebug iterative re-rollouts ($+26\%$ rel.), MASC real-time interception, MemTrace prompt optimization ($+7.62$~pp), DeFA skill evolution ($+6$--$15$~pp), CAEA conformal rollbacks, and HPFA rollout-actionable GRPO---prove that accurate attribution unlocks substantial downstream gains. Designing \textbf{online, low-latency, repair-aligned} attributors whose outputs are directly trained and verified against deployed-policy recovery remains the defining challenge for self-healing agentic systems.
