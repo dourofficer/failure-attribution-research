@@ -1,0 +1,18 @@
+# ActPRM failed traces, 16 to 60 steps, label = first error step. Frozen once a run has used it.
+name: actprm, failed traces with 16-60 steps, first-error label
+path: data/lrm_traces/normalized/actprm/data.jsonl
+filter:
+  has_error: true
+  min_steps: 16
+  max_steps: 60            # above this, steps are a few characters each (broken segmentation)
+  drop_empty_steps: true   # traces with a blank step cannot be mean-pooled
+label: first_error_step    # Y = {first_error_step}
+group_key: task_id         # splits are task-disjoint
+one_trace_per_task: true
+seed: 20261128
+splits:                    # tasks per split, assigned in this order after a seeded shuffle
+  test: 1000
+  cal: 1000
+  val: 1000
+  train_cls: 5000          # half of training that carries the classification loss
+  train_size: 5000         # half of training that carries the set-size loss

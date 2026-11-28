@@ -1,0 +1,49 @@
+{
+ "hp": {
+  "mode": "ce",
+  "cls_splits": [
+   "train_cls",
+   "train_size"
+  ],
+  "size_splits": [],
+  "batch_size": 32,
+  "epochs": 2,
+  "weight_decay": 0.01,
+  "alpha": 0.1,
+  "layer": 8,
+  "lr": 0.0003
+ },
+ "seed": 0,
+ "best_epoch": 0,
+ "best_val": {
+  "coverage": 1.0,
+  "size": 19.0,
+  "size_rel": 1.0,
+  "empty_rate": 0.0,
+  "top1": 0.0
+ },
+ "history": [
+  {
+   "epoch": 0,
+   "cls": 2.9713385105133057,
+   "size": 0.0,
+   "q": null,
+   "val_coverage": 1.0,
+   "val_size": 19.0,
+   "val_size_rel": 1.0,
+   "val_empty_rate": 0.0,
+   "val_top1": 0.0
+  },
+  {
+   "epoch": 1,
+   "cls": 2.3491270542144775,
+   "size": 0.0,
+   "q": null,
+   "val_coverage": 1.0,
+   "val_size": 19.0,
+   "val_size_rel": 1.0,
+   "val_empty_rate": 0.0,
+   "val_top1": 0.0
+  }
+ ]
+}

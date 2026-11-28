@@ -1,0 +1,10 @@
+Uninstalled 1 package in 2ms
+Installed 1 package in 7ms
+assets/experiments/cp_ce_half/config.resolved.yaml
+using GPUs: 1 -> 5 processes  smoke=0
+Uninstalled 1 package in 2ms
+Installed 1 package in 6ms
+selected layer32_lr0.0003 of 3 runs: val size_rel=0.4342 coverage=0.895 top1=0.385
+Uninstalled 1 package in 1ms
+Installed 1 package in 5ms
+done -> assets/experiments/cp_ce_half/results.md

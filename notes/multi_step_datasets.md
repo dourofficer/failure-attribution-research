@@ -17,10 +17,10 @@ Computed 2026-11-21 from the copies under `data/`. Count scripts were run from t
 
 Label sets and counting rules:
 
-- **MP-Bench** (`data/mp_bench/adobe_multi-agent-eval-bench/MP-Bench/<annotator>/<manual|automatic>/`): the steps with `fail_annotation == "1"`. "Union" counts every step any of the 3 annotators flagged; "2-of-3" keeps steps that at least two flagged. The subset is decided by `log_source`.
-- **TRAIL** (`data/trail/whowhen_format/`): `error_steps`.
-- **AgentRx** (`data/agentrx/github/data/ground_truth/`): the distinct `failures[].step_number`.
-- **MCP-Atlas / OAT** (`data/mcp_atlas_oat/`): the distinct valid `errors[].scope`.
+- **MP-Bench** (`data/attribution/mp_bench/adobe_multi-agent-eval-bench/MP-Bench/<annotator>/<manual|automatic>/`): the steps with `fail_annotation == "1"`. "Union" counts every step any of the 3 annotators flagged; "2-of-3" keeps steps that at least two flagged. The subset is decided by `log_source`.
+- **TRAIL** (`data/attribution/trail/whowhen_format/`): `error_steps`.
+- **AgentRx** (`data/attribution/agentrx/github/data/ground_truth/`): the distinct `failures[].step_number`.
+- **MCP-Atlas / OAT** (`data/attribution/mcp_atlas_oat/`): the distinct valid `errors[].scope`.
 - **Empty:** a trajectory with no labelled step; it is left out of the step statistics.
 
 Where the facts come from:
@@ -35,7 +35,7 @@ Where the facts come from:
 - **MP-Bench:** expert opinions that disagree, not one ground truth. The paper reports all three annotators agreeing on a single step in only 16% of logs.
 - **TRAIL:** every error, including LOW-impact formatting slips. There is no decisive-error notion, and some traces end with the right answer.
 - **AgentRx:** every failure event, plus one marked `root_cause`.
-- **MCP-Atlas / OAT:** only the steps that contributed to the failure. In 39 of 88 the final answer step is the only label, and 13 failures end in an empty final step (a tool call left inside `reasoning_content`) that never occurs in a success. Details are in `data/mcp_atlas_oat/README.md`.
+- **MCP-Atlas / OAT:** only the steps that contributed to the failure. In 39 of 88 the final answer step is the only label, and 13 failures end in an empty final step (a tool call left inside `reasoning_content`) that never occurs in a success. Details are in `data/attribution/mcp_atlas_oat/README.md`.
 - **Step units:** TRAIL steps are LLM and TOOL spans from an observability trace. The others are messages or turns.
 
 ## Overlap and diversity

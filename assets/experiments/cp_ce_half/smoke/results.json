@@ -1,0 +1,487 @@
+{
+ "selected": {
+  "mode": "ce",
+  "cls_splits": [
+   "train_cls"
+  ],
+  "size_splits": [],
+  "batch_size": 32,
+  "epochs": 2,
+  "weight_decay": 0.01,
+  "alpha": 0.1,
+  "layer": 8,
+  "lr": 0.0001
+ },
+ "arms": {
+  "cross-entropy, half of the training data": {
+   "0.05": {
+    "test": {
+     "q": {
+      "mean": Infinity,
+      "sd": NaN
+     },
+     "coverage_interval": [
+      1.0,
+      1.0
+     ],
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 17.75,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    },
+    "external_recal": {
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 13.225,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "size_sd": {
+      "mean": 0.6417748826496718,
+      "sd": 0.0
+     },
+     "size_rel_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "empty_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "top1_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "n_cal": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_test": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_splits": {
+      "mean": 200.0,
+      "sd": 0.0
+     }
+    },
+    "external_zero_shot": {
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 13.25,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    }
+   },
+   "0.1": {
+    "test": {
+     "q": {
+      "mean": Infinity,
+      "sd": NaN
+     },
+     "coverage_interval": [
+      1.0,
+      1.0
+     ],
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 17.75,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    },
+    "external_recal": {
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 13.225,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "size_sd": {
+      "mean": 0.6417748826496718,
+      "sd": 0.0
+     },
+     "size_rel_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "empty_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "top1_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "n_cal": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_test": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_splits": {
+      "mean": 200.0,
+      "sd": 0.0
+     }
+    },
+    "external_zero_shot": {
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 13.25,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    }
+   },
+   "0.2": {
+    "test": {
+     "q": {
+      "mean": 0.9606762925937046,
+      "sd": 0.001209398052615822
+     },
+     "coverage_interval": [
+      0.3976353643835255,
+      0.9936905367902901
+     ],
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 17.666666666666668,
+      "sd": 0.11785113019775792
+     },
+     "size_rel": {
+      "mean": 0.996031746031746,
+      "sd": 0.005611958580845595
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 0.9166666666666666,
+      "sd": 0.11785113019775792
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      1.0,
+      0.9841269841269842,
+      1.0
+     ]
+    },
+    "external_recal": {
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 13.225,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "size_sd": {
+      "mean": 0.6417748826496718,
+      "sd": 0.0
+     },
+     "size_rel_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "empty_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "top1_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "n_cal": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_test": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_splits": {
+      "mean": 200.0,
+      "sd": 0.0
+     }
+    },
+    "external_zero_shot": {
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 13.25,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    }
+   }
+  }
+ }
+}

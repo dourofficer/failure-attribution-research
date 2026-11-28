@@ -1,0 +1,24 @@
+# Conformal training with a learned threshold, Algorithm 1 of Work Package 1 (campaign D002).
+setup:
+  dataset: [actprm_first_error_16to60_v1, processbench_first_error_10plus_v1]
+  model: qwen3_5_9b_frozen_v1
+  metric: split_cp_cov_ineff_v1
+params:
+  emb_dir: assets/experiments/cp_step_embeddings/emb
+  layer_from: assets/experiments/cp_ce_full/best.json   # the embedding depth selected by the reference arm
+  fixed:
+    mode: dpsm
+    cls_splits: [train_cls]      # classification loss and threshold updates
+    size_splits: [train_size]    # set-size loss
+    batch_size: 32
+    epochs: 50
+    weight_decay: 0.01
+    alpha: 0.1
+    q0: 0.5
+  grid:
+    lr: [0.0001, 0.0003, 0.001]
+    lam: [0.1, 0.5, 1, 2, 5]
+    tau: [0.01, 0.05, 0.1]
+    gamma: [0.001, 0.005, 0.01, 0.05]
+  seeds: [0, 1, 2]
+  eval_splits: [val, cal, test, external]

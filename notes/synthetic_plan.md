@@ -29,7 +29,7 @@ Use TRAIL only as a transfer test. Both of its backbones are gone: o3-mini shut 
 ## 2. Where to get each system
 
 - **τ-bench:** `sierra-research/tau-bench`. Pin v1 for AgentRx. Its README now says the tasks are no longer updated and points to τ²/τ³-bench, and τ² has replaced 50 retail tasks. For TrajErrBench, pin the τ² version that paper used.
-- **AgentChat Magentic-One and CaptainAgent:** already on disk in `data/traceelephant/code_TraceElephant/code/agent_system/`.
+- **AgentChat Magentic-One and CaptainAgent:** already on disk in `data/attribution/traceelephant/code_TraceElephant/code/agent_system/`.
   - It comes with `llm_api_middleware`, a proxy that logs every LLM call and can intercept or change responses. That proxy is the hook for both caching a run's prefix and injecting errors.
   - TraceElephant changed the tool layer: Patchright instead of Chromium, DuckDuckGo for search, and CaptainAgent's Bing search replaced. The agent logic is the same but the tools are not.
 - **Legacy Magentic-One:** available only from the autogen GitHub tag `v0.4.4` (`python/packages/autogen-magentic-one`); PyPI only has 0.0.1. Because TraceElephant's middleware sits in front of the API, it should work here too.

@@ -6,7 +6,7 @@
 Paper & \emph{AgentRx: Diagnosing AI Agent Failures from Execution Trajectories} --- Barke, Goyal, Khare, Singh, Nath, Bansal (Microsoft Research / UIUC), EMNLP 2026 Findings, arXiv:2602.02475 \cite{agentrx2026}\\
 Links & \href{https://huggingface.co/datasets/microsoft/AgentRx}{HF \code{microsoft/AgentRx}} (gated) \textperiodcentered\ \href{https://github.com/microsoft/AgentRx}{GitHub \code{microsoft/AgentRx}} \textperiodcentered\ \href{https://microsoft.com/en-us/research/blog/systematic-debugging-for-ai-agents-introducing-the-agentrx-framework}{MSR blog}\\
 License & HF card CC BY 4.0; GitHub repository MIT\\
-Status & HF download denied (approval required); the GitHub repo ships 73 of the paper's 170 annotated trajectories (29 $\tau$-bench retail + 44 Magentic-One) with identical schema---downloaded, 9.1 MB in \code{data/agentrx/github/data/} (11.5 MB repo). Flash (42, internal Microsoft traces) and RelWork (45) are not released\\
+Status & HF download denied (approval required); the GitHub repo ships 73 of the paper's 170 annotated trajectories (29 $\tau$-bench retail + 44 Magentic-One) with identical schema---downloaded, 9.1 MB in \code{data/attribution/agentrx/github/data/} (11.5 MB repo). Flash (42, internal Microsoft traces) and RelWork (45) are not released\\
 \end{identity}
 
 \paragraph{Description} AgentRx redefines the target as the \emph{critical failure step}---the first failure by any agent from which the run never recovers---and adds a \textbf{root-cause category}. The dataset is the evaluation set of the AgentRx debugging framework (constraint synthesis $\to$ step-wise checking $\to$ LLM judge). All failures are natural, from four domains:

@@ -1,0 +1,56 @@
+{
+ "hp": {
+  "mode": "dpsm",
+  "cls_splits": [
+   "train_cls"
+  ],
+  "size_splits": [
+   "train_size"
+  ],
+  "batch_size": 32,
+  "epochs": 2,
+  "weight_decay": 0.01,
+  "alpha": 0.1,
+  "q0": 0.5,
+  "gamma": 0.001,
+  "lam": 0.1,
+  "layer": 8,
+  "lr": 0.0001,
+  "tau": 0.05
+ },
+ "seed": 0,
+ "best_epoch": 0,
+ "best_val": {
+  "coverage": 1.0,
+  "size": 19.0,
+  "size_rel": 1.0,
+  "empty_rate": 0.0,
+  "top1": 0.0
+ },
+ "history": [
+  {
+   "epoch": 0,
+   "cls": 2.8449859619140625,
+   "size": 0.0001136932332883589,
+   "q": 0.5009,
+   "val_coverage": 1.0,
+   "val_size": 19.0,
+   "val_size_rel": 1.0,
+   "val_empty_rate": 0.0,
+   "val_top1": 0.0,
+   "q_exact_d1": 0.9315110644776561
+  },
+  {
+   "epoch": 1,
+   "cls": 2.665008068084717,
+   "size": 0.00012032836093567312,
+   "q": 0.5018,
+   "val_coverage": 1.0,
+   "val_size": 19.0,
+   "val_size_rel": 1.0,
+   "val_empty_rate": 0.0,
+   "val_top1": 0.0,
+   "q_exact_d1": 0.9250477008594363
+  }
+ ]
+}

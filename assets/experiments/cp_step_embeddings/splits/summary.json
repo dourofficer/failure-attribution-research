@@ -1,0 +1,26 @@
+{
+  "actprm_first_error_16to60_v1": {
+    "seen": 338922,
+    "dropped_too_short": 303924,
+    "kept_traces": 34427,
+    "dropped_too_long": 569,
+    "dropped_empty_step": 2,
+    "tasks": 32778,
+    "split_test": 1000,
+    "split_cal": 1000,
+    "split_val": 1000,
+    "split_train_cls": 5000,
+    "split_train_size": 5000,
+    "reserve_tasks": 19778,
+    "written": 13000
+  },
+  "processbench_first_error_10plus_v1": {
+    "seen": 2221,
+    "dropped_too_short": 1662,
+    "kept_traces": 559,
+    "tasks": 527,
+    "split_external": 527,
+    "reserve_tasks": 0,
+    "written": 527
+  }
+}

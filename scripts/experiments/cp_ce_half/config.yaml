@@ -1,0 +1,20 @@
+# Control for halved labels: cross-entropy on one 5,000-task half of the training data (campaign D002).
+setup:
+  dataset: [actprm_first_error_16to60_v1, processbench_first_error_10plus_v1]
+  model: qwen3_5_9b_frozen_v1
+  metric: split_cp_cov_ineff_v1
+params:
+  emb_dir: assets/experiments/cp_step_embeddings/emb
+  layer_from: assets/experiments/cp_ce_full/best.json   # the embedding depth selected by the reference arm
+  fixed:
+    mode: ce
+    cls_splits: [train_cls]
+    size_splits: []
+    batch_size: 32
+    epochs: 50
+    weight_decay: 0.01
+    alpha: 0.1
+  grid:
+    lr: [0.0001, 0.0003, 0.001]
+  seeds: [0, 1, 2]
+  eval_splits: [val, cal, test, external]

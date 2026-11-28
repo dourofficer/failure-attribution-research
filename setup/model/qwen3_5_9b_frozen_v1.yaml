@@ -1,0 +1,11 @@
+# Frozen Qwen3.5-9B as a step-embedding backbone (Work Package 1, Step 1; backbone changed from
+# Qwen3-8B by [RESEARCHER] on 2026-11-28 because this model is already on disk).
+hub_id: Qwen/Qwen3.5-9B
+path: /home/thanhdo/hub/Qwen/Qwen3.5-9B    # local copy; loaded from here, nothing is downloaded
+text_submodule: language_model             # the model is multimodal; only its text decoder is run
+dtype: bf16
+layer_fractions: [0.25, 0.5, 0.75, 1.0]    # depth of the hidden states kept; 1.0 = final layer after the last norm
+pooling: mean                              # mean over the tokens of each step
+max_tokens: 16384                          # a longer trace is an error: the overlapping-window path is not implemented
+prompt_format: "Problem:\n{prompt}\n\n"    # written once at the start of the trace
+step_format: "Step {k}:\n{step}\n\n"       # one block per step, k from 1; only the {step} text is pooled

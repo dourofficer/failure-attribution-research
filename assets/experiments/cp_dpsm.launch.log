@@ -1,0 +1,4 @@
+Uninstalled 1 package in 2ms
+Installed 1 package in 7ms
+assets/experiments/cp_dpsm/config.resolved.yaml
+using GPUs: 0 -> 5 processes  smoke=0

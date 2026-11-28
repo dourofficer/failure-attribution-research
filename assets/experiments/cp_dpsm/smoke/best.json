@@ -1,0 +1,81 @@
+{
+ "hp": {
+  "mode": "dpsm",
+  "cls_splits": [
+   "train_cls"
+  ],
+  "size_splits": [
+   "train_size"
+  ],
+  "batch_size": 32,
+  "epochs": 2,
+  "weight_decay": 0.01,
+  "alpha": 0.1,
+  "q0": 0.5,
+  "gamma": 0.001,
+  "lam": 0.1,
+  "layer": 8,
+  "lr": 0.0001,
+  "tau": 0.01
+ },
+ "tag": "gamma0.001_lam0.1_layer8_lr0.0001_tau0.01",
+ "n_runs": 2,
+ "table": [
+  {
+   "tag": "gamma0.001_lam0.1_layer8_lr0.0001_tau0.01",
+   "hp": {
+    "mode": "dpsm",
+    "cls_splits": [
+     "train_cls"
+    ],
+    "size_splits": [
+     "train_size"
+    ],
+    "batch_size": 32,
+    "epochs": 2,
+    "weight_decay": 0.01,
+    "alpha": 0.1,
+    "q0": 0.5,
+    "gamma": 0.001,
+    "lam": 0.1,
+    "layer": 8,
+    "lr": 0.0001,
+    "tau": 0.01
+   },
+   "best_epoch": 0,
+   "coverage": 1.0,
+   "size": 19.0,
+   "size_rel": 1.0,
+   "empty_rate": 0.0,
+   "top1": 0.0
+  },
+  {
+   "tag": "gamma0.001_lam0.1_layer8_lr0.0001_tau0.05",
+   "hp": {
+    "mode": "dpsm",
+    "cls_splits": [
+     "train_cls"
+    ],
+    "size_splits": [
+     "train_size"
+    ],
+    "batch_size": 32,
+    "epochs": 2,
+    "weight_decay": 0.01,
+    "alpha": 0.1,
+    "q0": 0.5,
+    "gamma": 0.001,
+    "lam": 0.1,
+    "layer": 8,
+    "lr": 0.0001,
+    "tau": 0.05
+   },
+   "best_epoch": 0,
+   "coverage": 1.0,
+   "size": 19.0,
+   "size_rel": 1.0,
+   "empty_rate": 0.0,
+   "top1": 0.0
+  }
+ ]
+}

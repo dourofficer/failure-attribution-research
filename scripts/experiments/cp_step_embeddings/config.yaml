@@ -1,0 +1,7 @@
+# Builds the task-disjoint splits and caches frozen Qwen3.5-9B step embeddings for campaign D002.
+setup:
+  dataset: [actprm_first_error_16to60_v1, processbench_first_error_10plus_v1]
+  model: qwen3_5_9b_frozen_v1
+params:
+  chunk_size: 256          # traces per output file; the unit of resume
+  smoke_per_split: 4       # SMOKE=1 keeps this many tasks per split

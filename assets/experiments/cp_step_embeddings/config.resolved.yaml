@@ -1,0 +1,68 @@
+setup:
+  dataset:
+  - id: actprm_first_error_16to60_v1
+    sha256: 2e0b465bf251f54f79a974b09b0488bd6b5f9670e67423d9aa8d42139b58a275
+    content:
+      name: actprm, failed traces with 16-60 steps, first-error label
+      path: data/lrm_traces/normalized/actprm/data.jsonl
+      filter:
+        has_error: true
+        min_steps: 16
+        max_steps: 60
+        drop_empty_steps: true
+      label: first_error_step
+      group_key: task_id
+      one_trace_per_task: true
+      seed: 20261128
+      splits:
+        test: 1000
+        cal: 1000
+        val: 1000
+        train_cls: 5000
+        train_size: 5000
+  - id: processbench_first_error_10plus_v1
+    sha256: ad264624e53f7d998a23c789ab35ae45000b94867f09dd8d1b46345f3a8f0294
+    content:
+      name: processbench, failed traces with 10+ steps, first-error label
+      path: data/lrm_traces/normalized/processbench/data.jsonl
+      filter:
+        has_error: true
+        min_steps: 10
+        max_steps: null
+        drop_empty_steps: true
+      label: first_error_step
+      group_key: task_id
+      one_trace_per_task: true
+      seed: 20261128
+      splits:
+        external: all
+  model:
+    id: qwen3_5_9b_frozen_v1
+    sha256: 2224b3d047b090b07fa57266413f44ee15a9f687c64dd8116299ba8411d4e0e7
+    content:
+      hub_id: Qwen/Qwen3.5-9B
+      path: /home/thanhdo/hub/Qwen/Qwen3.5-9B
+      text_submodule: language_model
+      dtype: bf16
+      layer_fractions:
+      - 0.25
+      - 0.5
+      - 0.75
+      - 1.0
+      pooling: mean
+      max_tokens: 16384
+      prompt_format: 'Problem:
+
+        {prompt}
+
+
+        '
+      step_format: 'Step {k}:
+
+        {step}
+
+
+        '
+params:
+  chunk_size: 256
+  smoke_per_split: 4

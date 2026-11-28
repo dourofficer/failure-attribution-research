@@ -6,7 +6,7 @@
 Paper & \emph{Aegis: Automated Error Generation and Attribution for Multi-Agent Systems} --- Kong, Zhang, Yin, Zhang, Zhang, Chen, Zhang, Zhang, Zhu, Feng (PKU, BIGAI, IIE CAS, NUS, Tsinghua), ICLR 2026, arXiv:2509.14295 \cite{aegis2026}\\
 Links & \href{https://huggingface.co/datasets/Fancylalala/AEGIS}{HF \code{Fancylalala/AEGIS}} \textperiodcentered\ \href{https://github.com/kfq20/AEGIS}{GitHub \code{kfq20/AEGIS}} (injection factory, MAS wrappers, evaluation) \textperiodcentered\ \href{https://kfq20.github.io/AEGIS-Website/}{project page}\\
 License & MIT (HF card and GitHub)\\
-Status & downloaded in full, ungated; 222 MB; 9,533 trajectories = 600 test (\emph{Aegis-Bench}) + 7,146 train + 1,787 val; \code{data/aegis/}\\
+Status & downloaded in full, ungated; 222 MB; 9,533 trajectories = 600 test (\emph{Aegis-Bench}) + 7,146 train + 1,787 val; \code{data/attribution/aegis/}\\
 \end{identity}
 
 \paragraph{Description} AEGIS is the largest fully synthetic dataset in this survey, built for \emph{fine-grained error attribution}: given a failed MAS trajectory, predict the set of \textbf{(faulty agent, error mode)} pairs. It supports SFT, RL (GRPO with a hierarchical pair/agent/error reward) and contrastive learning on success/failure pairs; Aegis-Bench is the 600-trajectory test split (104--105 per non-GAIA benchmark and 76 GAIA). Construction:

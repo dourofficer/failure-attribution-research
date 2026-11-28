@@ -1,0 +1,17 @@
+# Vanilla split conformal prediction over steps: coverage and set size (Work Package 1, shared evaluation).
+score: hps                      # S(x, t) = 1 - pi_t(x)
+alphas: [0.05, 0.1, 0.2]
+selection:                      # how every arm picks hyperparameters and checkpoints
+  split: val
+  metric: size_rel              # calibrated relative set size |C(x)| / T, lower is better
+  alpha: 0.1
+  protocol: two fixed halves of val; calibrate on one, score the other, both ways, averaged
+test:
+  calibrate_on: cal
+  evaluate_on: test
+  coverage_check: Beta(k, m + 1 - k) 95% interval, k = ceil((1 - alpha)(m + 1))
+external:
+  split: external
+  recalibrated: 200 random 50/50 calibration/test splits
+  zero_shot: threshold from cal applied to all of external
+guardrails: [empty_rate, full_rate, top1, coverage_by_len_tercile, coverage_by_pos_tercile]

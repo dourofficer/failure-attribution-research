@@ -1,0 +1,26 @@
+# Reference arm of campaign D002: cross-entropy on all 10,000 training tasks, then split conformal calibration.
+# Also selects the embedding depth for every other arm and reports the arms that need no retraining.
+setup:
+  dataset: [actprm_first_error_16to60_v1, processbench_first_error_10plus_v1]
+  model: qwen3_5_9b_frozen_v1
+  metric: split_cp_cov_ineff_v1
+params:
+  emb_dir: assets/experiments/cp_step_embeddings/emb
+  fixed:
+    mode: ce
+    cls_splits: [train_cls, train_size]
+    size_splits: []
+    batch_size: 32
+    epochs: 50
+    weight_decay: 0.01
+    alpha: 0.1
+  grid:
+    layer: [8, 16, 24, 32]
+    lr: [0.0001, 0.0003, 0.001]
+  seeds: [0, 1, 2]
+  eval_splits: [val, cal, test, external]
+  posthoc:
+    temperatures: [0.25, 0.35, 0.5, 0.7, 1.0, 1.4, 2.0, 3.0, 4.0]
+    raps_lambda: [0.001, 0.01, 0.1]
+    raps_k_reg: [1, 2, 5]
+    position_bins: 10

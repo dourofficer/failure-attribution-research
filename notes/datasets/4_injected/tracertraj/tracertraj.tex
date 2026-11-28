@@ -6,7 +6,7 @@
 Paper & \emph{AgenTracer: Who Is Inducing Failure in the LLM Agentic Systems?} --- Zhang, Wang, Chen, Zhou, Wang, Yan (OPPO, NUS, CUHK, NTU), ICLR 2026, arXiv:2509.03312 \cite{agentracer2026}\\
 Links & \href{https://github.com/bingreeky/AgenTracer/releases/tag/data-v1.0.0}{GitHub \code{bingreeky/AgenTracer} release \code{data-v1.0.0}} \textperiodcentered\ \href{https://bingreeky.github.io/atracer/}{project page}; no Hugging Face release; AgenTracer-8B weights not released\\
 License & none stated in the archive, README or repository\\
-Status & downloaded in full (24.0\,MB zip, 140.8\,MB JSONL); 3,208 train + 790 test = 3,998 trajectories; \code{data/tracertraj/extracted/agentracer-data-v1.0.0/}. The release is larger than, and ``not identical'' to, the paper's TracerTraj-2.5K\\
+Status & downloaded in full (24.0\,MB zip, 140.8\,MB JSONL); 3,208 train + 790 test = 3,998 trajectories; \code{data/attribution/tracertraj/extracted/agentracer-data-v1.0.0/}. The release is larger than, and ``not identical'' to, the paper's TracerTraj-2.5K\\
 \end{identity}
 
 \paragraph{Description} TracerTraj is the \emph{training} resource behind AgenTracer-8B (Qwen3-8B tuned with GRPO and a step-Gaussian + agent-match reward), with held-out test splits per domain. Target = Who\&When's (responsible agent, decisive step). Labels are produced fully automatically, with no human review:

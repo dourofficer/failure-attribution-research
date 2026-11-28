@@ -1,0 +1,3367 @@
+{
+ "selected": {
+  "mode": "ce",
+  "cls_splits": [
+   "train_cls",
+   "train_size"
+  ],
+  "size_splits": [],
+  "batch_size": 32,
+  "epochs": 2,
+  "weight_decay": 0.01,
+  "alpha": 0.1,
+  "layer": 8,
+  "lr": 0.0001
+ },
+ "chosen_per_seed": [
+  {
+   "temperature": 0.25,
+   "raps_lambda_k": [
+    0.001,
+    1
+   ],
+   "position_prior": [
+    0.16666666666666666,
+    0.16666666666666666,
+    0.05555555555555555,
+    0.05555555555555555,
+    0.1111111111111111,
+    0.05555555555555555,
+    0.05555555555555555,
+    0.1111111111111111,
+    0.16666666666666666,
+    0.05555555555555555
+   ]
+  },
+  {
+   "temperature": 0.25,
+   "raps_lambda_k": [
+    0.001,
+    1
+   ],
+   "position_prior": [
+    0.16666666666666666,
+    0.16666666666666666,
+    0.05555555555555555,
+    0.05555555555555555,
+    0.1111111111111111,
+    0.05555555555555555,
+    0.05555555555555555,
+    0.1111111111111111,
+    0.16666666666666666,
+    0.05555555555555555
+   ]
+  },
+  {
+   "temperature": 0.25,
+   "raps_lambda_k": [
+    0.001,
+    1
+   ],
+   "position_prior": [
+    0.16666666666666666,
+    0.16666666666666666,
+    0.05555555555555555,
+    0.05555555555555555,
+    0.1111111111111111,
+    0.05555555555555555,
+    0.05555555555555555,
+    0.1111111111111111,
+    0.16666666666666666,
+    0.05555555555555555
+   ]
+  }
+ ],
+ "arms": {
+  "cross-entropy, all training data": {
+   "0.05": {
+    "test": {
+     "q": {
+      "mean": Infinity,
+      "sd": NaN
+     },
+     "coverage_interval": [
+      1.0,
+      1.0
+     ],
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 17.75,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    },
+    "external_recal": {
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 13.225,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "size_sd": {
+      "mean": 0.6417748826496718,
+      "sd": 0.0
+     },
+     "size_rel_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "empty_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "top1_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "n_cal": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_test": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_splits": {
+      "mean": 200.0,
+      "sd": 0.0
+     }
+    },
+    "external_zero_shot": {
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 13.25,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    }
+   },
+   "0.1": {
+    "test": {
+     "q": {
+      "mean": Infinity,
+      "sd": NaN
+     },
+     "coverage_interval": [
+      1.0,
+      1.0
+     ],
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 17.75,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    },
+    "external_recal": {
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 13.225,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "size_sd": {
+      "mean": 0.6417748826496718,
+      "sd": 0.0
+     },
+     "size_rel_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "empty_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "top1_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "n_cal": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_test": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_splits": {
+      "mean": 200.0,
+      "sd": 0.0
+     }
+    },
+    "external_zero_shot": {
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 13.25,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    }
+   },
+   "0.2": {
+    "test": {
+     "q": {
+      "mean": 0.9588974001723454,
+      "sd": 0.0013851514275713829
+     },
+     "coverage_interval": [
+      0.3976353643835255,
+      0.9936905367902901
+     ],
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 17.25,
+      "sd": 0.408248290463863
+     },
+     "size_rel": {
+      "mean": 0.9743230625583567,
+      "sd": 0.020594533146697288
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 0.6666666666666666,
+      "sd": 0.23570226039551584
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      0.9901960784313726,
+      0.9365079365079364,
+      0.9803921568627452
+     ]
+    },
+    "external_recal": {
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 13.225,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "size_sd": {
+      "mean": 0.6417748826496718,
+      "sd": 0.0
+     },
+     "size_rel_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "empty_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "top1_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "n_cal": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_test": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_splits": {
+      "mean": 200.0,
+      "sd": 0.0
+     }
+    },
+    "external_zero_shot": {
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 13.25,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    }
+   }
+  },
+  "cross-entropy + temperature scaling": {
+   "0.05": {
+    "test": {
+     "q": {
+      "mean": Infinity,
+      "sd": NaN
+     },
+     "coverage_interval": [
+      1.0,
+      1.0
+     ],
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 17.75,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    },
+    "external_recal": {
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 13.225,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "size_sd": {
+      "mean": 0.6417748826496718,
+      "sd": 0.0
+     },
+     "size_rel_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "empty_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "top1_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "n_cal": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_test": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_splits": {
+      "mean": 200.0,
+      "sd": 0.0
+     }
+    },
+    "external_zero_shot": {
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 13.25,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    }
+   },
+   "0.1": {
+    "test": {
+     "q": {
+      "mean": Infinity,
+      "sd": NaN
+     },
+     "coverage_interval": [
+      1.0,
+      1.0
+     ],
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 17.75,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    },
+    "external_recal": {
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 13.225,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "size_sd": {
+      "mean": 0.6417748826496718,
+      "sd": 0.0
+     },
+     "size_rel_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "empty_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "top1_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "n_cal": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_test": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_splits": {
+      "mean": 200.0,
+      "sd": 0.0
+     }
+    },
+    "external_zero_shot": {
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 13.25,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    }
+   },
+   "0.2": {
+    "test": {
+     "q": {
+      "mean": 0.9723151105000639,
+      "sd": 0.006835614521902415
+     },
+     "coverage_interval": [
+      0.3976353643835255,
+      0.9936905367902901
+     ],
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 15.916666666666666,
+      "sd": 1.2304019216861168
+     },
+     "size_rel": {
+      "mean": 0.8925070028011204,
+      "sd": 0.07079282977772816
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 0.3333333333333333,
+      "sd": 0.31180478223116176
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      0.8774509803921569,
+      0.9523809523809524,
+      0.8627450980392156
+     ]
+    },
+    "external_recal": {
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 13.225,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "size_sd": {
+      "mean": 0.6417748826496718,
+      "sd": 0.0
+     },
+     "size_rel_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "empty_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "top1_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "n_cal": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_test": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_splits": {
+      "mean": 200.0,
+      "sd": 0.0
+     }
+    },
+    "external_zero_shot": {
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 12.75,
+      "sd": 0.7071067811865476
+     },
+     "size_rel": {
+      "mean": 0.9627136752136751,
+      "sd": 0.05273082620386863
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 0.75,
+      "sd": 0.3535533905932738
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      0.986111111111111,
+      0.9555555555555556,
+      0.923076923076923
+     ]
+    }
+   }
+  },
+  "cross-entropy + length-normalised log-probability score": {
+   "0.05": {
+    "test": {
+     "q": {
+      "mean": Infinity,
+      "sd": NaN
+     },
+     "coverage_interval": [
+      1.0,
+      1.0
+     ],
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 17.75,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    },
+    "external_recal": {
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 13.225,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "size_sd": {
+      "mean": 0.6417748826496718,
+      "sd": 0.0
+     },
+     "size_rel_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "empty_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "top1_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "n_cal": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_test": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_splits": {
+      "mean": 200.0,
+      "sd": 0.0
+     }
+    },
+    "external_zero_shot": {
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 13.25,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    }
+   },
+   "0.1": {
+    "test": {
+     "q": {
+      "mean": Infinity,
+      "sd": NaN
+     },
+     "coverage_interval": [
+      1.0,
+      1.0
+     ],
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 17.75,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    },
+    "external_recal": {
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 13.225,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "size_sd": {
+      "mean": 0.6417748826496718,
+      "sd": 0.0
+     },
+     "size_rel_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "empty_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "top1_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "n_cal": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_test": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_splits": {
+      "mean": 200.0,
+      "sd": 0.0
+     }
+    },
+    "external_zero_shot": {
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 13.25,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    }
+   },
+   "0.2": {
+    "test": {
+     "q": {
+      "mean": 0.20258028177991264,
+      "sd": 0.06831856536319351
+     },
+     "coverage_interval": [
+      0.3976353643835255,
+      0.9936905367902901
+     ],
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 16.25,
+      "sd": 0.9354143466934853
+     },
+     "size_rel": {
+      "mean": 0.9102474323062557,
+      "sd": 0.05568223880959496
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 0.3333333333333333,
+      "sd": 0.31180478223116176
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      0.8872549019607844,
+      0.9841269841269842,
+      0.8823529411764706
+     ]
+    },
+    "external_recal": {
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 13.225,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "size_sd": {
+      "mean": 0.6417748826496718,
+      "sd": 0.0
+     },
+     "size_rel_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "empty_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "top1_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "n_cal": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_test": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_splits": {
+      "mean": 200.0,
+      "sd": 0.0
+     }
+    },
+    "external_zero_shot": {
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 12.75,
+      "sd": 0.7071067811865476
+     },
+     "size_rel": {
+      "mean": 0.9627136752136751,
+      "sd": 0.05273082620386863
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 0.75,
+      "sd": 0.3535533905932738
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      0.986111111111111,
+      0.9555555555555556,
+      0.923076923076923
+     ]
+    }
+   }
+  },
+  "cross-entropy + adaptive-set score": {
+   "0.05": {
+    "test": {
+     "q": {
+      "mean": Infinity,
+      "sd": NaN
+     },
+     "coverage_interval": [
+      1.0,
+      1.0
+     ],
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 17.75,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    },
+    "external_recal": {
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 13.225,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "size_sd": {
+      "mean": 0.6417748826496718,
+      "sd": 0.0
+     },
+     "size_rel_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "empty_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "top1_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "n_cal": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_test": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_splits": {
+      "mean": 200.0,
+      "sd": 0.0
+     }
+    },
+    "external_zero_shot": {
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 13.25,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    }
+   },
+   "0.1": {
+    "test": {
+     "q": {
+      "mean": Infinity,
+      "sd": NaN
+     },
+     "coverage_interval": [
+      1.0,
+      1.0
+     ],
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 17.75,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    },
+    "external_recal": {
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 13.225,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "size_sd": {
+      "mean": 0.6417748826496718,
+      "sd": 0.0
+     },
+     "size_rel_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "empty_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "top1_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "n_cal": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_test": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_splits": {
+      "mean": 200.0,
+      "sd": 0.0
+     }
+    },
+    "external_zero_shot": {
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 13.25,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    }
+   },
+   "0.2": {
+    "test": {
+     "q": {
+      "mean": 0.9404419583248842,
+      "sd": 0.031128357547359493
+     },
+     "coverage_interval": [
+      0.3976353643835255,
+      0.9936905367902901
+     ],
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 16.416666666666668,
+      "sd": 0.8498365855987975
+     },
+     "size_rel": {
+      "mean": 0.9253180438842202,
+      "sd": 0.04815516297705933
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 0.16666666666666666,
+      "sd": 0.23570226039551584
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      0.9295343137254902,
+      0.9206349206349206,
+      0.9215686274509803
+     ]
+    },
+    "external_recal": {
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 13.225,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "size_sd": {
+      "mean": 0.6417748826496718,
+      "sd": 0.0
+     },
+     "size_rel_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "empty_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "top1_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "n_cal": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_test": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_splits": {
+      "mean": 200.0,
+      "sd": 0.0
+     }
+    },
+    "external_zero_shot": {
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 12.333333333333334,
+      "sd": 0.8249579113843055
+     },
+     "size_rel": {
+      "mean": 0.9309829059829061,
+      "sd": 0.06279507014285815
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 0.4166666666666667,
+      "sd": 0.42491829279939874
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      0.9337606837606839,
+      0.9333333333333332,
+      0.923076923076923
+     ]
+    }
+   }
+  },
+  "cross-entropy + regularised adaptive-set score": {
+   "0.05": {
+    "test": {
+     "q": {
+      "mean": Infinity,
+      "sd": NaN
+     },
+     "coverage_interval": [
+      1.0,
+      1.0
+     ],
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 17.75,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    },
+    "external_recal": {
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 13.225,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "size_sd": {
+      "mean": 0.6417748826496718,
+      "sd": 0.0
+     },
+     "size_rel_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "empty_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "top1_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "n_cal": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_test": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_splits": {
+      "mean": 200.0,
+      "sd": 0.0
+     }
+    },
+    "external_zero_shot": {
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 13.25,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    }
+   },
+   "0.1": {
+    "test": {
+     "q": {
+      "mean": Infinity,
+      "sd": NaN
+     },
+     "coverage_interval": [
+      1.0,
+      1.0
+     ],
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 17.75,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    },
+    "external_recal": {
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 13.225,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "size_sd": {
+      "mean": 0.6417748826496718,
+      "sd": 0.0
+     },
+     "size_rel_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "empty_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "top1_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "n_cal": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_test": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_splits": {
+      "mean": 200.0,
+      "sd": 0.0
+     }
+    },
+    "external_zero_shot": {
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 13.25,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    }
+   },
+   "0.2": {
+    "test": {
+     "q": {
+      "mean": 0.9551086249915509,
+      "sd": 0.03157701599215482
+     },
+     "coverage_interval": [
+      0.3976353643835255,
+      0.9936905367902901
+     ],
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 16.416666666666668,
+      "sd": 0.8498365855987975
+     },
+     "size_rel": {
+      "mean": 0.9253180438842202,
+      "sd": 0.04815516297705933
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 0.16666666666666666,
+      "sd": 0.23570226039551584
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      0.9295343137254902,
+      0.9206349206349206,
+      0.9215686274509803
+     ]
+    },
+    "external_recal": {
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 13.225,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "size_sd": {
+      "mean": 0.6417748826496718,
+      "sd": 0.0
+     },
+     "size_rel_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "empty_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "top1_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "n_cal": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_test": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_splits": {
+      "mean": 200.0,
+      "sd": 0.0
+     }
+    },
+    "external_zero_shot": {
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 12.333333333333334,
+      "sd": 0.8249579113843055
+     },
+     "size_rel": {
+      "mean": 0.9309829059829061,
+      "sd": 0.06279507014285815
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 0.4166666666666667,
+      "sd": 0.42491829279939874
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      0.9337606837606839,
+      0.9333333333333332,
+      0.923076923076923
+     ]
+    }
+   }
+  },
+  "floor: random scores": {
+   "0.05": {
+    "test": {
+     "q": {
+      "mean": Infinity,
+      "sd": NaN
+     },
+     "coverage_interval": [
+      1.0,
+      1.0
+     ],
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 17.75,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.3333333333333333,
+      "sd": 0.11785113019775792
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    },
+    "external_recal": {
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 13.225,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "size_sd": {
+      "mean": 0.6417748826496718,
+      "sd": 0.0
+     },
+     "size_rel_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "empty_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "top1_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "n_cal": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_test": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_splits": {
+      "mean": 200.0,
+      "sd": 0.0
+     }
+    },
+    "external_zero_shot": {
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 13.25,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    }
+   },
+   "0.1": {
+    "test": {
+     "q": {
+      "mean": Infinity,
+      "sd": NaN
+     },
+     "coverage_interval": [
+      1.0,
+      1.0
+     ],
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 17.75,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.3333333333333333,
+      "sd": 0.11785113019775792
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    },
+    "external_recal": {
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 13.225,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "size_sd": {
+      "mean": 0.6417748826496718,
+      "sd": 0.0
+     },
+     "size_rel_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "empty_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "top1_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "n_cal": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_test": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_splits": {
+      "mean": 200.0,
+      "sd": 0.0
+     }
+    },
+    "external_zero_shot": {
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 13.25,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    }
+   },
+   "0.2": {
+    "test": {
+     "q": {
+      "mean": 0.7651229960397353,
+      "sd": 0.1792161739087767
+     },
+     "coverage_interval": [
+      0.3976353643835255,
+      0.9936905367902901
+     ],
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 0.9166666666666666,
+      "sd": 0.11785113019775792
+     },
+     "size": {
+      "mean": 13.25,
+      "sd": 4.0155946010522525
+     },
+     "size_rel": {
+      "mean": 0.7434640522875817,
+      "sd": 0.22743482913399657
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 0.3333333333333333,
+      "sd": 0.4714045207910317
+     },
+     "top1": {
+      "mean": 0.3333333333333333,
+      "sd": 0.11785113019775792
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      0.6666666666666666
+     ],
+     "size_rel_by_pos_tercile": [
+      0.7058823529411765,
+      0.7777777777777778,
+      0.7843137254901961
+     ]
+    },
+    "external_recal": {
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 13.225,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "size_sd": {
+      "mean": 0.6417748826496718,
+      "sd": 0.0
+     },
+     "size_rel_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "empty_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "top1_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "n_cal": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_test": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_splits": {
+      "mean": 200.0,
+      "sd": 0.0
+     }
+    },
+    "external_zero_shot": {
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 0.6666666666666666,
+      "sd": 0.31180478223116176
+     },
+     "size": {
+      "mean": 10.0,
+      "sd": 2.943920288775949
+     },
+     "size_rel": {
+      "mean": 0.7542735042735043,
+      "sd": 0.2226452150269963
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 0.25,
+      "sd": 0.3535533905932738
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      0.6666666666666666,
+      0.6666666666666666,
+      0.6666666666666666
+     ],
+     "size_rel_by_pos_tercile": [
+      0.7350427350427351,
+      0.7777777777777778,
+      0.7692307692307692
+     ]
+    }
+   }
+  },
+  "floor: error-position prior": {
+   "0.05": {
+    "test": {
+     "q": {
+      "mean": Infinity,
+      "sd": NaN
+     },
+     "coverage_interval": [
+      1.0,
+      1.0
+     ],
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 17.75,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    },
+    "external_recal": {
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 13.225,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "size_sd": {
+      "mean": 0.6417748826496718,
+      "sd": 0.0
+     },
+     "size_rel_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "empty_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "top1_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "n_cal": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_test": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_splits": {
+      "mean": 200.0,
+      "sd": 0.0
+     }
+    },
+    "external_zero_shot": {
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 13.25,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    }
+   },
+   "0.1": {
+    "test": {
+     "q": {
+      "mean": Infinity,
+      "sd": NaN
+     },
+     "coverage_interval": [
+      1.0,
+      1.0
+     ],
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 17.75,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    },
+    "external_recal": {
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 13.225,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "size_sd": {
+      "mean": 0.6417748826496718,
+      "sd": 0.0
+     },
+     "size_rel_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "empty_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "top1_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "n_cal": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_test": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_splits": {
+      "mean": 200.0,
+      "sd": 0.0
+     }
+    },
+    "external_zero_shot": {
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 13.25,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    }
+   },
+   "0.2": {
+    "test": {
+     "q": {
+      "mean": 0.9791666666666666,
+      "sd": 0.0
+     },
+     "coverage_interval": [
+      0.3976353643835255,
+      0.9936905367902901
+     ],
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 17.75,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    },
+    "external_recal": {
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 13.225,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "size_sd": {
+      "mean": 0.6417748826496718,
+      "sd": 0.0
+     },
+     "size_rel_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "empty_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "top1_sd": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "n_cal": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_test": {
+      "mean": 2.0,
+      "sd": 0.0
+     },
+     "n_splits": {
+      "mean": 200.0,
+      "sd": 0.0
+     }
+    },
+    "external_zero_shot": {
+     "n": {
+      "mean": 4.0,
+      "sd": 0.0
+     },
+     "coverage": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "size": {
+      "mean": 13.25,
+      "sd": 0.0
+     },
+     "size_rel": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "empty_rate": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "full_rate": {
+      "mean": 1.0,
+      "sd": 0.0
+     },
+     "top1": {
+      "mean": 0.0,
+      "sd": 0.0
+     },
+     "coverage_by_len_tercile": null,
+     "size_rel_by_len_tercile": null,
+     "coverage_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ],
+     "size_rel_by_pos_tercile": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    }
+   }
+  }
+ }
+}

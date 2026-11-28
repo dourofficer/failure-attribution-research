@@ -1,0 +1,4 @@
+Uninstalled 1 package in 2ms
+Installed 1 package in 6ms
+assets/experiments/cp_ce_fixed_threshold/config.resolved.yaml
+using GPUs: 1 -> 5 processes  smoke=0

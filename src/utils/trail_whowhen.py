@@ -174,8 +174,8 @@ def convert(trace: dict, annotation: dict, split: str, repaired: bool = False) -
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--src", default="data/trail/trail_github/benchmarking")
-    ap.add_argument("--out", default="data/trail/whowhen_format")
+    ap.add_argument("--src", default="data/attribution/trail/trail_github/benchmarking")
+    ap.add_argument("--out", default="data/attribution/trail/whowhen_format")
     a = ap.parse_args()
     src, out = Path(a.src), Path(a.out)
     for split, ann_dir in SPLITS.items():

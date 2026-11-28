@@ -7,7 +7,7 @@ import pytest
 
 from src.utils.trail_whowhen import SPLITS, convert, load_annotation
 
-SRC = Path("data/trail/trail_github/benchmarking")
+SRC = Path("data/attribution/trail/trail_github/benchmarking")
 
 
 def _span(sid, name, kind=None, children=(), **attrs):

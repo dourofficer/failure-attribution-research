@@ -6,7 +6,7 @@
 Paper & \emph{Which Agent Causes Task Failures and When? On Automated Failure Attribution of LLM Multi-Agent Systems} --- Zhang et al., ICML 2025 (spotlight), arXiv:2505.00212 \cite{zhang2025who}\\
 Links & \href{https://huggingface.co/datasets/Kevin355/Who_and_When}{HF \code{Kevin355/Who\_and\_When}} \textperiodcentered\ \href{https://github.com/mingyin1/Agents_Failure_Attribution}{GitHub \code{mingyin1/Agents\_Failure\_Attribution}}\\
 License & none stated on the HF dataset card (GitHub repo MIT; paper CC BY 4.0); underlying queries from GAIA and AssistantBench\\
-Status & downloaded in full, ungated; 8.7 MB; \code{data/who\_and\_when/} (184 JSON logs + 2 parquet files)\\
+Status & downloaded in full, ungated; 8.7 MB; \code{data/attribution/who\_and\_when/} (184 JSON logs + 2 parquet files)\\
 \end{identity}
 
 \paragraph{Description} Who\&When is the benchmark that defined the task (\S\ref{sec:intro}): every record is the output log of a multi-agent run that \emph{failed} a GAIA or AssistantBench query, plus three labels---\code{mistake\_agent} (who), \code{mistake\_step} (when: a 0-based index into \code{history}) and a free-text \code{mistake\_reason}. Failures are natural (no injection). Two subsets come from two very different MAS:

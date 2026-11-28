@@ -6,7 +6,7 @@
 Paper & \emph{AgentHallu: Benchmarking Automated Hallucination Attribution of LLM-based Agents} --- Liu, Yang, Li, Li, He (BUPT / CASIA), arXiv:2601.06818, Jan 2026 (preprint, no venue yet) \cite{agenthallu2026}\\
 Links & \href{https://github.com/liuxuannan/AgentHallu}{GitHub \code{liuxuannan/AgentHallu}} (code + data) \textperiodcentered\ \href{https://liuxuannan.github.io/AgentHallu.github.io/}{project page} \textperiodcentered\ no HF dataset\\
 License & CC BY 4.0 in the repo \code{LICENSE}; the paper's appendix says CC BY-NC-SA 4.0 (conflicting). Queries from SimpleQA / GPQA / MATH-500 / AIME / HLE (MIT), BFCL v3 (Apache-2.0), GAIA\\
-Status & downloaded in full (repo snapshot, ungated); 28 MB; \code{data/agenthallu/repo/AgentHallu/<framework>/NNN.json} (693 JSON files)\\
+Status & downloaded in full (repo snapshot, ungated); 28 MB; \code{data/attribution/agenthallu/repo/AgentHallu/<framework>/NNN.json} (693 JSON files)\\
 \end{identity}
 
 \paragraph{Description} AgentHallu recasts failure attribution as \emph{hallucination attribution}: given a query and the full trajectory of an agent system, (1) decide whether the final answer is hallucinated (operationalised as answer $\neq$ ground truth), (2) localise the single \emph{responsible} step and (3) explain the cause in free text. Seven frameworks were run on queries from eight benchmarks in five domains (World Knowledge: SimpleQA; Science: GPQA; Math: MATH-500 levels 3--5, AIME 2024/2025; General Assistant: GAIA validation; Tool Use: BFCL~v3 multi-turn; plus a small HLE supplement):

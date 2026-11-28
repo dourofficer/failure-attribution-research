@@ -1,0 +1,45 @@
+Uninstalled 1 package in 2ms
+Installed 1 package in 6ms
+assets/experiments/cp_step_embeddings/config.resolved.yaml
+Uninstalled 1 package in 2ms
+Installed 1 package in 6ms
+actprm_first_error_16to60_v1: 0rows [00:00, ?rows/s]actprm_first_error_16to60_v1: 14404rows [00:00, 144016.79rows/s]actprm_first_error_16to60_v1: 30949rows [00:00, 156618.76rows/s]actprm_first_error_16to60_v1: 46611rows [00:00, 139165.14rows/s]actprm_first_error_16to60_v1: 60732rows [00:00, 102059.72rows/s]actprm_first_error_16to60_v1: 72051rows [00:00, 92341.17rows/s] actprm_first_error_16to60_v1: 82008rows [00:00, 79303.02rows/s]actprm_first_error_16to60_v1: 90537rows [00:00, 74401.47rows/s]actprm_first_error_16to60_v1: 98330rows [00:01, 71351.12rows/s]actprm_first_error_16to60_v1: 105660rows [00:01, 68142.66rows/s]actprm_first_error_16to60_v1: 112574rows [00:01, 65839.70rows/s]actprm_first_error_16to60_v1: 119200rows [00:01, 64731.58rows/s]actprm_first_error_16to60_v1: 128770rows [00:01, 72866.20rows/s]actprm_first_error_16to60_v1: 137180rows [00:01, 75929.49rows/s]actprm_first_error_16to60_v1: 144902rows [00:01, 73271.19rows/s]actprm_first_error_16to60_v1: 152325rows [00:01, 71617.47rows/s]actprm_first_error_16to60_v1: 159552rows [00:01, 68818.65rows/s]actprm_first_error_16to60_v1: 166486rows [00:02, 67383.02rows/s]actprm_first_error_16to60_v1: 173257rows [00:02, 66496.79rows/s]actprm_first_error_16to60_v1: 179926rows [00:02, 64859.53rows/s]actprm_first_error_16to60_v1: 189041rows [00:02, 72260.94rows/s]actprm_first_error_16to60_v1: 202135rows [00:02, 89093.68rows/s]actprm_first_error_16to60_v1: 212758rows [00:02, 94027.48rows/s]actprm_first_error_16to60_v1: 222260rows [00:02, 92396.15rows/s]actprm_first_error_16to60_v1: 231573rows [00:02, 84746.61rows/s]actprm_first_error_16to60_v1: 240211rows [00:02, 80140.24rows/s]actprm_first_error_16to60_v1: 248366rows [00:03, 70646.24rows/s]actprm_first_error_16to60_v1: 255687rows [00:03, 68923.35rows/s]actprm_first_error_16to60_v1: 262745rows [00:03, 67958.06rows/s]actprm_first_error_16to60_v1: 273770rows [00:03, 79207.41rows/s]actprm_first_error_16to60_v1: 288368rows [00:03, 97593.17rows/s]actprm_first_error_16to60_v1: 298445rows [00:03, 91888.30rows/s]actprm_first_error_16to60_v1: 307909rows [00:03, 81040.50rows/s]actprm_first_error_16to60_v1: 316397rows [00:03, 79152.62rows/s]actprm_first_error_16to60_v1: 324568rows [00:04, 77751.93rows/s]actprm_first_error_16to60_v1: 332512rows [00:04, 74085.78rows/s]actprm_first_error_16to60_v1: 340044rows [00:04, 71326.47rows/s]actprm_first_error_16to60_v1: 349634rows [00:04, 77849.97rows/s]actprm_first_error_16to60_v1: 359765rows [00:04, 84304.38rows/s]actprm_first_error_16to60_v1: 368352rows [00:04, 82058.87rows/s]actprm_first_error_16to60_v1: 376672rows [00:04, 79691.90rows/s]actprm_first_error_16to60_v1: 384724rows [00:04, 78375.93rows/s]actprm_first_error_16to60_v1: 392617rows [00:04, 77138.54rows/s]actprm_first_error_16to60_v1: 400367rows [00:05, 75808.53rows/s]actprm_first_error_16to60_v1: 407972rows [00:05, 74305.14rows/s]actprm_first_error_16to60_v1: 422794rows [00:05, 95322.78rows/s]actprm_first_error_16to60_v1: 432453rows [00:05, 93185.28rows/s]actprm_first_error_16to60_v1: 442898rows [00:05, 96411.06rows/s]actprm_first_error_16to60_v1: 456348rows [00:05, 107471.05rows/s]actprm_first_error_16to60_v1: 467188rows [00:05, 88541.84rows/s] actprm_first_error_16to60_v1: 476645rows [00:05, 85360.53rows/s]actprm_first_error_16to60_v1: 487125rows [00:05, 90360.91rows/s]actprm_first_error_16to60_v1: 501320rows [00:06, 104228.52rows/s]actprm_first_error_16to60_v1: 512166rows [00:06, 88136.35rows/s] actprm_first_error_16to60_v1: 521665rows [00:06, 79716.71rows/s]actprm_first_error_16to60_v1: 530202rows [00:06, 74622.70rows/s]actprm_first_error_16to60_v1: 538061rows [00:06, 71758.94rows/s]actprm_first_error_16to60_v1: 545639rows [00:06, 72741.85rows/s]actprm_first_error_16to60_v1: 557105rows [00:06, 83620.46rows/s]actprm_first_error_16to60_v1: 569156rows [00:06, 93598.76rows/s]actprm_first_error_16to60_v1: 579652rows [00:07, 96764.86rows/s]actprm_first_error_16to60_v1: 590304rows [00:07, 99542.14rows/s]actprm_first_error_16to60_v1: 601270rows [00:07, 102460.61rows/s]actprm_first_error_16to60_v1: 612049rows [00:07, 104016.70rows/s]actprm_first_error_16to60_v1: 622556rows [00:07, 86883.32rows/s] actprm_first_error_16to60_v1: 633351rows [00:07, 92348.14rows/s]actprm_first_error_16to60_v1: 643773rows [00:07, 95556.35rows/s]actprm_first_error_16to60_v1: 654114rows [00:07, 97744.65rows/s]actprm_first_error_16to60_v1: 662958rows [00:07, 84097.97rows/s]
+actprm_first_error_16to60_v1 {'seen': 338922, 'dropped_too_short': 303924, 'kept_traces': 34427, 'dropped_too_long': 569, 'dropped_empty_step': 2, 'tasks': 32778, 'split_test': 1000, 'split_cal': 1000, 'split_val': 1000, 'split_train_cls': 5000, 'split_train_size': 5000, 'reserve_tasks': 19778, 'written': 13000}
+processbench_first_error_10plus_v1: 0rows [00:00, ?rows/s]processbench_first_error_10plus_v1: 3400rows [00:00, 87199.13rows/s]
+processbench_first_error_10plus_v1 {'seen': 2221, 'dropped_too_short': 1662, 'kept_traces': 559, 'tasks': 527, 'split_external': 527, 'reserve_tasks': 0, 'written': 527}
+using GPUs: 0 1 -> 2 shards  smoke=0
+Uninstalled 1 package in 2ms
+Installed 1 package in 9ms
+verify:   0%|          | 0/53 [00:00<?, ?chunk/s]verify:   2%|▏         | 1/53 [00:00<00:08,  6.06chunk/s]verify:   4%|▍         | 2/53 [00:00<00:08,  6.27chunk/s]verify:   6%|▌         | 3/53 [00:00<00:08,  5.83chunk/s]verify:   8%|▊         | 4/53 [00:00<00:08,  6.00chunk/s]verify:   9%|▉         | 5/53 [00:00<00:07,  6.17chunk/s]verify:  11%|█▏        | 6/53 [00:00<00:07,  6.20chunk/s]verify:  13%|█▎        | 7/53 [00:01<00:07,  6.25chunk/s]verify:  15%|█▌        | 8/53 [00:01<00:07,  6.27chunk/s]verify:  17%|█▋        | 9/53 [00:01<00:06,  6.39chunk/s]verify:  19%|█▉        | 10/53 [00:01<00:06,  6.36chunk/s]verify:  21%|██        | 11/53 [00:01<00:06,  6.36chunk/s]verify:  23%|██▎       | 12/53 [00:01<00:06,  6.38chunk/s]verify:  25%|██▍       | 13/53 [00:02<00:06,  6.36chunk/s]verify:  26%|██▋       | 14/53 [00:02<00:06,  6.33chunk/s]verify:  28%|██▊       | 15/53 [00:02<00:06,  6.31chunk/s]verify:  30%|███       | 16/53 [00:02<00:05,  6.36chunk/s]verify:  32%|███▏      | 17/53 [00:02<00:05,  6.35chunk/s]verify:  34%|███▍      | 18/53 [00:02<00:05,  6.37chunk/s]verify:  36%|███▌      | 19/53 [00:03<00:05,  6.39chunk/s]verify:  38%|███▊      | 20/53 [00:03<00:05,  6.43chunk/s]verify:  40%|███▉      | 21/53 [00:03<00:05,  6.40chunk/s]verify:  42%|████▏     | 22/53 [00:03<00:04,  6.34chunk/s]verify:  43%|████▎     | 23/53 [00:03<00:04,  6.39chunk/s]verify:  45%|████▌     | 24/53 [00:03<00:04,  6.36chunk/s]verify:  47%|████▋     | 25/53 [00:03<00:04,  6.36chunk/s]verify:  49%|████▉     | 26/53 [00:04<00:04,  6.38chunk/s]verify:  51%|█████     | 27/53 [00:04<00:04,  6.41chunk/s]verify:  53%|█████▎    | 28/53 [00:04<00:03,  6.36chunk/s]verify:  55%|█████▍    | 29/53 [00:04<00:03,  6.36chunk/s]verify:  57%|█████▋    | 30/53 [00:04<00:03,  6.40chunk/s]verify:  58%|█████▊    | 31/53 [00:04<00:03,  6.40chunk/s]verify:  60%|██████    | 32/53 [00:05<00:03,  6.44chunk/s]verify:  62%|██████▏   | 33/53 [00:05<00:03,  6.46chunk/s]verify:  64%|██████▍   | 34/53 [00:05<00:02,  6.49chunk/s]verify:  66%|██████▌   | 35/53 [00:05<00:02,  6.49chunk/s]verify:  68%|██████▊   | 36/53 [00:05<00:02,  6.37chunk/s]verify:  70%|██████▉   | 37/53 [00:05<00:02,  6.32chunk/s]verify:  72%|███████▏  | 38/53 [00:05<00:02,  6.28chunk/s]verify:  74%|███████▎  | 39/53 [00:06<00:02,  6.29chunk/s]verify:  75%|███████▌  | 40/53 [00:06<00:02,  6.37chunk/s]verify:  77%|███████▋  | 41/53 [00:06<00:01,  6.39chunk/s]verify:  79%|███████▉  | 42/53 [00:06<00:01,  6.41chunk/s]verify:  81%|████████  | 43/53 [00:06<00:01,  6.43chunk/s]verify:  83%|████████▎ | 44/53 [00:06<00:01,  6.36chunk/s]verify:  85%|████████▍ | 45/53 [00:07<00:01,  6.34chunk/s]verify:  87%|████████▋ | 46/53 [00:07<00:01,  6.38chunk/s]verify:  89%|████████▊ | 47/53 [00:07<00:00,  6.35chunk/s]verify:  91%|█████████ | 48/53 [00:07<00:00,  6.37chunk/s]verify:  92%|█████████▏| 49/53 [00:07<00:00,  6.33chunk/s]verify:  94%|█████████▍| 50/53 [00:07<00:00,  6.38chunk/s]verify:  96%|█████████▌| 51/53 [00:08<00:00,  6.42chunk/s]verify:  98%|█████████▊| 52/53 [00:08<00:00,  7.06chunk/s]verify: 100%|██████████| 53/53 [00:08<00:00,  6.44chunk/s]
+{
+  "traces": {
+    "actprm/test": 1000,
+    "actprm/cal": 1000,
+    "actprm/val": 1000,
+    "actprm/train_cls": 5000,
+    "actprm/train_size": 5000,
+    "processbench/external": 527
+  },
+  "steps": {
+    "actprm/test": 19331,
+    "actprm/cal": 19387,
+    "actprm/val": 18974,
+    "actprm/train_cls": 95933,
+    "actprm/train_size": 96091,
+    "processbench/external": 6932
+  },
+  "total_traces": 13527,
+  "layers": [
+    8,
+    16,
+    24,
+    32
+  ],
+  "width": 4096,
+  "n_tokens_q50_q99_max": [
+    1303,
+    5044,
+    5703
+  ]
+}
+done -> assets/experiments/cp_step_embeddings/manifest.json

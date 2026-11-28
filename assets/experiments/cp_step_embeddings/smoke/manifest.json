@@ -1,0 +1,31 @@
+{
+  "traces": {
+    "actprm/test": 4,
+    "actprm/cal": 4,
+    "actprm/val": 4,
+    "actprm/train_cls": 4,
+    "actprm/train_size": 4,
+    "processbench/external": 4
+  },
+  "steps": {
+    "actprm/test": 71,
+    "actprm/cal": 82,
+    "actprm/val": 76,
+    "actprm/train_cls": 69,
+    "actprm/train_size": 89,
+    "processbench/external": 53
+  },
+  "total_traces": 24,
+  "layers": [
+    8,
+    16,
+    24,
+    32
+  ],
+  "width": 4096,
+  "n_tokens_q50_q99_max": [
+    1366,
+    4163,
+    4724
+  ]
+}

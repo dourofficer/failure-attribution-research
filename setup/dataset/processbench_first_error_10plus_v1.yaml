@@ -1,0 +1,14 @@
+# ProcessBench failed traces with 10+ steps, human earliest-error label. External test only.
+name: processbench, failed traces with 10+ steps, first-error label
+path: data/lrm_traces/normalized/processbench/data.jsonl
+filter:
+  has_error: true
+  min_steps: 10
+  max_steps: null
+  drop_empty_steps: true
+label: first_error_step
+group_key: task_id
+one_trace_per_task: true
+seed: 20261128
+splits:
+  external: all            # every remaining task; recalibrated by repeated 50/50 splits at evaluation

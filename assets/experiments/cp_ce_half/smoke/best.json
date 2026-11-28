@@ -1,0 +1,63 @@
+{
+ "hp": {
+  "mode": "ce",
+  "cls_splits": [
+   "train_cls"
+  ],
+  "size_splits": [],
+  "batch_size": 32,
+  "epochs": 2,
+  "weight_decay": 0.01,
+  "alpha": 0.1,
+  "layer": 8,
+  "lr": 0.0001
+ },
+ "tag": "layer8_lr0.0001",
+ "n_runs": 2,
+ "table": [
+  {
+   "tag": "layer8_lr0.0001",
+   "hp": {
+    "mode": "ce",
+    "cls_splits": [
+     "train_cls"
+    ],
+    "size_splits": [],
+    "batch_size": 32,
+    "epochs": 2,
+    "weight_decay": 0.01,
+    "alpha": 0.1,
+    "layer": 8,
+    "lr": 0.0001
+   },
+   "best_epoch": 0,
+   "coverage": 1.0,
+   "size": 19.0,
+   "size_rel": 1.0,
+   "empty_rate": 0.0,
+   "top1": 0.0
+  },
+  {
+   "tag": "layer8_lr0.0003",
+   "hp": {
+    "mode": "ce",
+    "cls_splits": [
+     "train_cls"
+    ],
+    "size_splits": [],
+    "batch_size": 32,
+    "epochs": 2,
+    "weight_decay": 0.01,
+    "alpha": 0.1,
+    "layer": 8,
+    "lr": 0.0003
+   },
+   "best_epoch": 0,
+   "coverage": 1.0,
+   "size": 19.0,
+   "size_rel": 1.0,
+   "empty_rate": 0.0,
+   "top1": 0.25
+  }
+ ]
+}
