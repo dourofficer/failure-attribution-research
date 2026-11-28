@@ -1,6 +1,6 @@
 # Campaign: conformal training on first-error reasoning traces (proxy for the synthetic corpus)
 
-**Opened:** 2026-11-28   **Node:** D002   **Launch:** auto   **Status:** active
+**Opened:** 2026-11-28   **Node:** D002   **Launch:** auto   **Status:** closed 2026-11-28
 
 `Launch: auto` because [RESEARCHER] said on 2026-11-28, after agreeing the overview: "You can carry on with the experiments directly."
 
@@ -29,8 +29,8 @@ One row per experiment. `after` names the experiments that must finish first; ro
 | `cp_step_embeddings` | Builds the task-disjoint splits and caches frozen Qwen3.5-9B mean-pooled step embeddings at 25/50/75/100% depth for every trace used below | none | 2 | done → `worklogs/cp_step_embeddings.md` |
 | `cp_ce_full` | Reference: scorer trained with cross-entropy on all 10,000 training tasks, then split conformal calibration. Picks the embedding depth on validation for all arms. Also reports the arms that need no retraining: temperature scaling, post-hoc scores (adaptive sets, regularised adaptive sets, length-normalised log-probability), and the random and position-prior floors | `cp_step_embeddings` | 1 | done → `worklogs/cp_ce_full.md` |
 | `cp_ce_half` | Control for halved labels: the same cross-entropy scorer trained on one 5,000-task half only | `cp_ce_full` (for the depth) | 1 | done → `worklogs/cp_ce_half.md` |
-| `cp_ce_fixed_threshold` | Value of learning the threshold: cross-entropy plus the soft set-size loss with a constant threshold tuned on validation | `cp_ce_full` (for the depth) | 1 | stopped by [RESEARCHER] at 129 of 180 sweep runs, no final seeds → `worklogs/cp_ce_fixed_threshold.md` |
-| `cp_dpsm` | The method: conformal training with a threshold learned by pinball updates (Algorithm 1 of the work package), over its sweep grid | `cp_ce_full` (for the depth) | 1 | stopped by [RESEARCHER] at 90 of 180 sweep runs, no final seeds → `worklogs/cp_dpsm.md` |
+| `cp_ce_fixed_threshold` | Value of learning the threshold: cross-entropy plus the soft set-size loss with a constant threshold tuned on validation | `cp_ce_full` (for the depth) | 1 | done (stopped early by [RESEARCHER] at 129 of 180 sweep runs; seed 0 only, no final seeds) → `worklogs/cp_ce_fixed_threshold.md` |
+| `cp_dpsm` | The method: conformal training with a threshold learned by pinball updates (Algorithm 1 of the work package), over its sweep grid | `cp_ce_full` (for the depth) | 1 | done (stopped early by [RESEARCHER] at 90 of 180 sweep runs; seed 0 only, no final seeds) → `worklogs/cp_dpsm.md` |
 
 ## Approach
 
@@ -47,3 +47,11 @@ One row per experiment. `after` names the experiments that must finish first; ro
   - "Earliest error" is not the counterfactual error set of the work package, and 23% of error-labelled `processbench` traces end with a correct final answer. A win supports the training algorithm, not the attribution claim.
   - No agents, no tool calls, and no trace long enough to trigger the overlapping-window path, so those parts of the pipeline stay untested.
   - Long traces skew to the hardest problems: the `processbench` subset is almost entirely olympiad-level and Omni-MATH.
+
+## Closing summary
+
+- **Outcome:** stopped by [RESEARCHER] because the two set-size sweeps, half done, showed no setting clearly ahead of the cross-entropy control. The done condition is met for the two cross-entropy arms (3 seeds) and only on seed 0 for the two set-size arms, which were stopped early at 90 and 129 of 180 sweep runs.
+- **Result:** test relative set size on 1,000 held-out `actprm` tasks, with valid coverage in every arm. Cross-entropy on all data: 0.532 / 0.387 ± 0.016 / 0.251 at α = 0.05 / 0.1 / 0.2 over 3 seeds (`assets/experiments/cp_ce_full/results.md`). Cross-entropy on half the data: 0.594 / 0.451 ± 0.012 / 0.267 over 3 seeds (`assets/experiments/cp_ce_half/results.md`). Conformal training with a learned threshold: 0.562 / 0.424 / 0.257, seed 0, best of 90 finished runs (`assets/experiments/cp_dpsm/partial_results.md`). Cross-entropy plus set-size loss with a fixed threshold: 0.583 / 0.439 / 0.262, seed 0, best of 129 finished runs (`assets/experiments/cp_ce_fixed_threshold/partial_results.md`). On `processbench` after recalibration at α = 0.1: 0.328 (all data, 3 seeds), 0.374 (half data, 3 seeds), 0.361 (learned threshold, seed 0), 0.365 (fixed threshold, seed 0). Every arm is selected within the first 12 of 50 epochs and then overfits (`assets/experiments/cp_dpsm/plots/`).
+- **Ruling (D002, worked):** Work Package 1 does not go to the synthetic corpus unchanged. On this proxy, conformal training with a learned threshold gives at most a small, unconfirmed reduction in set size over cross-entropy on the same data and none over cross-entropy on all the data; the scorer's overfitting and the threshold being estimated on memorised traces are fixed before the loss is judged.
+- **Rules out:** post-hoc scores (temperature scaling, adaptive sets, regularised adaptive sets, length-normalised log-probability) as a way to shrink sets on this scorer (0.383 to 0.403 against 0.387 at α = 0.1); the early threshold lag as the sole cause of the weak effect (a step size of 0.005 removes most of the lag with no gain); a large gain from the set-size loss with a constant threshold on this setup; rerunning the same grid on the same scorer and data.
+- **Left open:** whether conformal training helps once overfitting is slowed (stronger regularisation, a smaller scorer, or more `actprm` training traces); estimating the threshold on held-out traces instead of the classification half; threshold step sizes 0.01 and 0.05 and a warm start for the threshold, none of which ran; the in-batch differentiable-quantile variant, which uses all the data; under-coverage on the longest third of traces (0.869 against 0.908).
